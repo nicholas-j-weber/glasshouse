@@ -1,10 +1,10 @@
 import { assert, mockApi, setApiKey, setAutoApply, showSheetPanelTab, test, withFreshPage } from "./support.mjs";
 
-// Addendum AA coverage: chat mode's auto-apply (Addendum Z) is a setting,
+// chat mode's auto-apply is a setting,
 // default on, toggleable in Settings — off, chat suggestions behave exactly
 // like Manage with AI's ChangeCard review always has (pending, Accept/
 // Reject/Revise with AI), rendered inline in the transcript instead of a
-// separate panel. Addendum Z's own coverage (globalMemories.e2e.mjs,
+// separate panel. Other coverage (globalMemories.e2e.mjs,
 // multiSheet.e2e.mjs) already exercises the default-on path in full; this
 // file is specifically the off path and the toggle itself.
 export async function run(browser, baseUrl) {
@@ -158,7 +158,7 @@ export async function run(browser, baseUrl) {
       text: `Ok.\n\n<!-- SHEET_SUGGESTIONS\n[{"type":"new_memory","label":"Back On","body":"auto-apply resumed"}]\n-->`,
     }));
 
-    ok = (await test("turning auto-apply back on resumes Addendum Z's toast/auto-apply behavior", async () => {
+    ok = (await test("turning auto-apply back on resumes the toast/auto-apply behavior", async () => {
       await page.fill(".chat-input-row textarea", "remember one more thing");
       await page.click('.chat-pane .chat-input-row button[type="submit"]');
       await page.waitForTimeout(400);
@@ -232,7 +232,7 @@ export async function run(browser, baseUrl) {
       text: `<!-- SHEET_SUGGESTIONS\n[{"type":"conversation_summary_update","body":"filler turn"}]\n-->`,
     }));
 
-    // Addendum AG: the auto-scroll effect only fires when a message is
+    // the auto-scroll effect only fires when a message is
     // newly appended, deliberately excluding in-place updates (a
     // suggestion's status flipping) — resolving a pending card the user
     // is already looking at shouldn't yank them down to the bottom.

@@ -1,6 +1,6 @@
 import type { SheetExport } from "./types";
 
-// §8.3.1: validates an untrusted parsed-JSON value against the export file
+// Validates an untrusted parsed-JSON value against the export file
 // shape before it's ever handed to store.importSheet(), which replaces the
 // entire local version chain — a malformed file should produce a clear
 // error, not a half-imported or crashed store.
@@ -47,7 +47,7 @@ export function parseSheetExport(data: unknown): SheetExport {
     return { formatVersion: "1.0", headVersionId: obj.headVersionId, versions };
   }
 
-  // Addendum U, 8.3.2: "1.1" — global section is required once the file
+  // "1.1" — global section is required once the file
   // claims to be "1.1" at all (both present together, never half-there).
   if (typeof obj.globalHeadVersionId !== "string") {
     throw new Error("Missing or invalid globalHeadVersionId.");

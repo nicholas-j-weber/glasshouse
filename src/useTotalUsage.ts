@@ -5,7 +5,7 @@ import type { ProviderUsage } from "./providers/types";
 
 const ZERO_USAGE: ProviderUsage = { inputTokens: 0, outputTokens: 0 };
 
-// Addendum V: reactive read of a sheet's running usage total, refreshing
+// reactive read of a sheet's running usage total, refreshing
 // whenever any real call records usage anywhere in the app (recordUsage
 // isn't scoped to "the currently active sheet," so this re-fetches rather
 // than assuming the notification was for this particular sheetId — cheap,

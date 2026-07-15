@@ -2,7 +2,7 @@ import { ManageWithAIPanel } from "./ManageWithAIPanel";
 import { SheetSwitcher } from "./SheetSwitcher";
 import type { SheetMeta } from "./types";
 
-// Addendum BN: extracted verbatim from App.tsx's .chats-sidebar aside so
+// extracted verbatim from App.tsx's .chats-sidebar aside so
 // the exact same content can be mounted in either the desktop aside or
 // the narrow-viewport MobileChatsOverlay — never both at once (App.tsx
 // guards the desktop copy with !mobileChatsOpen). Two live instances of

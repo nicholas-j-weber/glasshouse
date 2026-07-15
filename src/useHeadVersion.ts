@@ -7,7 +7,7 @@ import type { Version } from "./types";
 // store mutation (createVersion, revertToVersion, importSheet, first-run
 // ensureInitialized) notifies via headSubscription.ts. undefined during the
 // brief window before the skeleton is created, and again immediately after
-// sheetId changes (Addendum S: switching sheets), so a stale previous
+// sheetId changes (switching sheets), so a stale previous
 // sheet's head is never shown under the new sheetId.
 export function useHeadVersion(sheetId: string): Version | undefined {
   const [head, setHead] = useState<Version | undefined>(undefined);

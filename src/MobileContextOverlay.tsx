@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { ContextSidebarContent } from "./ContextSidebarContent";
 import { useModalFocus } from "./useModalFocus";
 
-// Addendum BN: narrow-viewport presentation of Context, mirroring
+// narrow-viewport presentation of Context, mirroring
 // MobileChatsOverlay. Escape here is unconditional — unlike the Chats
 // overlay, ManageWithAIPanel never renders inside this one (opening
 // Manage with AI from here hands off to the Chats overlay instead, see

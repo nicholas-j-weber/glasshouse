@@ -1,6 +1,6 @@
 import { assert, mockApi, test, withFreshPage } from "./support.mjs";
 
-// Addendum BC coverage: a one-time explanation shown on first load, with
+// a one-time explanation shown on first load, with
 // two distinct dismissals — closing (overlay click, ×, or "Got it") only
 // hides it for this page load and reappears on the next fresh one; "Don't
 // show again" is the only path that persists. Every other spec in this
@@ -94,7 +94,7 @@ export async function run(browser, baseUrl) {
     async (page) => {
       await page.goto(baseUrl);
 
-      // Addendum BG coverage: an API key field lives in the welcome modal
+      // an API key field lives in the welcome modal
       // too, sharing SettingsModal's exact storage — a first-time viewer's
       // first action shouldn't be a failed chat send just to discover a
       // key is needed at all.
@@ -139,9 +139,9 @@ export async function run(browser, baseUrl) {
     async (page) => {
       await page.goto(baseUrl);
 
-      // Addendum BH coverage: widened past Settings' base 360px so the
+      // widened past Settings' base 360px so the
       // welcome text wraps into fewer lines — confirmed live this was
-      // needed once the API key field (Addendum BG) pushed the modal's
+      // needed once the API key field pushed the modal's
       // content past what fit without scrolling at ordinary heights.
       ok = (await test("the welcome modal is wider than the base modal width Settings still uses", async () => {
         const width = await page.locator(".modal").evaluate((el) => el.getBoundingClientRect().width);
@@ -154,11 +154,11 @@ export async function run(browser, baseUrl) {
   await withFreshPage(
     browser,
     async (page) => {
-      // Addendum BL's compression-banner sentence (now default behavior)
+      // The compression-banner sentence (now default behavior)
       // pushed the scroll threshold back up at the old 480px width;
-      // Addendum BM merged it into the second paragraph and re-measured
+      // merging it into the second paragraph and re-measuring
       // from scratch — 500px restores fitting at a 600px-tall viewport,
-      // the same threshold Addendum BH originally achieved.
+      // the same threshold originally achieved before that sentence existed.
       await page.setViewportSize({ width: 1280, height: 600 });
       await page.goto(baseUrl);
       await page.waitForTimeout(200);

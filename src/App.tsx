@@ -11,7 +11,7 @@ import { useSheets } from "./useSheets";
 import { WelcomeModal } from "./WelcomeModal";
 
 function App() {
-  // Addendum S: multiple sheets can coexist locally; activeSheetId is
+  // multiple sheets can coexist locally; activeSheetId is
   // undefined only during the brief window before the first sheet exists.
   const { sheets, activeSheetId } = useSheets();
   // Chat-list and details (Tone/Memories/History/etc.) sidebars: both open
@@ -38,19 +38,19 @@ function App() {
   // than requiring a click). Cleared by ChatHeaderTitle itself right after
   // it consumes this, via onAutoEditHandled, so it doesn't retrigger.
   const [justCreatedSheetId, setJustCreatedSheetId] = useState<string | null>(null);
-  // §6.3's AI-collaboration surface, now a one-shot review panel (see
+  // The AI-collaboration surface, a one-shot review panel (see
   // ManageWithAIPanel) triggered from the Context panel header. Rather than
   // a blocking modal, it temporarily occupies the Chats sidebar column in
   // place of SheetSwitcher, so the chat pane and Context panel stay visible
   // and interactive the whole time — Back restores the normal chat list.
   const [manageAIOpen, setManageAIOpen] = useState(false);
-  // Addendum AL: set alongside manageAIOpen when something (currently only
+  // set alongside manageAIOpen when something (currently only
   // the Token Estimator's compression banner) wants Manage with AI to open
   // pre-filled with a starting instruction, rather than the field's normal
   // empty default — still just a pre-fill, not auto-submitted, same "show
   // before sending" posture as Revise with AI's re-aimed field.
   const [manageAIPrefill, setManageAIPrefill] = useState<string | undefined>(undefined);
-  // Addendum BN: narrow-viewport (< 1024px, App.css) presentation of Chats
+  // narrow-viewport (< 1024px, App.css) presentation of Chats
   // and Context as full-screen overlays rather than always-visible
   // sidebars. Default false (unlike chatsOpen/detailsOpen above) so a
   // fresh mobile load shows the chat pane, not an overlay covering it.
@@ -90,7 +90,7 @@ function App() {
     }
   }
 
-  // Addendum BN: "Manage with AI" tapped from inside the mobile Context
+  // "Manage with AI" tapped from inside the mobile Context
   // overlay hands off to the Chats overlay rather than rendering inline —
   // ManageWithAIPanel only ever mounts inside ChatsSidebarContent (desktop
   // parity), so this avoids a second mount path for it.

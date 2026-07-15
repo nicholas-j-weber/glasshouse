@@ -15,7 +15,7 @@
   border-bottom: 1px solid var(--border);
 }
 
-/* Addendum BN: groups the mobile-only Chats trigger with the titles so
+/* groups the mobile-only Chats trigger with the titles so
    .app-header keeps exactly 2 top-level children (this + .header-icon-
    buttons) under its existing justify-content: space-between — a 3rd
    top-level child would spread evenly across the header instead of
@@ -63,7 +63,7 @@
   gap: 8px;
 }
 
-/* Addendum BN: the "Chats"/"Context" header triggers that open the
+/* the "Chats"/"Context" header triggers that open the
    narrow-viewport overlays below. Hidden by default (desktop keeps its
    always-visible sidebars) — display: inline-flex is turned back on only
    inside the @media block at the bottom of this file, the single place
@@ -135,7 +135,7 @@
   z-index: 100;
 }
 
-/* Addendum BN: fills .modal-overlay completely (unlike the centered,
+/* fills .modal-overlay completely (unlike the centered,
    fixed-width .modal used by Settings/Welcome) — the mobile Chats/Context
    overlays are full-screen panels, not dialogs, so there's no visible
    backdrop gap left to click for dismissal (Back/re-tap the trigger/
@@ -149,7 +149,7 @@
   min-height: 0;
 }
 
-/* Addendum AW: this many settings' worth of content (5 checkboxes plus
+/* this many settings' worth of content (5 checkboxes plus
    hints, on top of the original API key/model fields) can now exceed a
    short viewport's height — confirmed live at 900x500, the modal centered
    itself right off both the top and bottom edges with nothing to scroll it
@@ -179,22 +179,22 @@
   outline: none;
 }
 
-/* Addendum BH: wider than the base 360px (Settings keeps that width —
+/* wider than the base 360px (Settings keeps that width —
    short labels/inputs don't benefit from it) so the welcome text's
    paragraphs wrap into fewer lines, cutting the modal's total height
    enough to avoid .modal-body's scroll at ordinary viewport heights —
    confirmed live it was actually scrolling below ~650px tall once the
-   API key field (Addendum BG) pushed content past that.
-   Addendum BL bumped this to 520px for a fourth paragraph (the
-   compression banner, now on by default); Addendum BM merged that
-   sentence into the second paragraph instead of keeping it separate
+   API key field pushed content past that.
+   This was bumped to 520px at one point for a fourth paragraph (the
+   compression banner, now on by default), later merged into the
+   second paragraph instead of keeping it separate
    (see WelcomeModal.tsx) and re-measured from scratch rather than
    assuming the same width was still the right number — 500px, slightly
-   narrower than BL's 520px, restores the same ~600px no-scroll
+   narrower than that intermediate 520px, restores the same ~600px no-scroll
    threshold for the merged 3-paragraph version. Not widened further
    than whatever the content actually needs — width has diminishing
    returns against height for a control this narrow, and the existing
-   max-height/overflow-y fallback (Addendum AW) is the correct backstop
+   max-height/overflow-y fallback is the correct backstop
    for whatever a fixed width doesn't cover. */
 .modal--welcome {
   width: 500px;
@@ -241,8 +241,8 @@
   /* .modal is now a flex column — without this, a flex item defaults to
      its content's full height regardless of the parent's max-height,
      defeating overflow-y here the same way min-width: 0 is needed
-     elsewhere for overflow-wrap (Addendum AK/AR/AU's already-learned
-     lesson, the same shape on the other axis). */
+     elsewhere for overflow-wrap (an already-learned
+     lesson from elsewhere in this file, the same shape on the other axis). */
   min-height: 0;
 }
 
@@ -253,9 +253,9 @@
   font-size: 13px;
 }
 
-/* Addendum BI: API key and Model side by side, in both SettingsModal and
+/* API key and Model side by side, in both SettingsModal and
    WelcomeModal — min-width: 0 on the fields themselves is load-bearing
-   here (Addendum AK/AR/AU/AW's already-learned lesson): without it, a
+   here (an already-learned lesson from elsewhere in this file): without it, a
    flex item sizes to its input's natural content width, which for a
    password-masked key can push Model out past the container regardless
    of flex-basis. */
@@ -269,11 +269,11 @@
   min-width: 0;
 }
 
-/* Addendum BJ: select added alongside input — ModelField's dropdown gets
+/* select added alongside input — ModelField's dropdown gets
    the exact same treatment as every text field in this modal, so the two
    read as one consistent set of controls rather than the browser's
    unstyled default select standing out next to them.
-   Addendum BK: identical padding/border alone still left select ~5px
+   identical padding/border alone still left select ~5px
    shorter than input, confirmed live — a <select>'s content box doesn't
    respect line-height the way a text input's does (browsers size a
    select's content by its own UA font metrics regardless), so the two
@@ -292,13 +292,13 @@
   color: var(--text-h);
 }
 
-/* Addendum BD: paragraphs inside their own wrapper (not .modal-body's
+/* paragraphs inside their own wrapper (not .modal-body's
    direct flex children) so .modal-body's gap: 12px — shared with
    SettingsModal, where that spacing is still wanted between field rows —
    doesn't apply here. margin: 0 on the paragraphs themselves clears their
    own default UA spacing; the + p rule below adds back a smaller, single
    8px gap between paragraphs only (not above the first or below the
-   last), replacing Addendum BC's zero-gap version, which read as too
+   last), replacing an earlier zero-gap version, which read as too
    dense once actually seen. */
 .welcome-text p {
   margin: 0;
@@ -308,7 +308,7 @@
   margin-top: 8px;
 }
 
-/* Addendum BC: two dismiss actions side by side — "Got it" (closes for
+/* two dismiss actions side by side — "Got it" (closes for
    this load only) stays the accent-filled primary, "Don't show again"
    (permanent) is visually secondary, same bordered-not-filled treatment
    .modal-field input already uses, so it doesn't compete with the
@@ -338,7 +338,7 @@
   color: var(--text-h);
 }
 
-/* Addendum AA: the auto-apply toggle — a row, not a column, and the
+/* the auto-apply toggle — a row, not a column, and the
    checkbox itself shouldn't take on .modal-field input's text-field
    styling (border/padding meant for the API key/model fields above it). */
 .modal-field--checkbox {
@@ -349,7 +349,7 @@
 
 .modal-field--checkbox input {
   width: auto;
-  /* Addendum BK: .modal-field input's new height: 38px (for matching the
+  /* .modal-field input's new height: 38px (for matching the
      API key/Model row) would otherwise leak onto every checkbox here too,
      since this selector only overrides width/padding/border/background,
      not height — confirmed live before shipping, not assumed safe. */
@@ -404,7 +404,7 @@
   border-bottom: 1px solid var(--border);
 }
 
-/* Addendum BN: groups Context's "Manage with AI" trigger with the
+/* groups Context's "Manage with AI" trigger with the
    mobile-only Back button so .sidebar-title still reads as exactly 2
    children — (title) / (actions) — under its space-between above,
    whether or not Back is present. */
@@ -694,7 +694,7 @@
   min-width: 0;
 }
 
-/* Addendum Z: sits in normal flow between .chat-messages and
+/* sits in normal flow between .chat-messages and
    .chat-input-row (not position: fixed/absolute) — collapses to nothing
    when empty (ToastStack returns null), and when present just nudges the
    input row down slightly rather than overlapping either. Simpler than
@@ -765,7 +765,7 @@
   opacity: 1;
 }
 
-/* §2: the Context Sheet's controls, in a sidebar on the right. */
+/* The Context Sheet's controls, in a sidebar on the right. */
 .controls-sidebar {
   width: 380px;
   flex: none;
@@ -988,7 +988,7 @@
   font-size: 14px;
 }
 
-/* Addendum AR: the collapse caret sits beside the row's text (TurnRow) or
+/* the collapse caret sits beside the row's text (TurnRow) or
    its "Summary" label (SummaryRow) on one line; align-items: flex-start
    keeps the caret pinned to the top when the text below/beside it wraps to
    multiple lines, rather than centering against the full wrapped block. */
@@ -1026,13 +1026,13 @@
   transform: rotate(180deg);
 }
 
-/* Addendum AU: this element didn't exist yet when Addendum AK swept the
-   app for overflow-wrap, so it was missed — a long unbroken token (e.g.
+/* this element didn't exist yet when overflow-wrap was
+   swept across the app, so it was missed — a long unbroken token (e.g.
    "contact→feeling→perception→thinking→proliferation", no spaces to break
    at) overflowed a turn's row instead of wrapping, confirmed live. Applying
    overflow-wrap: break-word here follows the same rule as everywhere else
    arbitrary user/model text renders (.chat-message p, .markdown-text,
-   .change-card). min-width: 0 was already here (Addendum AR) for the
+   .change-card). min-width: 0 was already here for the
    ellipsis truncation below, and is the same prerequisite this needs too —
    without it, a flex item sizes to its unwrapped content width regardless
    of overflow-wrap. */
@@ -1082,7 +1082,7 @@
   gap: 2px;
 }
 
-/* Addendum AL: the compressed-digest list, rendered above the numbered
+/* the compressed-digest list, rendered above the numbered
    turn list within the same Conversation Summary section — its own
    .memory-list instance (same flex-column/gap base already shared by
    every other list here), separated from the turn list below it by its
@@ -1156,8 +1156,7 @@
 }
 
 /* A visually distinct "drawer" — set apart from the rest of the Context
-   panel with its own gold border, since these two statistics (Addendum V:
-   Context size, the live estimate, and Tokens consumed, the real running
+   panel with its own gold border, since these two statistics (Context size, the live estimate, and Tokens consumed, the real running
    total) are informational rather than editable content like the sections
    below. Uses real <fieldset>/<legend> rather than a faked "label
    overlapping a background-colored patch" — the browser natively cuts a
@@ -1240,7 +1239,7 @@
   color: var(--gold);
 }
 
-/* Addendum AL: sits below the two stats, inside the same box — not its own
+/* sits below the two stats, inside the same box — not its own
    accent-colored callout, since this is a suggestion the user opted into
    seeing (the Settings toggle), not an error or an urgent state the gold
    Token Estimator styling is otherwise reserved for. */
@@ -1391,7 +1390,7 @@
   font-weight: 600;
 }
 
-/* Addendum AR: same rotating-caret disclosure language as
+/* same rotating-caret disclosure language as
    .chat-suggestions-toggle — this collapses one version entry's diff-line
    list, not a whole panel, so it's an inline text button rather than a
    full-width edge handle. margin-top separates it from .version-row-meta
@@ -1429,7 +1428,7 @@
   padding-left: 18px;
 }
 
-/* Addendum AZ: with the diff list collapsed (Addendum AR), this "Revert to
+/* with the diff list collapsed, this "Revert to
    here" button sat directly against .version-diff-toggle above it — 0px
    gap, confirmed live via getBoundingClientRect. margin-top fixes that.
    Buttons default to inline-block, not block, so this doesn't margin-
@@ -1513,7 +1512,7 @@
    fixes. */
 .markdown-text {
   overflow-wrap: break-word;
-  /* .manage-ai-empty is a flex row (Addendum AD, the dismiss button sits
+  /* .manage-ai-empty is a flex row (the dismiss button sits
      beside this); a flex item's default min-width: auto sizes it to its
      unwrapped content width regardless of overflow-wrap above unless told
      it's allowed to shrink below that — confirmed still overflowing
@@ -1592,7 +1591,7 @@
   font-weight: 600;
 }
 
-/* Addendum AC: the "N changes" disclosure wrapping every message's
+/* the "N changes" disclosure wrapping every message's
    suggestions block — conversation/memory updates otherwise made the chat
    quite tall as it grew. margin-top separates it from the message text
    above; the toggle button and whatever's inside it (.chat-applied-list/
@@ -1631,10 +1630,9 @@
   transform: rotate(180deg);
 }
 
-/* Addendum Z: replaces the old .chat-suggestions review list — a plain
+/* replaces the old .chat-suggestions review list — a plain
    historical record (what got applied, or failed to) for suggestions that
-   already resolved, not an interactive list with actions. Addendum AA:
-   also used for resolved (accepted/rejected/revised/failed) suggestions
+   already resolved, not an interactive list with actions. Also used for resolved (accepted/rejected/revised/failed) suggestions
    when auto-apply is off — only still-pending ones get a .chat-pending-
    cards ChangeCard instead. */
 .chat-applied-list {
@@ -1659,7 +1657,7 @@
   color: var(--error);
 }
 
-/* Addendum AA: still-pending suggestions in the chat pane, shown only when
+/* still-pending suggestions in the chat pane, shown only when
    the auto-apply setting is off — same spacing role as .manage-ai-changes/
    .manage-ai-response, sitting inline in a chat-message instead of its own
    panel. */
@@ -1672,7 +1670,7 @@
 
 /* Wraps rather than shrinks — "Revise with AI" doesn't reliably fit
    alongside Accept/Reject in Manage with AI's narrower ~226px cards.
-   Shared with the chat pane too (Addendum AA) whenever auto-apply is off. */
+   Shared with the chat pane too whenever auto-apply is off. */
 .suggestion-actions {
   display: flex;
   flex-wrap: wrap;
@@ -1705,14 +1703,14 @@
 /* Own font-size/padding, not the base rule's 16px/4px 10px — that was
    sized around emoji glyphs, which left noticeably more empty shell
    around real text ("Revise with AI") than around its ✅/❌ neighbors.
-   Shared with the chat pane too (Addendum AA) whenever auto-apply is off. */
+   Shared with the chat pane too whenever auto-apply is off. */
 .revise-with-ai-button {
   font-size: 12px;
   padding: 3px 8px;
   white-space: nowrap;
 }
 
-/* Addendum AB: the "flexbox line break" trick — an empty item with
+/* the "flexbox line break" trick — an empty item with
    flex-basis: 100% consumes whatever's left of the current line, pushing
    everything after it (Revise with AI) onto a new one. width: 0 keeps it
    from taking up any visible space itself, so Revise with AI still sizes
@@ -1725,7 +1723,7 @@
   width: 0;
 }
 
-/* Addendum AB: the conversation_summary_update Edit button — same
+/* the conversation_summary_update Edit button — same
    .icon-button/.icon-emoji treatment as TurnRow's Edit, scaled to the
    same 28px/16px .memory-row-actions already uses (a plain .icon-button
    here would otherwise lose its own padding/border-radius to
@@ -1750,7 +1748,7 @@
 /* Only "failed" is ever reached — ManageWithAIPanel's ResponseBlock only
    ever renders pending/failed cards at all (accepted/rejected ones
    disappear rather than showing a badge there), and the chat pane's
-   ChangeCard (Addendum AA) follows the same pending/failed-only rule. */
+   ChangeCard follows the same pending/failed-only rule. */
 .suggestion-status--failed {
   color: var(--error);
 }
@@ -1764,8 +1762,8 @@
 
 /* ManageWithAIPanel: a one-shot instruction in, change cards out — no
    message transcript, so this reuses .suggestion-actions/.suggestion-
-   status/.change-card (also shared with the chat pane's own ChangeCards,
-   Addendum AA) but its own input row and card layout instead of
+   status/.change-card (also shared with the chat pane's own ChangeCards)
+   but its own input row and card layout instead of
    .chat-message/.chat-applied-list/.chat-pending-cards. Temporarily
    occupies .chats-sidebar in place of .sheet-switcher, so it fills that
    column exactly the way .sheet-switcher does — fixed .sidebar-title
@@ -1809,9 +1807,9 @@
   margin: 0 0 6px;
 }
 
-/* Addendum AF: no longer its own flex row — .manage-ai-input-row now just
+/* no longer its own flex row — .manage-ai-input-row now just
    wraps a single .inline-field (the same Tone/Freeform Notes/Add-entry
-   pattern, §5.1's This Chat tab), a taller textarea with its submit button
+   pattern used in This Chat), a taller textarea with its submit button
    overlaid in the bottom-right corner instead of sitting beside it in its
    own column. Kept as a class (carrying no rules of its own) purely as a
    stable scoping selector — plenty of e2e coverage still reads
@@ -1826,7 +1824,7 @@
   min-height: 88px;
 }
 
-/* Addendum AF: previously two buttons (Send + Cancel) shown side by side
+/* previously two buttons (Send + Cancel) shown side by side
    while revising. Now one — Go outside revising, and while revising, Send
    only when there's something non-empty to send and nothing's already in
    flight; every other moment (nothing typed yet, or a request currently
@@ -1855,7 +1853,7 @@
   gap: 10px;
 }
 
-/* Addendum AD: both now also host a dismiss button (an error or a "no
+/* both now also host a dismiss button (an error or a "no
    changes needed" response has no suggestion of its own to accept/reject,
    so unlike a change card or a note next to one, nothing else would ever
    make them go away) — flex row so the × sits beside the text instead of
@@ -1982,7 +1980,7 @@
   color: var(--text-h);
 }
 
-/* Addendum AB: the conversation_summary_update Edit form's textarea —
+/* the conversation_summary_update Edit form's textarea —
    same field treatment as .memory-row--editing's, this card just isn't
    scoped under that class. */
 .change-card textarea {
@@ -2032,7 +2030,7 @@
   }
 }
 
-/* Addendum AA: normal (non-revising) state — a single button, rounds both
+/* normal (non-revising) state — a single button, rounds both
    right corners, same treatment as .manage-ai-go. */
 .chat-send {
   border-radius: 0 6px 6px 0;
@@ -2040,7 +2038,7 @@
   color: var(--on-accent);
 }
 
-/* Revising state (Addendum AA — auto-apply off, a card's Revise with AI
+/* Revising state (auto-apply off, a card's Revise with AI
    re-aims this row instead of opening its own form, same pattern as
    ManageWithAIPanel): Send sits flush against Cancel, same two-button
    split as .manage-ai-send/.manage-ai-cancel. */
@@ -2057,7 +2055,7 @@
   color: var(--text-h);
 }
 
-/* Addendum BN: the app's first responsive rules — everything narrow-
+/* the app's first responsive rules — everything narrow-
    viewport-specific lives in this one consolidated block so the 1024px
    breakpoint appears exactly once and stays trivially greppable (CSS
    custom properties can't be used inside @media feature values, so a
@@ -2075,7 +2073,7 @@
     align-items: center;
   }
 
-  /* Addendum BP: at 375px, the ~180px left for .app-header-titles wasn't
+  /* at 375px, the ~180px left for .app-header-titles wasn't
      enough for "ACM2: Browser Demo" plus the subtitle without both
      wrapping to 2 lines each — measured live at 99px tall, on a 700px-tall
      viewport that's not a small line item. The subtitle is purely

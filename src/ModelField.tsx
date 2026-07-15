@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { getStoredModel, KNOWN_MODELS, setStoredModel } from "./settingsStorage";
 
-// Addendum BJ: replaces Addendum BI's <datalist>-backed text input, which
+// replaces an earlier <datalist>-backed text input, which
 // turned out to be broken in a way live testing (not just checking the DOM
 // for the right <option> elements) caught — a native datalist filters its
 // suggestions against the *current* input value, and since the field

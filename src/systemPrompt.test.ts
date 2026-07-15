@@ -63,7 +63,7 @@ describe("buildSystemPrompt", () => {
     expect(sheetIndex).toBeLessThan(instructionsIndex);
   });
 
-  it("makes conversation_summary_update mandatory only in chat mode (Addendum K 6.2.11)", () => {
+  it("makes conversation_summary_update mandatory only in chat mode", () => {
     const chatResult = buildSystemPrompt(sheet, "chat");
     const editorResult = buildSystemPrompt(sheet, "sheet_editor");
 
@@ -75,13 +75,13 @@ describe("buildSystemPrompt", () => {
     expect(editorResult).not.toContain("without exception");
   });
 
-  it("instructs the model to send only the new entry, not the whole list (Addendum L 6.2.13)", () => {
+  it("instructs the model to send only the new entry, not the whole list", () => {
     const result = buildSystemPrompt(sheet, "chat");
     expect(result).toContain("do not repeat or rewrite earlier entries");
     expect(result).toContain("appended automatically");
   });
 
-  it("states the Conversation Summary's temporal ordering explicitly (Addendum M 6.2.14)", () => {
+  it("states the Conversation Summary's temporal ordering explicitly", () => {
     const chatResult = buildSystemPrompt(sheet, "chat");
     const editorResult = buildSystemPrompt(sheet, "sheet_editor");
 
@@ -89,12 +89,12 @@ describe("buildSystemPrompt", () => {
     expect(editorResult).not.toContain("the message you are responding to now is always the newest one");
   });
 
-  it("instructs the model to keep ordinary memories atomic, not a catch-all (Addendum I 6.2.10)", () => {
+  it("instructs the model to keep ordinary memories atomic, not a catch-all", () => {
     const result = buildSystemPrompt(sheet, "chat");
     expect(result).toContain("not a catch-all");
   });
 
-  it("instructs the model to use shown memory ids rather than inventing one (Addendum H 5.3.2)", () => {
+  it("instructs the model to use shown memory ids rather than inventing one", () => {
     const result = buildSystemPrompt(sheet, "chat");
     expect(result).toContain("do not guess or invent one");
   });

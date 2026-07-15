@@ -39,7 +39,7 @@ describe("parseModelResponse", () => {
     expect(result).toEqual({ conversationalText: "No changes needed.", suggestions: [] });
   });
 
-  it("discards the whole block on malformed JSON but keeps the preceding text (§6.2.2)", () => {
+  it("discards the whole block on malformed JSON but keeps the preceding text", () => {
     const raw = `Reply text.\n\n<!-- SHEET_SUGGESTIONS\n[ this is not valid json \n-->`;
     const result = parseModelResponse(raw);
     expect(result).toEqual({ conversationalText: "Reply text.", suggestions: [] });
@@ -51,7 +51,7 @@ describe("parseModelResponse", () => {
     expect(result).toEqual({ conversationalText: "Reply text.", suggestions: [] });
   });
 
-  it("discards the whole block on an unrecognized type, not just the bad element (§6.2.2)", () => {
+  it("discards the whole block on an unrecognized type, not just the bad element", () => {
     const raw = `Reply text.
 
 <!-- SHEET_SUGGESTIONS
@@ -81,7 +81,7 @@ describe("parseModelResponse", () => {
     expect(() => parseModelResponse("")).not.toThrow();
   });
 
-  describe("compress_conversation (Addendum AL)", () => {
+  describe("compress_conversation", () => {
     it("parses a well-formed compress_conversation suggestion", () => {
       const raw = `Done.\n\n<!-- SHEET_SUGGESTIONS\n[{"type": "compress_conversation", "body": "Condensed.", "turnIds": ["t1", "t2"]}]\n-->`;
       const result = parseModelResponse(raw);

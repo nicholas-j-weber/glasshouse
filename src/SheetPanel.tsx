@@ -26,28 +26,28 @@ import { useTotalUsage } from "./useTotalUsage";
 import { VersionHistory } from "./VersionHistory";
 import type { Memory, Sheet } from "./types";
 
-// Addendum AL: conversation turns and summaries are both local-chain
+// conversation turns and summaries are both local-chain
 // (Tone/Conversation Summary/Freeform Notes territory), unlike ordinary
-// memories which always target the global pool (Addendum T) — used
+// memories which always target the global pool — used
 // wherever a handler needs to route by which chain a memory belongs to.
 function isLocalKind(kind: Memory["kind"]): boolean {
   return kind === "conversation_turn" || kind === "summary";
 }
 
-// Addendum AL: pre-composed instruction the Token Estimator's compression
+// pre-composed instruction the Token Estimator's compression
 // banner sends to Manage with AI — pre-filled, not auto-submitted (the user
 // reviews/edits it like any other instruction, same "show before sending"
 // posture as Revise with AI's re-aimed field).
 const COMPRESSION_INSTRUCTION =
   "Condense every existing conversation turn — and any existing summary — into one summary, all of them, not a subset. Separately, remove any memory that's clearly redundant or stale, if any.";
 
-// §2/§5.1: the Context Sheet, rendered live. Unlike the chat pane's
+// The Context Sheet, rendered live. Unlike the chat pane's
 // suggestion list, this shows *everything* — including inactive memories
-// (§2: excluded from calls, not from the sheet view) — and lets the user
-// edit directly, independent of the AI (§6.1's suggestion flow is optional,
+// (excluded from calls, not from the sheet view) — and lets the user
+// edit directly, independent of the AI (the suggestion flow is optional,
 // not the only way to change the sheet).
 //
-// Addendum T: ordinary memories live in a second, independent version chain
+// ordinary memories live in a second, independent version chain
 // (the global pool, shared across every sheet) — this panel reads both and
 // merges them for display, but writes to whichever chain a given edit
 // actually targets (Tone/Conversation Summary/Freeform Notes stay local;
@@ -73,7 +73,7 @@ export function SheetPanel({
   sheetId: string;
   activeTab: "chat" | "memories" | "history";
   onTabChange: (tab: "chat" | "memories" | "history") => void;
-  // Addendum AL: opens Manage with AI pre-filled with (not auto-submitting)
+  // opens Manage with AI pre-filled with (not auto-submitting)
   // an instruction — currently only the compression banner uses this, but
   // it's a plain string so anything else that wants to route into Manage
   // with AI with a starting instruction could reuse it too.
@@ -82,23 +82,23 @@ export function SheetPanel({
   const localHead = useHeadVersion(sheetId);
   const globalHead = useHeadVersion(GLOBAL_MEMORIES_SHEET_ID);
   const overlay = useSheetOverlay();
-  // Addendum V: real, provider-reported running total — independent of
+  // real, provider-reported running total — independent of
   // localHead/globalHead, so it's read before the loading early return too
   // (rules of hooks: every hook must run unconditionally).
   const totalUsage = useTotalUsage(sheetId);
   // The Token Estimator drawer: collapsible like the side menus, but
   // vertically — defaults open since it mirrors the sidebars' default state.
   const [tokenEstimatorOpen, setTokenEstimatorOpen] = useState(true);
-  // Addendum AR: per-row override for This Chat's turn/summary collapse —
+  // per-row override for This Chat's turn/summary collapse —
   // memoryId -> explicit collapsed state, set only once a user manually
   // toggles that row. Anything absent falls back to the live global default
-  // rather than a value captured once, same reasoning as Addendum AC's
-  // collapsedOverrides: flipping the setting should visibly affect rows
+  // rather than a value captured once, same reasoning as
+  // SuggestionSessionView's collapsedOverrides: flipping the setting should visibly affect rows
   // already on screen, not just future ones. Shared by turns and summaries
   // — one setting, one map, since both live in the same This Chat list.
   const [collapsedRowOverrides, setCollapsedRowOverrides] = useState<Record<string, boolean>>({});
 
-  // Addendum AT: an inactive conversation turn starts collapsed by default
+  // an inactive conversation turn starts collapsed by default
   // too, independent of the global setting — it's no longer sent to the
   // model at all (kept only for audit), so there's little reason for it to
   // take up the same space as an active one. Scoped to turns specifically,
@@ -122,7 +122,7 @@ export function SheetPanel({
 
   async function commitLocal(newSheet: Sheet) {
     await createVersion(newSheet, { kind: "manual_edit" }, sheetId);
-    resetOverlay(); // §4.2/Addendum A 4.2.1: any pending toggle/reorder is now baked into this version
+    resetOverlay(); // Any pending toggle/reorder is now baked into this version
   }
 
   async function commitGlobal(newSheet: Sheet) {
@@ -141,7 +141,7 @@ export function SheetPanel({
   }
 
   function handleToggleActive(memory: Memory) {
-    // §4.2: manual toggle is session-only, never version-stamped on its own.
+    // Manual toggle is session-only, never version-stamped on its own.
     // Pool-agnostic — the overlay doesn't care which chain a memory lives in.
     setSharedOverlay((prev) => ({
       ...prev,
@@ -199,23 +199,23 @@ export function SheetPanel({
     await commitLocal(editFreeformNotes(base, value));
   }
 
-  // Addendum O: conversation turns and ordinary memories share Sheet.memories
+  // conversation turns and ordinary memories share Sheet.memories
   // now, distinguished by kind — each section filters to its own subset and
-  // orders it with its own rule (chronological vs. pin/recency). Addendum
-  // AL: summaries (kind: "summary") get the same treatment as turns — the
+  // orders it with its own rule (chronological vs. pin/recency).
+  // Summaries (kind: "summary") get the same treatment as turns — the
   // ordinary-memories filter below excludes both, not just turns, or
   // summaries would otherwise leak into the Memories tab's ordinary list.
   const conversationTurns = orderConversationTurns(sheet.memories);
   const summaries = orderSummaries(sheet.memories);
   const orderedMemories = orderMemoriesForDisplay(sheet.memories.filter((m) => !isLocalKind(m.kind)));
-  // §5.4 / Addendum F 5.4.1: reflects serializeSheet's output only (the
+  // Reflects serializeSheet's output only (the
   // sheet-content part of the prompt) — not the fixed preamble/suggestion-
   // instructions overhead, and not inactive memories, since they're
   // excluded from serialization the same way they're excluded from calls.
   const tokenCount = estimateTokenCount(serializeSheet(sheet));
-  // Addendum AL: a plain function call, re-evaluated every render — not a
-  // hook/subscription, same "good enough" reactivity Addendum AC's
-  // collapse-by-default setting already relies on elsewhere in this app.
+  // a plain function call, re-evaluated every render — not a
+  // hook/subscription, same "good enough" reactivity other
+  // collapse-by-default settings already rely on elsewhere in this app.
   const showCompressionBanner = getStoredRecommendCompression() && tokenCount >= COMPRESSION_RECOMMENDATION_THRESHOLD;
 
   return (
@@ -233,7 +233,7 @@ export function SheetPanel({
           <div className="token-estimator-content">
             <span
               className="token-stat"
-              title="What gets sent with every message — this sheet's full current context, resent fresh each call (§3: nothing is cached or accumulated)."
+              title="What gets sent with every message — this sheet's full current context, resent fresh each call (nothing is cached or accumulated)."
             >
               Context size: ~{tokenCount} tokens
             </span>
@@ -243,7 +243,7 @@ export function SheetPanel({
             >
               Tokens consumed: {totalUsage.inputTokens + totalUsage.outputTokens}
             </span>
-            {/* Addendum AL: lives beside Context size on purpose — it's the
+            {/* lives beside Context size on purpose — it's the
                 exact stat this recommendation keys off, and this whole area
                 is already tab-agnostic (rendered once, regardless of which
                 of the three tabs below is active), unlike the compression
@@ -314,15 +314,15 @@ export function SheetPanel({
 
       <div className={`sheet-panel-tab-content${activeTab === "chat" ? "" : " sheet-panel-tab-content--hidden"}`}>
         {/* Conversation Summary first — by far the most dynamically-updated
-            field here (grows with nearly every chat turn, Addendum K's
+            field here (grows with nearly every chat turn, per the
             mandatory-proposal rule), unlike Tone/Freeform Notes, which are
             typically set once and rarely revisited. UI display order only;
-            §5.1's system-prompt section order (Tone, Conversation Summary,
+            the system prompt's section order (Tone, Conversation Summary,
             Memories, Freeform Notes) is fixed independently in
             serializer.ts and unaffected by this. */}
         <section className="sheet-section">
           <h2>Conversation Summary</h2>
-          {/* Addendum AL: rendered above the numbered turn list, not
+          {/* rendered above the numbered turn list, not
               commingled into it — a compressed digest covering many turns
               isn't itself one more turn, and serializer.ts renders them in
               this same order (summaries first) for the same reason. Only
@@ -612,11 +612,11 @@ function NewMemoryForm({ onAdd }: { onAdd: (label: string, body: string) => void
   );
 }
 
-// Addendum O: one block per conversation turn, chronologically ordered,
-// individually editable/deactivatable/deletable — the reason this whole
-// addendum exists. Deliberately no Pin control: pinning a turn would
-// reintroduce the ordering collision Addendum O's 5.1.3 avoids by keeping
-// turns off pinRank entirely.
+// one block per conversation turn, chronologically ordered,
+// individually editable/deactivatable/deletable — the reason numbered
+// conversation turns exist as their own row type. Deliberately no Pin
+// control: pinning a turn would reintroduce the ordering collision
+// avoided by keeping turns off pinRank entirely.
 function TurnRow({
   number,
   memory,
@@ -743,7 +743,7 @@ function NewTurnForm({ onAdd }: { onAdd: (body: string) => void }) {
   );
 }
 
-// Addendum AL: a compressed digest replacing one or more conversation
+// a compressed digest replacing one or more conversation
 // turns — same MemoryRow-style edit-in-place/Delete treatment as TurnRow,
 // deliberately not TurnRow itself (no "number" — it isn't one more turn,
 // and numbering it would misrepresent what it is), with its own small

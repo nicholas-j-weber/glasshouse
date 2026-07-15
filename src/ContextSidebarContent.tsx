@@ -1,6 +1,6 @@
 import { SheetPanel } from "./SheetPanel";
 
-// Addendum BN: extracted verbatim from App.tsx's .controls-sidebar aside,
+// extracted verbatim from App.tsx's .controls-sidebar aside,
 // same reasoning as ChatsSidebarContent — a single shared component
 // mounted in exactly one of (desktop aside, MobileContextOverlay) at a
 // time, never both.

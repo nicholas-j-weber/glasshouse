@@ -126,7 +126,7 @@ describe("resolveContentChange", () => {
   });
 
   it("edit_memory treats a stray non-turn memory in local storage as unreachable, matching mergeMemoryPools' filter", () => {
-    // Addendum T's "no migration" decision: a legacy ordinary memory left in
+    // Per the "no migration" decision: a legacy ordinary memory left in
     // local storage is invisible everywhere else too — this must stay
     // consistent, not silently editable through a back door.
     const strayLocalOrdinary = makeMemory({ body: "old" }); // no kind: not a conversation turn
@@ -143,7 +143,7 @@ describe("resolveContentChange", () => {
     expect(result).toBeNull();
   });
 
-  describe("compress_conversation (Addendum AL)", () => {
+  describe("compress_conversation", () => {
     it("adds a kind: summary memory and deactivates the named turns, atomically, on the local chain", () => {
       const t1 = makeMemory({ kind: "conversation_turn", body: "Turn one", lastModified: "2026-01-01T00:00:00.000Z" });
       const t2 = makeMemory({ kind: "conversation_turn", body: "Turn two", lastModified: "2026-02-01T00:00:00.000Z" });
@@ -165,7 +165,7 @@ describe("resolveContentChange", () => {
       expect(result?.sheet.memories.find((m) => m.id === t2.id)).toMatchObject({ active: false });
     });
 
-    it("also matches and deactivates an existing summary named in turnIds, not just conversation_turns (Addendum AS)", () => {
+    it("also matches and deactivates an existing summary named in turnIds, not just conversation_turns", () => {
       const priorSummary = makeMemory({ kind: "summary", body: "Old digest", lastModified: "2026-01-01T00:00:00.000Z" });
       const t1 = makeMemory({ kind: "conversation_turn", body: "New turn", lastModified: "2026-02-01T00:00:00.000Z" });
       const local = makeSheet([priorSummary, t1]);

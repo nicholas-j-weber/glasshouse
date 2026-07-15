@@ -2,7 +2,7 @@
 // default, so this polyfills it for the store tests.
 import "fake-indexeddb/auto";
 
-// settingsStorage.ts (Addendum S: active-sheet preference) uses
+// settingsStorage.ts (active-sheet preference) uses
 // localStorage directly; Node has no global localStorage, so a minimal
 // in-memory stand-in covers get/set/clear for tests that touch it.
 if (typeof globalThis.localStorage === "undefined") {

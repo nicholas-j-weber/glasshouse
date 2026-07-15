@@ -12,8 +12,8 @@ export function hasConversationSummaryUpdate(parsed: ParsedModelResponse): boole
   return parsed.suggestions.some((s) => s.type === "conversation_summary_update");
 }
 
-// Addendum Q, 6.2.16: a client-synthesized fallback for when the model
-// doesn't propose the mandatory conversation_summary_update (Addendum K)
+// a client-synthesized fallback for when the model
+// doesn't propose the mandatory conversation_summary_update
 // itself — truncation, not summarization, since there's no model-authored
 // compression to draw on when this path fires at all. Deliberately honest
 // about being a lower-quality stand-in rather than pretending to be an

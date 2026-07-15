@@ -2,8 +2,8 @@ import { SUGGESTION_BLOCK_END, SUGGESTION_BLOCK_START } from "./suggestionDelimi
 import type { ParsedModelResponse } from "./suggestionParser";
 import type { ConversationSummaryUpdateSuggestion } from "./types";
 
-// Addendum R, 6.2.17: a second, disambiguated stateless call, tried before
-// falling back to truncation (Addendum Q 6.2.16). Deliberately excludes the
+// a second, disambiguated stateless call, tried before
+// falling back to truncation. Deliberately excludes the
 // sheet and the rest of the suggestion menu — summarizing this one exchange
 // is the model's only task here, which is far more reliable than hoping it
 // shows up as one optional item in a general-purpose reply competing with

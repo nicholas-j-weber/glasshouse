@@ -22,7 +22,7 @@ export async function listSheets(db: ContextSheetDB = defaultDb): Promise<SheetM
   return sheets.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
 }
 
-// Addendum S, 8.5: inserts a SheetMeta row and its skeleton version (via
+// inserts a SheetMeta row and its skeleton version (via
 // store.ts's ensureInitialized, so skeleton-creation logic isn't
 // duplicated), then makes it the active sheet.
 export async function createSheet(name: string, db: ContextSheetDB = defaultDb): Promise<string> {
@@ -35,7 +35,7 @@ export async function createSheet(name: string, db: ContextSheetDB = defaultDb):
   return id;
 }
 
-// Addendum S, 8.5: bootstraps a default sheet if none exist yet, and
+// bootstraps a default sheet if none exist yet, and
 // resolves the active-sheet preference to something that actually exists —
 // mirrors store.ts's ensureInitialized "never let there be nothing"
 // guarantee, one level up (a sheet container, not just a version).
@@ -70,8 +70,8 @@ export async function ensureActiveSheet(db: ContextSheetDB = defaultDb): Promise
   return bootstrapInFlight;
 }
 
-// Addendum S, 8.5: updates the active-sheet preference and resets the
-// shared PendingOverlay (Addendum A 4.2.1) — deactivate/reorder toggles not
+// updates the active-sheet preference and resets the
+// shared PendingOverlay — deactivate/reorder toggles not
 // yet folded into a version are scoped to whichever sheet is currently
 // open and must not leak into a different sheet's memories. Doesn't take a
 // db param — it never touches sheet data, only the local preference — so it
@@ -83,8 +83,8 @@ export function switchSheet(sheetId: string): void {
   notifySheetsChanged();
 }
 
-// Addendum S, 8.5: metadata only, not version-worthy — this isn't sheet
-// content, and §4.1 already limits version-worthy changes to content.
+// metadata only, not version-worthy — this isn't sheet
+// content, and version-worthy changes are already limited to content.
 export async function renameSheet(sheetId: string, name: string, db: ContextSheetDB = defaultDb): Promise<void> {
   const trimmed = name.trim();
   if (!trimmed) return;
@@ -92,12 +92,13 @@ export async function renameSheet(sheetId: string, name: string, db: ContextShee
   notifyIfDefaultDb(db);
 }
 
-// Addendum S, 8.5: cascade-deletes every Version and persisted message
+// cascade-deletes every Version and persisted message
 // scoped to this sheetId, plus its head row and its SheetMeta row, in one
-// transaction. Genuinely irreversible — unlike §4.4's non-destructive
-// revert, this is the first destructive action in the spec; the caller
-// (UI) is responsible for confirming with the user before calling this.
-// Addendum V: also cascades to the sheet's usage records.
+// transaction. Genuinely irreversible — unlike reverting to a prior
+// version (non-destructive), this is the first destructive action in
+// this codebase; the caller (UI) is responsible for confirming with the
+// user before calling this.
+// also cascades to the sheet's usage records.
 export async function deleteSheet(sheetId: string, db: ContextSheetDB = defaultDb): Promise<void> {
   const wasActive = getStoredActiveSheetId() === sheetId;
 

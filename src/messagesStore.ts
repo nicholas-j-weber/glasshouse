@@ -3,11 +3,11 @@ import { db as defaultDb } from "./db";
 import type { SessionMessage } from "./suggestionSession";
 import type { CallMode } from "./types";
 
-// Addendum S, 8.6: persisted chat log, scoped by sheet. A human-facing
-// convenience only — §3's statelessness is unaffected, nothing read here is
+// persisted chat log, scoped by sheet. A human-facing
+// convenience only — statelessness is unaffected, nothing read here is
 // ever reconstructed into a system prompt or a call payload.
 //
-// Addendum W: also scoped by mode (ChatPane's "chat" vs ManageWithAIPanel's
+// also scoped by mode (ChatPane's "chat" vs ManageWithAIPanel's
 // "sheet_editor") — the two previously shared one undifferentiated log
 // (filtered only by sheetId), so a pending suggestion from one leaked into
 // the other's view. No compound index for this — message counts per sheet

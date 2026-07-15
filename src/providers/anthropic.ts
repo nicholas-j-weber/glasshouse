@@ -29,9 +29,9 @@ function mapErrorResponse(response: Response, body: unknown): ProviderError {
   const errorBody = body as AnthropicErrorBody;
   const message = errorBody.error?.message ?? `Provider returned HTTP ${response.status}`;
 
-  // §7.3: auth failure and rate limit are the two named categories that get
-  // their own kind; every other non-2xx is a provider_error (not in §7.3's
-  // enumeration, but a real, unavoidable category — e.g. invalid_request_error,
+  // Auth failure and rate limit are the two named categories that get
+  // their own kind; every other non-2xx is a provider_error (not its own
+  // named category, but a real, unavoidable one — e.g. invalid_request_error,
   // overloaded_error).
   if (response.status === 401) {
     return { kind: "auth", message };
@@ -42,11 +42,11 @@ function mapErrorResponse(response: Response, body: unknown): ProviderError {
   return { kind: "provider_error", message };
 }
 
-// §7.2: Anthropic Messages API adapter. Uses the
+// Anthropic Messages API adapter. Uses the
 // anthropic-dangerous-direct-browser-access header, which Anthropic added
 // specifically to support BYOK client-side tools like this one — direct
 // browser calls to api.anthropic.com are a supported, documented path,
-// unlike OpenAI's API (see Addendum G).
+// unlike OpenAI's API.
 export function createAnthropicAdapter(
   config: ProviderConfig,
   options: AnthropicAdapterOptions = {},
@@ -75,7 +75,7 @@ export function createAnthropicAdapter(
           }),
         });
       } catch (err) {
-        // §7.3: never reached an HTTP response at all (CORS block, offline, DNS failure).
+        // Never reached an HTTP response at all (CORS block, offline, DNS failure).
         return {
           ok: false,
           error: { kind: "network", message: err instanceof Error ? err.message : "Network request failed" },
@@ -109,7 +109,7 @@ export function createAnthropicAdapter(
         };
       }
 
-      // Addendum V, 7.2.2: real usage, when the provider includes it —
+      // real usage, when the provider includes it —
       // omitted (not zero-filled) if either field is missing/malformed, so
       // callers can tell "no data" apart from "genuinely zero tokens."
       const inputTokens = successBody.usage?.input_tokens;

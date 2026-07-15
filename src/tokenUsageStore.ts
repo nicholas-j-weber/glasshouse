@@ -10,9 +10,9 @@ function notifyIfDefaultDb(db: ContextSheetDB): void {
   if (db === defaultDb) notifyUsageChanged();
 }
 
-// Addendum V: records one real call's usage. Called immediately after any
+// records one real call's usage. Called immediately after any
 // successful call that reported usage — the main chat/revision/sheet-editor
-// call and Addendum R's disambiguated follow-up call alike, all via the
+// call and the disambiguated follow-up call alike, all via the
 // same shared call sites in suggestionSession.ts.
 export async function recordUsage(
   sheetId: string,
@@ -29,7 +29,7 @@ export async function recordUsage(
   notifyIfDefaultDb(db);
 }
 
-// Addendum V, 5.4.2: the running total shown as "Tokens consumed" — the
+// the running total shown as "Tokens consumed" — the
 // sum of every recorded call for this sheet, not a single stored counter.
 export async function getTotalUsage(
   sheetId: string,

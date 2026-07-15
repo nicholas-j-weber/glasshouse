@@ -2,12 +2,12 @@ import { useState } from "react";
 import { describeSuggestionChange } from "./suggestionChangeDisplay";
 import type { PersistedDisplaySuggestion, Sheet } from "./types";
 
-// Addendum D: a still-undecided suggestion's before/after diff plus
+// a still-undecided suggestion's before/after diff plus
 // Accept/Reject/Revise-with-AI — identical regardless of which surface
 // produced it. Originally ManageWithAIPanel-only (sheet_editor mode always
-// reviews manually); Addendum AA reuses it for chat mode too, but only for
+// reviews manually); this is reused for chat mode too, but only for
 // the pending/failed suggestions left behind when a user has switched chat
-// mode's auto-apply setting off (Addendum Z's toast/auto-apply path never
+// mode's auto-apply setting off (the toast/auto-apply path never
 // renders this — its suggestions resolve to "accepted"/"failed" before
 // they're ever shown).
 export function ChangeCard({
@@ -27,9 +27,9 @@ export function ChangeCard({
   onEditBody: (body: string) => void;
   revising: boolean;
 }) {
-  // Addendum AB: a direct hand-edit of the suggestion's own body, distinct
+  // a direct hand-edit of the suggestion's own body, distinct
   // from Revise with AI (which re-asks the model). Only offered for
-  // conversation_summary_update and (Addendum AL) compress_conversation —
+  // conversation_summary_update and compress_conversation —
   // both are plain condensed-text bodies where a quick wording tweak is
   // common enough to want a shortcut that skips a whole extra call, unlike
   // new_memory/edit_memory's label+body or tone_update's more consequential
@@ -102,7 +102,7 @@ export function ChangeCard({
               <span className="icon-emoji">📝</span>
             </button>
           )}
-          {/* Addendum AB: with Edit added, a card with showEditButton now
+          {/* with Edit added, a card with showEditButton now
               has four controls — this empty, zero-width spacer claims the
               rest of the current line (flex-basis: 100%) so Revise with AI
               wraps onto its own line, without stretching the button itself

@@ -3,7 +3,7 @@ import { ensureActiveSheet, listSheets } from "./sheetsStore";
 import { subscribeSheetsChanged } from "./sheetsSubscription";
 import type { SheetMeta } from "./types";
 
-// Addendum S, 8.4/8.5: reactive read of the sheets list and which one is
+// reactive read of the sheets list and which one is
 // active — refreshes on create/rename/delete/switch. activeSheetId is
 // undefined only during the brief window before the first sheet is
 // bootstrapped (mirrors useHeadVersion's undefined-until-ready).

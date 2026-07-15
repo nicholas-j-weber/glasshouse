@@ -2,11 +2,11 @@ import { useState } from "react";
 import { createSheet, deleteSheet, renameSheet, switchSheet } from "./sheetsStore";
 import type { SheetMeta } from "./types";
 
-// Addendum S, 8.5: minimal chrome for create/switch/rename/delete. Sheets
+// minimal chrome for create/switch/rename/delete. Sheets
 // are listed in creation order (useSheets/listSheets already sort that
 // way). Called "chats" in UI copy — familiar vocabulary for what's still,
-// underneath, a Sheet container (SheetMeta/sheetId throughout the code and
-// SPEC.md, unrenamed there — "chat" is already a distinct, existing concept
+// underneath, a Sheet container (SheetMeta/sheetId throughout the code,
+// unrenamed there — "chat" is already a distinct, existing concept
 // in this codebase, the ChatPane/the "chat" call mode, so this is a
 // display-label change only, not a rename of the underlying concept).
 //
@@ -43,7 +43,7 @@ export function SheetSwitcher({
   }
 
   function handleDelete(sheet: SheetMeta) {
-    // Addendum S, 8.5: genuinely irreversible — cascade-deletes the whole
+    // genuinely irreversible — cascade-deletes the whole
     // version history and chat log for this sheet — confirm before acting.
     const confirmed = window.confirm(
       `Delete "${sheet.name}"? This permanently deletes its full history and chat log and cannot be undone.`,

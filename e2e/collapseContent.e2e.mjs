@@ -9,11 +9,11 @@ import {
   withFreshPage,
 } from "./support.mjs";
 
-// Addendum AR coverage: two independent collapse-by-default toggles (both
+// two independent collapse-by-default toggles (both
 // off by default) — This Chat's turn/summary rows collapse to one
 // ellipsized line, and History's per-version diff-line list collapses to a
 // "N changes" count — each with a per-item override that always wins over
-// the global default, mirroring Addendum AC's collapse-suggestions pattern.
+// the global default, mirroring the collapse-suggestions pattern.
 export async function run(browser, baseUrl) {
   let ok = true;
 
@@ -55,7 +55,7 @@ export async function run(browser, baseUrl) {
     })) && ok;
 
     ok = (await test("an AI-created summary can be collapsed the same way, independent of turns", async () => {
-      // Addendum AX: summaries are AI-generated only now — the manual "Add
+      // summaries are AI-generated only now — the manual "Add
       // summary" form was removed as redundant with "Add entry"/"Add
       // memory". A second turn, compressed on its own, produces one here.
       await mockApi(page, () => `ok.\n\n<!-- SHEET_SUGGESTIONS\n[{"type":"conversation_summary_update","body":"A second turn to compress."}]\n-->`);
@@ -186,7 +186,7 @@ export async function run(browser, baseUrl) {
     await page.waitForSelector(".sheet-switcher");
     await setApiKey(page, "sk-ant-fake-key");
 
-    ok = (await test("a deactivated conversation turn starts collapsed by default, even with the global setting off (Addendum AT)", async () => {
+    ok = (await test("a deactivated conversation turn starts collapsed by default, even with the global setting off", async () => {
       await mockApi(page, () => `ok.\n\n<!-- SHEET_SUGGESTIONS\n[{"type":"conversation_summary_update","body":"A turn about to be compressed away."}]\n-->`);
       await page.fill(".chat-input-row textarea", "hello");
       await page.click('.chat-pane .chat-input-row button[type="submit"]');
@@ -200,7 +200,7 @@ export async function run(browser, baseUrl) {
 
       // compress_conversation's deactivation is the only path that
       // permanently flips active: false (a manual checkbox toggle is
-      // session-only overlay, §4.2) — accept one to get a real inactive turn.
+      // session-only overlay) — accept one to get a real inactive turn.
       let turnIds = [];
       await page.click(".manage-ai-trigger");
       await mockApi(page, (body) => {
@@ -247,7 +247,7 @@ export async function run(browser, baseUrl) {
     await showSheetPanelTab(page, "history");
     await page.waitForTimeout(200);
 
-    // Addendum AZ: a confirmed real bug — with the diff list collapsed, the
+    // a confirmed real bug — with the diff list collapsed, the
     // "N changes" toggle and "Revert to here" sat directly against each
     // other with 0px between them.
     ok = (await test("there's visible vertical space between the collapsed diff toggle and Revert to here", async () => {

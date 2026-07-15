@@ -1,13 +1,13 @@
 import type { Sheet } from "./types";
 
-// §4.2 (active/inactive toggles) + Addendum A 4.2.1 (pin reorders): both are
+// Active/inactive toggles and pin reorders: both are
 // lightweight, instantly-reversible session state, never stamped into a
 // Version on their own. They're folded into whichever version is created
-// next (Addendum A 4.2.1) and discarded — not carried back — on revert
-// (§4.4; no revert UI exists yet, so that path isn't wired here).
+// next and discarded — not carried back — on revert
+// (no revert UI exists yet, so that path isn't wired here).
 //
-// Addendum C's Memory.active is a required field on every stored Sheet
-// snapshot, which is the only way to reconcile "not version-stamped" (§4.2)
+// Memory.active is a required field on every stored Sheet
+// snapshot, which is the only way to reconcile "not version-stamped"
 // with every Version needing *some* boolean there: a toggle lives here,
 // outside the version chain, until a real content change bakes the current
 // overlay into the next snapshot.
@@ -39,7 +39,7 @@ export function applyOverlay(sheet: Sheet, overlay: PendingOverlay): Sheet {
       updated = { ...updated, active: overlay.activeOverrides[memory.id] };
     }
     if (pinOrderIndex.has(memory.id)) {
-      // Addendum E 6.2.4: "Memory IDs omitted from pinOrder keep their
+      // "Memory IDs omitted from pinOrder keep their
       // current pinRank" — only listed ids get reassigned, to their index
       // in the requested order.
       updated = { ...updated, pinRank: pinOrderIndex.get(memory.id) as number };

@@ -1,11 +1,11 @@
 import type { Memory, Sheet } from "./types";
 
-// §4.1: pure Sheet -> Sheet transforms for manual edits (add/edit/delete a
+// Pure Sheet -> Sheet transforms for manual edits (add/edit/delete a
 // memory, edit tone/conversation summary, pin/unpin). Each one is applied
 // by the caller and then handed to store.createVersion — these functions
 // don't touch storage themselves.
 
-// Addendum H, 6.2.7: checked before accepting an edit_memory/
+// checked before accepting an edit_memory/
 // deactivate_memory suggestion, so an unmatched id fails visibly instead of
 // silently no-opping while still showing "accepted".
 export function memoryExists(sheet: Sheet, memoryId: string): boolean {
@@ -43,7 +43,7 @@ export function nextPinRank(memories: Memory[]): number {
 
 // Manual pin/unpin is treated as an immediate, version-worthy edit rather
 // than folded into the session-only pin-reorder overlay (sheetOverlay.ts).
-// §4.2's overlay exemption is for "reordering pin priority without changing
+// The overlay's exemption is for "reordering pin priority without changing
 // content" — reordering among already-pinned memories — which this UI pass
 // doesn't implement (no drag-and-drop); assigning/clearing pinned status
 // itself is treated as content-changing, matching how label/body edits work.
@@ -63,14 +63,14 @@ export function editTone(sheet: Sheet, body: string, now: string): Sheet {
   return { ...sheet, tone: { ...sheet.tone, body, lastModified: now } };
 }
 
-// Addendum O, 4.3.3: a conversation turn is an ordinary memory with
+// a conversation turn is an ordinary memory with
 // kind: "conversation_turn" and pinRank always null (turns are never
 // pinned — see 5.1.3's rationale). This is what accepting a
 // conversation_summary_update suggestion creates (mirroring how accepting
 // new_memory works), and what manual "add a turn" in the sheet panel calls
 // too. No number is stored in the body — it's computed at render time
 // (serializer.ts's orderConversationTurns), so there's nothing here for the
-// caller to track or increment, unlike Addendum L's retired counter.
+// caller to track or increment, unlike the retired tracked-counter approach this replaced.
 export function addConversationTurn(sheet: Sheet, body: string, now: string): Sheet {
   const newMemory: Memory = {
     id: crypto.randomUUID(),

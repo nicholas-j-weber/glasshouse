@@ -63,7 +63,7 @@ describe("parseSheetExport", () => {
   });
 });
 
-describe("parseSheetExport — Addendum U, 8.3.2 (\"1.1\" dual-pool format)", () => {
+describe("parseSheetExport — \"1.1\" dual-pool format", () => {
   it("accepts a well-formed 1.1 export with a global section", () => {
     const valid = {
       formatVersion: "1.1",

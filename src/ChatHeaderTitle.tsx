@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { renameSheet } from "./sheetsStore";
 
-// The chat header's own rename affordance — Addendum S 8.5's second entry
+// The chat header's own rename affordance — a second entry
 // point, kept deliberately alongside the Chats sidebar's pencil icon: the
 // sidebar can rename any chat, this can only rename the one currently
 // open, and it's the one that gets auto-focused right after a brand-new

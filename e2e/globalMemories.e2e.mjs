@@ -1,12 +1,12 @@
 import { addMemory, assert, createChat, mockApi, setApiKey, showSheetPanelTab, test, withFreshPage } from "./support.mjs";
 
-// Addendum T coverage: ordinary memories are shared across every sheet;
+// ordinary memories are shared across every sheet;
 // Tone and Conversation Summary stay per-sheet; edits/deletes from any
 // sheet propagate to the shared pool; reverting a sheet's local history
 // never touches the global pool; deactivate/reorder stay overlay-only; and
 // an edit_memory suggestion targeting an unknown id fails visibly.
 //
-// Addendum Z coverage: chat-mode suggestions now auto-apply (no manual
+// chat-mode suggestions now auto-apply (no manual
 // Accept click) — this file also covers new_memory auto-applying with a
 // toast, Undo actually reverting it, and a failed suggestion still failing
 // visibly (now via a toast instead of a status badge on a pending card).
@@ -137,7 +137,7 @@ export async function run(browser, baseUrl) {
       const unpinButton = row.locator('button[aria-label="Unpin"]');
       assert(await unpinButton.isVisible(), "clicking Pin should relabel the same button to Unpin");
       assert(await unpinButton.evaluate((el) => el.classList.contains("icon-button--active")), "a pinned memory's button should visibly look active — the glyph itself doesn't change");
-      // Addendum AI: class presence alone isn't proof the CSS actually took
+      // class presence alone isn't proof the CSS actually took
       // effect — .memory-row-actions button's higher-specificity border
       // shorthand silently swallowed .icon-button--active's border-color
       // the first time this shipped, with the class correctly applied the
@@ -156,7 +156,7 @@ export async function run(browser, baseUrl) {
       await page.click('.chat-pane .chat-input-row button[type="submit"]');
       await page.waitForTimeout(500);
 
-      // Both suggestions auto-apply immediately (Addendum Z). The valid
+      // Both suggestions auto-apply immediately. The valid
       // turn succeeds silently (conversation_summary_update never gets a
       // toast — see suggestionSession.ts's toastTextFor); the bad
       // edit_memory fails visibly, now via a toast instead of a status

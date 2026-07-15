@@ -24,7 +24,7 @@ function withFreeformNotes(sheet: Sheet, freeformNotes: string): Sheet {
 }
 
 describe("ensureInitialized", () => {
-  it("creates the §8.1 skeleton (default Tone, no memories — Addendum J/O) on first call", async () => {
+  it("creates the default skeleton (default Tone, no memories) on first call", async () => {
     const version = await ensureInitialized(sheetId, db);
 
     expect(version.parentId).toBeNull();
@@ -64,7 +64,7 @@ describe("createVersion", () => {
     expect(head?.id).toBe(v3.id);
   });
 
-  it("stamps attribution exactly as given (Addendum A 4.1.1: one accept = one version)", async () => {
+  it("stamps attribution exactly as given (one accept = one version)", async () => {
     const skeleton = await ensureInitialized(sheetId, db);
     const v2 = await createVersion(
       withFreeformNotes(skeleton.sheet, "note"),
@@ -123,9 +123,10 @@ describe("getActiveLineage", () => {
   });
 });
 
-describe("backward compatibility with pre-Addendum-O data", () => {
+describe("backward compatibility with old conversationSummary-field data", () => {
   // Simulates a Version persisted with the old dedicated conversationSummary
-  // field (Addendum I through the version just before Addendum O) — written
+  // field (used by earlier versions of this app, before it was replaced by
+  // numbered conversation-turn memories) — written
   // directly, bypassing createVersion, since nothing in current code can
   // construct a Sheet with that field anymore.
   async function seedLegacyVersion(id: string, conversationSummaryBody: string) {
@@ -224,7 +225,7 @@ describe("backward compatibility with pre-Addendum-O data", () => {
   });
 });
 
-describe("export / import (§8.3.1)", () => {
+describe("export / import", () => {
   it("exports formatVersion, headVersionId, and only the active lineage", async () => {
     const v1 = await ensureInitialized(sheetId, db);
     const v2 = await createVersion(withFreeformNotes(v1.sheet, "note 1"), { kind: "manual_edit" }, sheetId, db);
@@ -250,7 +251,7 @@ describe("export / import (§8.3.1)", () => {
     await importSheet(exported, sheetId, db);
 
     const head = await getHeadVersion(sheetId, db);
-    // Addendum AV: ids are freshly minted on import, no longer preserved —
+    // ids are freshly minted on import, no longer preserved —
     // assert on content/shape instead of the old (now-meaningless) id.
     expect(head?.sheet.freeformNotes).toBe("imported note");
     expect(await db.versions.count()).toBe(2);
@@ -270,7 +271,7 @@ describe("export / import (§8.3.1)", () => {
     expect(lineage[1].sheet.freeformNotes).toBe("note");
   });
 
-  it("importing an export from one sheet into a different, still-existing sheet doesn't collide on version id (Addendum AV, fixes a confirmed real bug)", async () => {
+  it("importing an export from one sheet into a different, still-existing sheet doesn't collide on version id (fixes a confirmed real bug)", async () => {
     // The exact reported scenario: export a chat that still exists in the
     // database, then import that same file into a brand-new, different
     // chat — db.ts's versions store keys id table-wide, not per sheetId, so
@@ -306,7 +307,7 @@ describe("export / import (§8.3.1)", () => {
     expect(lineage[2].parentId).toBe(lineage[1].id);
   });
 
-  it("stamps the target sheetId onto every imported version, even a pre-Addendum-S export with none", async () => {
+  it("stamps the target sheetId onto every imported version, even an older export with none", async () => {
     const legacyExport = {
       formatVersion: "1.0" as const,
       headVersionId: "legacy-head",

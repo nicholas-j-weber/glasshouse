@@ -1,6 +1,6 @@
 import { assert, mockApi, setApiKey, setAutoApply, test, withFreshPage } from "./support.mjs";
 
-// Addendum AK coverage: a confirmed real bug, not a hypothetical — normal
+// a confirmed real bug, not a hypothetical — normal
 // word-wrapping only breaks at spaces, so one long unbroken token (a URL,
 // a long id, a run-on word) blew straight through max-width/flex
 // constraints in every surface that renders arbitrary user/model text.
@@ -72,8 +72,8 @@ export async function run(browser, baseUrl) {
       assert(!(await overflows(page, ".manage-ai-empty")), "the .manage-ai-empty response (its dismiss button sits beside the text in the same flex row) should wrap, not overflow");
     })) && ok;
 
-    // Addendum AU: .memory-row-body (This Chat's turn/summary rows) didn't
-    // exist yet when Addendum AK swept the app, so it was missed — confirmed
+    // .memory-row-body (This Chat's turn/summary rows) didn't
+    // exist yet when overflow-wrap was swept across the app, so it was missed — confirmed
     // live with a real long unbroken token before this fix landed.
     ok = (await test("a long unbroken token in a This Chat conversation turn wraps instead of overflowing", async () => {
       await page.click(".manage-ai-back");

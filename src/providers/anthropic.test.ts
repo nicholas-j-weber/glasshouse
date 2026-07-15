@@ -44,7 +44,7 @@ describe("createAnthropicAdapter", () => {
     expect(result).toEqual({ ok: true, text: "Part one. Part two." });
   });
 
-  it("surfaces real usage (Addendum V, 7.2.2) when the provider includes it", async () => {
+  it("surfaces real usage when the provider includes it", async () => {
     const fetchImpl = vi.fn().mockResolvedValue(
       jsonResponse(200, {
         content: [{ type: "text", text: "Hi there." }],
@@ -66,7 +66,7 @@ describe("createAnthropicAdapter", () => {
     if (result.ok) expect(result.usage).toBeUndefined();
   });
 
-  it("classifies HTTP 401 as an auth error (§7.3)", async () => {
+  it("classifies HTTP 401 as an auth error", async () => {
     const fetchImpl = vi.fn().mockResolvedValue(
       jsonResponse(401, { error: { type: "authentication_error", message: "invalid x-api-key" } }),
     );
@@ -76,7 +76,7 @@ describe("createAnthropicAdapter", () => {
     expect(result).toEqual({ ok: false, error: { kind: "auth", message: "invalid x-api-key" } });
   });
 
-  it("classifies HTTP 429 as a rate_limit error and surfaces retry-after (§7.3)", async () => {
+  it("classifies HTTP 429 as a rate_limit error and surfaces retry-after", async () => {
     const fetchImpl = vi.fn().mockResolvedValue(
       jsonResponse(
         429,
@@ -103,7 +103,7 @@ describe("createAnthropicAdapter", () => {
     expect(result).toEqual({ ok: false, error: { kind: "provider_error", message: "overloaded" } });
   });
 
-  it("classifies a non-JSON body as malformed_response (§7.3)", async () => {
+  it("classifies a non-JSON body as malformed_response", async () => {
     const fetchImpl = vi.fn().mockResolvedValue(new Response("not json", { status: 200 }));
     const adapter = createAnthropicAdapter({ apiKey: "sk-test", model: "claude-sonnet-5" }, { fetchImpl });
 
@@ -112,7 +112,7 @@ describe("createAnthropicAdapter", () => {
     if (!result.ok) expect(result.error.kind).toBe("malformed_response");
   });
 
-  it("classifies a 200 response with no text content as malformed_response (§7.3 empty response)", async () => {
+  it("classifies a 200 response with no text content as malformed_response (empty response)", async () => {
     const fetchImpl = vi.fn().mockResolvedValue(jsonResponse(200, { content: [] }));
     const adapter = createAnthropicAdapter({ apiKey: "sk-test", model: "claude-sonnet-5" }, { fetchImpl });
 
@@ -129,7 +129,7 @@ describe("createAnthropicAdapter", () => {
     expect(result).toEqual({ ok: false, error: { kind: "network", message: "Failed to fetch" } });
   });
 
-  it("never mutates or reads the sheet — purely a text-in/text-out call, per §7.3's failed-call guarantee", async () => {
+  it("never mutates or reads the sheet — purely a text-in/text-out call", async () => {
     // No sheet/store dependency exists in this module at all; this test
     // documents that guarantee rather than exercising a mock.
     const fetchImpl = vi.fn().mockResolvedValue(jsonResponse(401, { error: { message: "bad key" } }));

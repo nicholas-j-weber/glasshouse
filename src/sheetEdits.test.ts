@@ -111,7 +111,7 @@ describe("editFreeformNotes / editTone", () => {
   });
 });
 
-describe("addConversationTurn (Addendum O 4.3.3)", () => {
+describe("addConversationTurn", () => {
   it("appends a new memory tagged kind: conversation_turn, pinRank always null", () => {
     const sheet = makeSheet();
     const result = addConversationTurn(sheet, "User asked/said: Hi. AI replied: Hello.", "2026-06-01T00:00:00.000Z");

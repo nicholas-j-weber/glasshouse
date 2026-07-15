@@ -8,13 +8,13 @@ import { describeSuggestion } from "./suggestionDisplay";
 import type { DisplaySuggestion, SessionMessage, SuggestionSession } from "./suggestionSession";
 import type { Sheet } from "./types";
 
-// The chat pane's rendering (§6.2). ManageWithAIPanel (§6.3) uses the same
+// The chat pane's rendering. ManageWithAIPanel uses the same
 // underlying useSuggestionSession hook but its own one-shot, non-chat
 // rendering instead of this component.
 //
-// Addendum Z: chat mode auto-applies every suggestion the instant it's
+// chat mode auto-applies every suggestion the instant it's
 // received (surfaced via the toast stack below, with a short Undo window)
-// rather than showing a pending review card. Addendum AA makes that a
+// rather than showing a pending review card. That's a
 // setting rather than the only option: with it off, a message's
 // suggestions stay pending until manually accepted/rejected/revised —
 // exactly ManageWithAIPanel's ChangeCard, reused here rather than rebuilt.
@@ -22,7 +22,7 @@ import type { Sheet } from "./types";
 // remembers about which mode produced it — a mid-conversation toggle only
 // affects messages sent after it, not ones already in the transcript.
 //
-// Addendum AC: every message's suggestions block sits behind a "N changes"
+// every message's suggestions block sits behind a "N changes"
 // disclosure toggle — conversation/memory updates otherwise made the chat
 // quite tall as a conversation grew. Starts expanded by default (unless
 // Settings' collapse-by-default toggle is on); any message can still be
@@ -64,7 +64,7 @@ export function SuggestionSessionView({
     if (revising) inputRef.current?.focus();
   }, [revising]);
 
-  // Addendum AG: auto-scroll .chat-messages to the bottom whenever a new
+  // auto-scroll .chat-messages to the bottom whenever a new
   // message actually lands, rather than leaving it wherever it happened to
   // be scrolled while the new content appends off-screen below. Scoped to
   // *length increasing* specifically (not just "messages changed") — a
@@ -92,12 +92,12 @@ export function SuggestionSessionView({
     prevMessageCountRef.current = messages.length;
   }, [messages]);
 
-  // Addendum AC: per-message override for the "N changes" disclosure below
+  // per-message override for the "N changes" disclosure below
   // — messageId -> explicit collapsed state, set only once a user manually
   // toggles that message. Anything absent falls back to the live global
   // default rather than a value captured once, since this is a pure
   // display preference (see settingsStorage.ts's comment on why that's
-  // different from Addendum AA's autoApplied): flipping the setting should
+  // different from autoApplied): flipping the setting should
   // visibly affect messages already on screen, not just future ones.
   const [collapsedOverrides, setCollapsedOverrides] = useState<Record<string, boolean>>({});
 
@@ -219,12 +219,11 @@ function MessageSuggestions({
 }) {
   const suggestions = message.suggestions ?? [];
 
-  // Addendum Z's original shape: every suggestion here already resolved
-  // (auto-applied) before this ever rendered, so it's always a plain,
-  // non-interactive record — what got applied, or failed to. Also the
-  // fallback for a message predating Addendum AA (autoApplied is
-  // undefined on rows saved before this field existed) or one from a mode
-  // this view never handles interactively.
+  // Every suggestion here already resolved (auto-applied) before this
+  // ever rendered, so it's always a plain, non-interactive record — what
+  // got applied, or failed to. Also the fallback for an older message
+  // saved before the autoApplied field existed (it's undefined there) or
+  // one from a mode this view never handles interactively.
   if (message.autoApplied !== false) {
     return (
       <ul className="chat-applied-list">
@@ -237,7 +236,7 @@ function MessageSuggestions({
     );
   }
 
-  // Addendum AA, auto-apply off: same split ManageWithAIPanel's
+  // auto-apply off: same split ManageWithAIPanel's
   // ResponseBlock already does — undecided (pending/failed) suggestions
   // are still-interactive ChangeCards, everything else (accepted/
   // rejected/revised) is a plain historical line, same as the auto-apply

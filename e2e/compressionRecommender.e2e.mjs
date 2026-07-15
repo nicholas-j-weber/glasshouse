@@ -1,14 +1,14 @@
 import { assert, mockApi, setApiKey, showSheetPanelTab, test, withFreshPage } from "./support.mjs";
 
-// Addendum AL coverage: the compression recommender — a Settings toggle,
+// the compression recommender — a Settings toggle,
 // a Token Estimator banner once Context size crosses a threshold, a
 // pre-filled (not auto-sent) Manage with AI instruction, and the
 // compress_conversation suggestion type (one atomic accept: adds a
-// kind: "summary" memory and deactivates the turns it replaces). Addendum
-// AX: the This Chat tab's manual "Add summary" counterpart was removed —
+// kind: "summary" memory and deactivates the turns it replaces). The
+// This Chat tab's manual "Add summary" counterpart was removed —
 // a summary is inherently AI-generated (a condensation of existing turns),
 // and manually typing one had no real use a manual turn or memory didn't
-// already cover. Addendum BL: the toggle now defaults to *on*, a
+// already cover. The toggle now defaults to *on*, a
 // deliberate break from every other recommend/collapse-by-default setting
 // in this app, which all default off.
 async function setRecommendCompression(page, enabled) {
@@ -26,7 +26,7 @@ export async function run(browser, baseUrl) {
     await page.waitForSelector(".sheet-switcher");
     await setApiKey(page, "sk-ant-fake-key");
 
-    ok = (await test("the recommend-compression setting defaults to on (Addendum BL)", async () => {
+    ok = (await test("the recommend-compression setting defaults to on", async () => {
       await page.click('button[aria-label="Settings"]');
       assert(
         await page.locator('input[aria-label="Recommend compression when context grows large"]').isChecked(),
@@ -198,7 +198,7 @@ export async function run(browser, baseUrl) {
     await page.waitForSelector(".sheet-switcher");
     await setApiKey(page, "sk-ant-fake-key");
 
-    ok = (await test("a second compression later on folds an existing summary into the new one, instead of leaving it stranded (Addendum AS)", async () => {
+    ok = (await test("a second compression later on folds an existing summary into the new one, instead of leaving it stranded", async () => {
       await mockApi(page, () => `ok.\n\n<!-- SHEET_SUGGESTIONS\n[{"type":"conversation_summary_update","body":"Turn one."}]\n-->`);
       await page.fill(".chat-input-row textarea", "msg1");
       await page.click('.chat-pane .chat-input-row button[type="submit"]');
@@ -230,7 +230,7 @@ export async function run(browser, baseUrl) {
       // Second compression: the mocked "model" sees both the numbered turn
       // and the existing "[Summary]: First digest." entry in the system
       // prompt (both render with their own "(id: ...)"), and names both —
-      // exactly what a real model is now instructed to do (Addendum AS).
+      // exactly what a real model is now instructed to do.
       await page.click(".manage-ai-trigger");
       await mockApi(page, (body) => {
         const ids = [...body.system.matchAll(/\(id: ([a-f0-9-]+)\)/g)].map((m) => m[1]);
@@ -262,7 +262,7 @@ export async function run(browser, baseUrl) {
     await page.waitForSelector(".sheet-switcher");
     await setApiKey(page, "sk-ant-fake-key");
 
-    ok = (await test("the banner shows by default once Context size crosses the threshold (Addendum BL)", async () => {
+    ok = (await test("the banner shows by default once Context size crosses the threshold", async () => {
       await mockApi(page, () => `ok.\n\n<!-- SHEET_SUGGESTIONS\n[{"type":"conversation_summary_update","body":"${"x".repeat(15000)}"}]\n-->`);
       await page.fill(".chat-input-row textarea", "hello");
       await page.click('.chat-pane .chat-input-row button[type="submit"]');

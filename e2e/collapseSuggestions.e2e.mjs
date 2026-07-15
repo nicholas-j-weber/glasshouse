@@ -1,8 +1,8 @@
 import { assert, mockApi, setApiKey, setAutoApply, setCollapseSuggestionsByDefault, test, withFreshPage } from "./support.mjs";
 
-// Addendum AC coverage: every chat message's suggestions block sits behind
+// every chat message's suggestions block sits behind
 // a "N changes" disclosure toggle — expanded by default (matching every
-// prior addendum's shipped behavior), a global Settings toggle to start
+// existing shipped behavior), a global Settings toggle to start
 // collapsed instead, and a per-message override that always wins regardless
 // of that default.
 export async function run(browser, baseUrl) {

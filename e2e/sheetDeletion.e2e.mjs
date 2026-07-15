@@ -1,6 +1,6 @@
 import { assert, createChat, setApiKey, test, withFreshPage } from "./support.mjs";
 
-// Addendum S 8.5 coverage: cascade-delete edge cases — deleting the only
+// Cascade-delete edge cases — deleting the only
 // sheet, and deleting the currently active sheet with others remaining.
 // Both must fall back to a working state, never leave the app with zero
 // sheets to operate on.

@@ -16,13 +16,13 @@ import {
   setStoredRecommendCompression,
 } from "./settingsStorage";
 
-// §9.2: API key/model config, moved out of the always-visible header into a
+// API key/model config, moved out of the always-visible header into a
 // modal — "set once, rarely revisit" config, unlike the chat/context panels
 // which are used constantly (a deliberately different treatment from the
 // chats/details sidebars, which stay visible-by-default). This is also
-// where later settings land — Addendum AA's auto-apply toggle, Addendum
-// AC's collapse-by-default toggle, Addendum AL's compression-recommendation
-// toggle, and Addendum AR's This Chat/History collapse-by-default toggles.
+// where later settings land — the auto-apply toggle, the
+// collapse-by-default toggle, the compression-recommendation
+// toggle, and the This Chat/History collapse-by-default toggles.
 export function SettingsModal({ onClose }: { onClose: () => void }) {
   const [apiKey, setApiKey] = useState(getStoredApiKey());
   const [autoApply, setAutoApply] = useState(getStoredAutoApply());

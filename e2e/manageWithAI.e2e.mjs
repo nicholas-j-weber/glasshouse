@@ -1,6 +1,6 @@
 import { assert, mockApi, setApiKey, showSheetPanelTab, test, withFreshPage } from "./support.mjs";
 
-// Coverage for ManageWithAIPanel — §6.3's AI-collaboration surface,
+// Coverage for ManageWithAIPanel — the AI-collaboration surface,
 // reimagined as a one-shot review UI (button in the Context panel header)
 // instead of the old embedded back-and-forth chat editor (SheetEditor.tsx,
 // removed). One instruction in, suggestions shown as before/after change
@@ -121,7 +121,7 @@ export async function run(browser, baseUrl) {
       })) && ok;
 
     ok =
-      // Addendum AD: unlike a change card (gone once accepted/rejected) or
+      // unlike a change card (gone once accepted/rejected) or
       // a note alongside one (gone once its cards resolve), a "no changes"
       // response had no suggestion of its own to ever make it go away —
       // it just sat there permanently until this dismiss button existed.
@@ -148,7 +148,7 @@ export async function run(browser, baseUrl) {
         assert((await page.locator(".manage-ai-label").textContent()).startsWith("How should this change?"), "the top label should swap to the revision question, not open a separate form on the card");
         assert((await page.locator(".manage-ai-go").count()) === 0, "the normal Go button should be replaced");
 
-        // Addendum AF: Send and Cancel now share one slot rather than
+        // Send and Cancel now share one slot rather than
         // showing together — with nothing typed yet, that slot is Cancel.
         assert(await page.locator(".manage-ai-cancel").isVisible(), "with nothing typed yet, the button should read Cancel");
         assert((await page.locator(".manage-ai-send").count()) === 0, "Send shouldn't show until there's something to send");
@@ -197,7 +197,7 @@ export async function run(browser, baseUrl) {
       (await test("a failed card (target no longer exists) can be dismissed via Reject even though it has no Accept", async () => {
         // deactivate_memory targeting an id that doesn't exist in the
         // current sheet fails visibly rather than silently no-opping
-        // (Addendum H, 6.2.7) — same mechanic as edit_memory's failure
+        // — same mechanic as edit_memory's failure
         // path, covered for the chat pane in globalMemories.e2e.mjs. The
         // suggestion itself starts out pending like any other — "failed" is
         // only discovered once Accept is actually clicked and the target
@@ -268,10 +268,10 @@ export async function run(browser, baseUrl) {
 
     ok =
       (await test("a chat-originated suggestion does not leak into Manage with AI's card list", async () => {
-        // Addendum Z: chat-mode suggestions auto-apply now, so there's no
+        // chat-mode suggestions auto-apply now, so there's no
         // "pending" state to observe here — the tone_update has already
         // applied by the time this checks. What's still being tested is
-        // the same Addendum W mode-scoping guarantee as before: a chat-
+        // the same mode-scoping guarantee as before: a chat-
         // mode message never shows up rendered as a Manage with AI card,
         // applied or not.
         await mockApi(page, () => ({
@@ -353,8 +353,8 @@ export async function run(browser, baseUrl) {
       })) && ok;
   });
 
-  // Addendum AD: a fresh page with no API key ever set, specifically to
-  // reach runCall's "No API key set" error path (§7.3) — every other
+  // a fresh page with no API key ever set, specifically to
+  // reach runCall's "No API key set" error path — every other
   // scenario in this file calls setApiKey first, which would make an
   // error response harder to trigger deliberately.
   await withFreshPage(browser, async (page) => {

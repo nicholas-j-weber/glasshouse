@@ -1,6 +1,6 @@
 import { assert, setApiKey, test, withFreshPage } from "./support.mjs";
 
-// Addendum BN coverage: the app's first responsive rules. Below 1024px the
+// the app's first responsive rules. Below 1024px the
 // always-visible Chats/Context sidebars are replaced by full-screen
 // overlays triggered from new header buttons — this file exists because
 // the original bug (375px rendering 658px wide, chat input unreachable;

@@ -1,6 +1,6 @@
 import { assert, mockApi, setApiKey, test, withFreshPage } from "./support.mjs";
 
-// Addendum V coverage: "Tokens consumed" starts at zero, increases by the
+// "Tokens consumed" starts at zero, increases by the
 // real usage the (mocked) API reports after a call, accumulates across
 // multiple calls, and "Context size" keeps behaving as the pre-existing
 // live client-side estimate throughout — the two statistics are genuinely
@@ -35,7 +35,7 @@ export async function run(browser, baseUrl) {
         const stats = await page.locator(".token-stat").allTextContents();
         assert(stats.some((s) => s.includes("Tokens consumed: 133")), `expected 111+22=133 tokens consumed, got ${JSON.stringify(stats)}`);
 
-        // Addendum Z: the turn's conversation_summary_update auto-applies
+        // the turn's conversation_summary_update auto-applies
         // the instant it's received — no manual accept needed for the
         // sheet to actually grow, which Context size must reflect.
       })) && ok;

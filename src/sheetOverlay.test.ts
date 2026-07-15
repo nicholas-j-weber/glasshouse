@@ -54,7 +54,7 @@ describe("applyOverlay", () => {
     expect(result.memories.find((m) => m.id === "m1")?.pinRank).toBe(1);
   });
 
-  it("leaves pinRank untouched for memories omitted from pinReorder (Addendum E 6.2.4)", () => {
+  it("leaves pinRank untouched for memories omitted from pinReorder", () => {
     const sheet = makeSheet([makeMemory({ id: "m1", pinRank: 3 }), makeMemory({ id: "m2", pinRank: null })]);
     const result = applyOverlay(sheet, { activeOverrides: {}, pinReorder: ["m1"] });
 

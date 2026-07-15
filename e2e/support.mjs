@@ -74,7 +74,7 @@ export async function test(name, fn) {
 // A fresh, isolated browser context (its own IndexedDB/localStorage) per
 // scenario — same isolation drive*.mjs got from launching a whole new
 // browser each time, without paying to relaunch Chromium for every check.
-// Addendum BB: every test in this suite except the welcome modal's own is
+// every test in this suite except the welcome modal's own is
 // about something else entirely — pre-dismiss it via an init script (runs
 // before the app's own JS, so getStoredWelcomeDismissed() already sees it
 // set on first render) rather than editing every one of this suite's test
@@ -108,7 +108,7 @@ export async function setApiKey(page, key) {
   await page.click('button[aria-label="Close settings"]');
 }
 
-// Addendum AA: the chat-mode auto-apply toggle, on by default — only
+// the chat-mode auto-apply toggle, on by default — only
 // clicks the checkbox if it isn't already in the requested state, so
 // callers don't need to know or care what the default is.
 export async function setAutoApply(page, enabled) {
@@ -118,7 +118,7 @@ export async function setAutoApply(page, enabled) {
   await page.click('button[aria-label="Close settings"]');
 }
 
-// Addendum AC: the chat pane's "collapse suggestion details by default"
+// the chat pane's "collapse suggestion details by default"
 // toggle, off by default — same only-click-if-needed shape as setAutoApply.
 export async function setCollapseSuggestionsByDefault(page, enabled) {
   await page.click('button[aria-label="Settings"]');
@@ -127,7 +127,7 @@ export async function setCollapseSuggestionsByDefault(page, enabled) {
   await page.click('button[aria-label="Close settings"]');
 }
 
-// Addendum AR: This Chat's turn/summary collapse-by-default toggle, off by
+// This Chat's turn/summary collapse-by-default toggle, off by
 // default — same only-click-if-needed shape as setCollapseSuggestionsByDefault.
 export async function setCollapseTurnsByDefault(page, enabled) {
   await page.click('button[aria-label="Settings"]');
@@ -136,7 +136,7 @@ export async function setCollapseTurnsByDefault(page, enabled) {
   await page.click('button[aria-label="Close settings"]');
 }
 
-// Addendum AR: History's per-version diff-list collapse-by-default toggle.
+// History's per-version diff-list collapse-by-default toggle.
 export async function setCollapseHistoryByDefault(page, enabled) {
   await page.click('button[aria-label="Settings"]');
   const checkbox = page.locator('input[aria-label="Collapse History entries by default"]');
@@ -180,8 +180,7 @@ export async function createChat(page, name) {
   await page.keyboard.press("Enter");
 }
 
-// The responder normally just returns reply text (a string). Addendum V:
-// it may instead return { text, usage: { inputTokens, outputTokens } } to
+// The responder normally just returns reply text (a string). It may instead return { text, usage: { inputTokens, outputTokens } } to
 // simulate the real API's usage field for token-tracking tests.
 export async function mockApi(page, responder) {
   await page.route("https://api.anthropic.com/v1/messages", async (route) => {

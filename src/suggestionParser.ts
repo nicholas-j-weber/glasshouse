@@ -68,13 +68,13 @@ function validateSuggestion(candidate: unknown): SheetSuggestion | null {
   }
 }
 
-// Addendum D, 6.2.1/6.2.2: parses a raw model response into conversational
+// parses a raw model response into conversational
 // text plus zero or more structured suggestions. Per 6.2.2, a present-but-
 // malformed block — invalid JSON, a non-array payload, or any element with
 // an unrecognized type or missing field — is discarded as a whole ("the
 // client discards only the suggestion block," not individual elements),
 // while the conversational text preceding it is still returned. This is
-// never a failed call in the §7.3 sense; losing a malformed suggestion is a
+// never a failed call in the ProviderError sense; losing a malformed suggestion is a
 // visible-but-minor degradation, not an error.
 export function parseModelResponse(raw: string): ParsedModelResponse {
   const startIndex = raw.indexOf(SUGGESTION_BLOCK_START);

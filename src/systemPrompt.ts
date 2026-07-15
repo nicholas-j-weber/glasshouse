@@ -2,9 +2,9 @@ import { serializeSheet } from "./serializer";
 import { SUGGESTION_BLOCK_END, SUGGESTION_BLOCK_START } from "./suggestionDelimiter";
 import type { CallMode, Sheet } from "./types";
 
-// Addendum F, 3.3: the system prompt is three concatenated parts — mode
+// the system prompt is three concatenated parts — mode
 // preamble, serialized sheet, suggestion instructions — not just the
-// serialized sheet on its own (§3's original shorthand).
+// serialized sheet on its own (original shorthand).
 //
 // CallMode itself now lives in types.ts, not here — PersistedMessage needs
 // it too (to tag which surface produced a message), and importing it back
@@ -12,33 +12,33 @@ import type { CallMode, Sheet } from "./types";
 // already imports Sheet from types.ts).
 export type { CallMode };
 
-// Addendum K, 6.2.11/6.2.12 (supersedes Addendum I 6.2.9's conditional
-// trigger): conversation_summary_update is now the one suggestion type
+// This supersedes an earlier conditional
+// trigger: conversation_summary_update is now the one suggestion type
 // that's mandatory to propose on every chat response, not optional — live
 // testing showed the model reliably judged a single opening question
 // didn't warrant one, defeating the whole point of the mechanism. Does not
-// relax §3's statelessness guarantee (no raw history is ever resent) or
-// §6.1's "nothing applied without explicit user action" (mandatory
+// relax the statelessness guarantee (no raw history is ever resent) or
+// the "nothing applied without explicit user action" rule (mandatory
 // proposal is not auto-apply).
 //
-// Addendum L, 6.2.13: the model is no longer asked to reproduce the whole
+// the model is no longer asked to reproduce the whole
 // existing list — only the new entry's text. Live testing showed asking
 // for verbatim reproduction of prior entries was unreliable and caused
 // accepted updates to silently drop earlier history; the client appends
 // and numbers the entry itself instead.
 //
-// Addendum M, 6.2.14: states the Conversation Summary's temporal ordering
+// states the Conversation Summary's temporal ordering
 // explicitly — live testing showed the model reversing prior-vs-current
 // turn order on self-referential questions ("what did I just ask you?")
 // when that relationship was only ever implicit.
-// Addendum Y: live testing found conversation_summary_update's mandatory-
+// live testing found conversation_summary_update's mandatory-
 // every-turn framing wasn't enough on its own — the model sometimes also
 // proposed a new_memory whose content was really just a recap of the
 // exchange (what was asked, what was answered), not a standalone fact.
-// new_memory always targets the *global* pool (Addendum T), shared across
+// new_memory always targets the *global* pool, shared across
 // every chat, so a chat-scoped recap misfiled this way pollutes every
 // other chat's memory — precisely the "pool dilution from high-frequency
-// entries" Addendum I built conversation_summary_update to prevent in the
+// entries" conversation_summary_update was built to prevent in the
 // first place, just via a different door. The last paragraph now says
 // explicitly what kind of content each type is for, not just how to format
 // one of them.
@@ -50,7 +50,7 @@ After every response, without exception, propose a conversation_summary_update w
 
 If the exchange also suggests a durable addition or change to this context — a fact about the user, a tone adjustment — you may separately propose that too, using new_memory, edit_memory, or tone_update; but unlike the update above, proposing these remains optional and secondary to answering the user. A new_memory must be a standalone fact that would remain true and useful in a completely different conversation — never a restatement, recap, or summary of this exchange itself; that's what the mandatory conversation_summary_update above is already for, and it stays scoped to this chat instead of a pool shared across every other one. For ordinary facts about the user, prefer creating a new, specifically-labeled memory over folding multiple unrelated facts into one broad memory; each memory should stay a single fact or closely related cluster, not a catch-all.`;
 
-// Addendum X: live testing found a real failure mode the original wording
+// live testing found a real failure mode the original wording
 // didn't prevent — asked to "eliminate all redundancies," the model's
 // entire reply was a numbered prose recap of every conversation turn, each
 // one suffixed with its raw memory id copied straight out of the serialized
@@ -65,9 +65,8 @@ If the exchange also suggests a durable addition or change to this context — a
 // off-limits in reply text.
 const SHEET_EDITOR_PREAMBLE = `You are in a dedicated sheet-editing session, not a conversation — the user only ever sees your final reply, never your reasoning. The user's instruction below describes how they want their context sheet restructured (e.g. merging memories, pruning, reordering pins). Do your analysis silently; its result must be expressed as suggestions in the format below, not as prose describing what you found or what should change. Never restate the sheet's contents or any memory's id in your reply text — ids exist only so you can target suggestions precisely. Keep conversational text to at most one short sentence. If no changes are warranted after your analysis, say so in that one sentence — but an instruction like "eliminate redundancies" calls for actual suggestions, not a description of the redundancies.`;
 
-// Addendum D 6.2.1 (new_memory, edit_memory, tone_update) + Addendum E 6.2.4
-// (deactivate_memory, reorder_pins) + Addendum I 6.2.8 (conversation_summary_update)
-// + Addendum AL (compress_conversation) — the full SheetSuggestion union.
+// new_memory, edit_memory, tone_update, deactivate_memory, reorder_pins,
+// conversation_summary_update, and compress_conversation — the full SheetSuggestion union.
 const SUGGESTION_INSTRUCTIONS = `## Suggesting Sheet Changes
 
 After your reply, you may optionally append a single block containing a JSON array of proposed sheet changes, using this exact delimiter:

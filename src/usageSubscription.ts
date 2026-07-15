@@ -1,4 +1,4 @@
-// Addendum V: pub-sub for "a usage record was added for some sheet" —
+// pub-sub for "a usage record was added for some sheet" —
 // mirrors headSubscription.ts's pattern, kept separate from it since usage
 // accounting is an independent concern from version/head changes.
 

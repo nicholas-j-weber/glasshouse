@@ -23,14 +23,14 @@ import { recordUsage } from "./tokenUsageStore";
 import type { ConversationSummaryUpdateSuggestion, PersistedDisplaySuggestion, PersistedSuggestionStatus, Sheet, SheetSuggestion } from "./types";
 import { useSheetOverlay } from "./useSheetOverlay";
 
-// Shared by ChatPane (§6.2, mode "chat") and SheetEditor (§6.3, mode
+// Shared by ChatPane (mode "chat") and SheetEditor (mode
 // "sheet_editor") — accepting/rejecting/revising a suggestion works
-// identically regardless of which surface produced it (Addendum D: "used
+// identically regardless of which surface produced it ("used
 // identically by both the chat pane and the dedicated sheet-editor"). Only
 // the mode passed to buildSystemPrompt and the framing text around the
 // input differ between the two call sites.
 //
-// Addendum Z changes that for chat mode specifically: suggestions there now
+// For chat mode specifically, suggestions there now
 // auto-apply the instant they're received (no manual Accept), surfaced as a
 // toast with an Undo window instead of a pending review card. sheet_editor
 // mode (Manage with AI) is unchanged — handleAccept/handleReject/
@@ -38,7 +38,7 @@ import { useSheetOverlay } from "./useSheetOverlay";
 // surface applies everything, since batch/restructuring operations are
 // exactly the case where a review step still earns its keep.
 //
-// Addendum AA: chat mode's auto-apply is a setting (settingsStorage.ts's
+// chat mode's auto-apply is a setting (settingsStorage.ts's
 // getStoredAutoApply, default on), not a permanent architectural choice —
 // when off, chat suggestions behave exactly like sheet_editor's always have
 // (pending cards, handleAccept/handleReject/handleRevisionSubmit), just
@@ -47,17 +47,17 @@ import { useSheetOverlay } from "./useSheetOverlay";
 // produced it (SessionMessage.autoApplied) so a toggle mid-conversation
 // doesn't retroactively change how past messages render.
 
-// Addendum H, 6.2.7: "failed" covers an edit_memory/deactivate_memory
+// "failed" covers an edit_memory/deactivate_memory
 // suggestion whose memoryId doesn't match any memory in the current sheet —
 // surfaced visibly rather than silently accepted as a no-op. Re-exported
-// from types.ts (Addendum S, 8.6) so the persisted and in-memory shapes
+// from types.ts so the persisted and in-memory shapes
 // share a single definition.
 export type SuggestionStatus = PersistedSuggestionStatus;
 export type DisplaySuggestion = PersistedDisplaySuggestion;
 
 export interface SessionMessage {
   id: string;
-  // Addendum W: which call surface produced this message — ChatPane's
+  // which call surface produced this message — ChatPane's
   // "chat" vs ManageWithAIPanel's "sheet_editor". Set once at creation from
   // the hook's own mode argument (see makeSessionMessage below); used to
   // keep the two surfaces' persisted logs from leaking into each other
@@ -65,23 +65,23 @@ export interface SessionMessage {
   mode: CallMode;
   role: "user" | "assistant" | "error";
   text: string;
-  // Addendum S, 8.6: set once at creation, never changed — both orders the
+  // set once at creation, never changed — both orders the
   // persisted log and is carried through unchanged on every subsequent
   // persisted update (a suggestion's status changing doesn't mean the
   // message itself was created again).
   createdAt: string;
   suggestions?: DisplaySuggestion[];
-  // Addendum E 5.2.2's sourceExcerpt source: the user-authored text (an
+  // sourceExcerpt source: the user-authored text (an
   // original message/instruction, or a revision instruction) that produced
   // this assistant reply's suggestions.
   sourceText?: string;
-  // Addendum AA: see types.ts's PersistedMessage.autoApplied — carried
+  // see types.ts's PersistedMessage.autoApplied — carried
   // through unchanged here so SuggestionSessionView knows whether to render
   // this message's suggestions as a plain record or still-interactive cards.
   autoApplied?: boolean;
 }
 
-// Addendum Z: ephemeral (not persisted — a fresh page load starts with
+// ephemeral (not persisted — a fresh page load starts with
 // none) feedback for a chat-mode auto-applied suggestion. `undo` is present
 // only while the change is still cleanly reversible; see applySuggestion's
 // comment for what "cleanly" means here.
@@ -102,9 +102,9 @@ function makeMessage(fields: Omit<SessionMessage, "id" | "createdAt">): SessionM
   return { id: crypto.randomUUID(), createdAt: new Date().toISOString(), ...fields };
 }
 
-// Addendum Z: what a toast should say about an applied suggestion.
+// what a toast should say about an applied suggestion.
 // conversation_summary_update returns null on purpose — it's mandatory on
-// every single chat turn (Addendum K), so a toast for it would fire
+// every single chat turn, so a toast for it would fire
 // constantly and say nothing notable; it still applies silently
 // underneath, just without announcing itself.
 function toastTextFor(suggestion: SheetSuggestion, sheet: Sheet): string | null {
@@ -128,12 +128,12 @@ function toastTextFor(suggestion: SheetSuggestion, sheet: Sheet): string | null 
   }
 }
 
-// Addendum Q, 6.2.16: only chat mode ever had Addendum K's mandatory-
+// only chat mode ever had a mandatory-
 // proposal instruction, so only chat mode gets the fallback — sheet-editor
 // responses with zero suggestions are left exactly as the model returned
-// them (§6.3.1 already allows "no changes are warranted").
+// them, since a response can validly say "no changes are warranted".
 //
-// Addendum R, 6.2.17: before reaching for Addendum Q's truncation fallback,
+// before reaching for the truncation fallback,
 // try one disambiguated follow-up call whose only task is producing the
 // update — most of the time (per live testing, this path is rare once the
 // sheet has any real entry at all) this recovers genuine model-authored
@@ -176,13 +176,13 @@ export interface SuggestionSession {
   startRevision: (messageId: string, index: number) => void;
   cancelRevision: () => void;
   handleRevisionSubmit: (message: SessionMessage, index: number) => Promise<void>;
-  // Addendum AB: lets a still-pending conversation_summary_update's body be
+  // lets a still-pending conversation_summary_update's body be
   // edited directly, in place, before Accept — see ChangeCard.tsx's Edit
   // button. No-op for any other suggestion type (nothing else has a plain
   // free-text body worth hand-editing this way; new_memory/edit_memory's
   // label+body and tone_update's body all still go through Revise with AI).
   editSuggestionBody: (message: SessionMessage, index: number, body: string) => void;
-  // Addendum Z/AA: only populated when chat mode is actively auto-applying
+  // Only populated when chat mode is actively auto-applying
   // (the default) — sheet_editor mode never produces toasts (nothing there
   // auto-applies), and neither does chat mode with the setting off, so this
   // is simply always [] in both those cases.
@@ -197,17 +197,17 @@ interface ApplyOutcome {
   undo?: () => Promise<void>;
 }
 
-// Every send/revision is a fully stateless call per §3/§6.3 — system prompt
-// (mode preamble + serialized sheet + suggestion instructions, Addendum F)
+// Every send/revision is a fully stateless call — system prompt
+// (mode preamble + serialized sheet + suggestion instructions)
 // + this one message → response. `messages` is never resent to the model;
-// Addendum S, 8.6 persists it locally anyway, purely as a human-facing
+// it's persisted locally anyway, purely as a human-facing
 // scrollback scoped to `sheetId` — reloaded on mount and whenever sheetId
 // changes (switching sheets), never fed back into a call.
 export function useSuggestionSession(mode: CallMode, sheetId: string): SuggestionSession {
   const [messages, setMessages] = useState<SessionMessage[]>([]);
   const [draft, setDraft] = useState("");
   const [isSending, setIsSending] = useState(false);
-  // §4.2 / Addendum A 4.2.1: deactivate_memory and reorder_pins accepts are
+  // deactivate_memory and reorder_pins accepts are
   // session-only until folded into the next real version. Shared across
   // every surface via sheetOverlayStore.ts so they don't diverge.
   const overlay = useSheetOverlay();
@@ -232,7 +232,7 @@ export function useSuggestionSession(mode: CallMode, sheetId: string): Suggestio
     };
   }, [sheetId, mode]);
 
-  // Adds a message to the visible session and persists it (Addendum S 8.6).
+  // Adds a message to the visible session and persists it.
   function addMessage(message: SessionMessage) {
     setMessages((prev) => [...prev, message]);
     void saveMessage(sheetId, message);
@@ -258,7 +258,7 @@ export function useSuggestionSession(mode: CallMode, sheetId: string): Suggestio
     });
   }
 
-  // Addendum AB: same shape as updateSuggestionStatus, but rewrites a still-
+  // same shape as updateSuggestionStatus, but rewrites a still-
   // pending suggestion's own body in place — a direct hand-edit rather than
   // a round trip through the model (Revise with AI). A no-op for suggestion
   // types with no plain `body` field (deactivate_memory, reorder_pins);
@@ -307,9 +307,9 @@ export function useSuggestionSession(mode: CallMode, sheetId: string): Suggestio
     addMessage(makeSessionMessage({ role: "error", text }));
   }
 
-  // Addendum R, 6.2.17: a quiet second call — failure here (network error,
+  // a quiet second call — failure here (network error,
   // malformed response, or the model still not producing a valid entry)
-  // just falls through to Addendum Q's truncation fallback, so unlike
+  // just falls through to the truncation fallback, so unlike
   // runCall this never appends a visible error; the main response already
   // succeeded and this is only backfilling a secondary mechanism.
   async function attemptSummaryFollowup(
@@ -327,7 +327,7 @@ export function useSuggestionSession(mode: CallMode, sheetId: string): Suggestio
         buildSummaryFollowupUserMessage(userMessage, aiReplyText),
       );
       if (!result.ok) return null;
-      // Addendum V: this call has a real cost even though it never produces
+      // this call has a real cost even though it never produces
       // its own visible chat message — record it here, not tied to any message.
       if (result.usage) void recordUsage(sheetId, result.usage);
       return extractSingleConversationSummaryUpdate(parseModelResponse(result.text));
@@ -337,7 +337,7 @@ export function useSuggestionSession(mode: CallMode, sheetId: string): Suggestio
   }
 
   // Returns the parsed response on success, or null on failure (after
-  // appending a visible error, per §7.3). Never touches the message list on
+  // appending a visible error). Never touches the message list on
   // failure beyond that — callers own deciding what a *successful* call adds.
   async function runCall(systemPrompt: string, userMessage: string): Promise<ParsedModelResponse | null> {
     const apiKey = getStoredApiKey();
@@ -356,7 +356,7 @@ export function useSuggestionSession(mode: CallMode, sheetId: string): Suggestio
         return null;
       }
 
-      // Addendum V: covers the main chat/revision call and sheet-editor
+      // covers the main chat/revision call and sheet-editor
       // calls alike — this function is already shared across both modes.
       if (result.usage) void recordUsage(sheetId, result.usage);
       return parseModelResponse(result.text);
@@ -369,14 +369,14 @@ export function useSuggestionSession(mode: CallMode, sheetId: string): Suggestio
   // (while still fresh) undo it. Shared by manual accept (handleAccept —
   // sheet_editor mode always, chat mode when auto-apply is off) and chat
   // mode's auto-apply loop — the two differ only in `autoApplied` (which
-  // attribution kind the resulting version gets, Addendum Z) and in who
+  // attribution kind the resulting version gets) and in who
   // calls it.
   //
   // Reads the overlay via getOverlay() (a plain synchronous store read),
   // not the `overlay` React-state value closed over above — auto-apply
   // calls this sequentially for every suggestion in one response, and a
   // stale closed-over overlay would miss a deactivate_memory/reorder_pins
-  // change made earlier in the *same* batch, breaking Addendum A 4.2.1's
+  // change made earlier in the *same* batch, breaking the
   // "folded into whichever version is created next" mechanic for anything
   // after the first suggestion in a batch.
   //
@@ -385,7 +385,7 @@ export function useSuggestionSession(mode: CallMode, sheetId: string): Suggestio
   // — the same mechanism History's "Revert to here" already uses. That's
   // only ever offered while nothing else has happened to that chain since
   // (toasts are short-lived and this app's versioning is strictly linear,
-  // §4.4 — reverting an *older* version discards whatever came after it
+  // reverting an *older* version discards whatever came after it
   // too, same as History already does). Overlay-only suggestions
   // (deactivate_memory/reorder_pins) restore the prior overlay value
   // directly, which has no such caveat since it's plain session state.
@@ -408,7 +408,7 @@ export function useSuggestionSession(mode: CallMode, sheetId: string): Suggestio
     const mergedForDisplay = mergeMemoryPools(localBase, globalBase);
 
     if (suggestion.type === "deactivate_memory") {
-      // Addendum H, 6.2.7: fail visibly rather than silently no-op.
+      // fail visibly rather than silently no-op.
       if (!memoryExists(mergedForDisplay, suggestion.memoryId)) {
         return { ok: false };
       }
@@ -446,7 +446,7 @@ export function useSuggestionSession(mode: CallMode, sheetId: string): Suggestio
     const { attribution, provenance } = resolveAttribution(display.isFallback, mode, messageId, sourceExcerpt, autoApplied);
     const resolved = resolveContentChange(suggestion, localBase, globalBase, provenance, now);
     if (!resolved) {
-      // Addendum H, 6.2.7: edit_memory targeting an id in neither pool.
+      // edit_memory targeting an id in neither pool.
       return { ok: false };
     }
     const chainSheetId = resolved.chain === "local" ? sheetId : GLOBAL_MEMORIES_SHEET_ID;
@@ -462,7 +462,7 @@ export function useSuggestionSession(mode: CallMode, sheetId: string): Suggestio
     };
   }
 
-  // Addendum Z: chat mode's auto-apply — every suggestion in the response
+  // chat mode's auto-apply — every suggestion in the response
   // applies immediately, in order, with a toast per notable one. Sequential
   // (not Promise.all) is load-bearing: each applySuggestion call re-reads
   // the current head/overlay, so suggestion 2 needs suggestion 1's write to
@@ -496,10 +496,10 @@ export function useSuggestionSession(mode: CallMode, sheetId: string): Suggestio
     const merged = mergeMemoryPools(localHead.sheet, globalHead.sheet);
     const systemPrompt = buildSystemPrompt(applyOverlay(merged, overlay), mode);
     const parsed = await runCall(systemPrompt, messageText);
-    if (!parsed) return; // error already appended; Addendum E 7.3.1: draft preserved, no "sent" turn added
+    if (!parsed) return; // error already appended; draft preserved, no "sent" turn added
 
     const suggestions = await resolveSuggestions(parsed, mode, messageText, attemptSummaryFollowup);
-    // Addendum AA: sheet_editor mode never auto-applies regardless of the
+    // sheet_editor mode never auto-applies regardless of the
     // setting — Manage with AI's review-every-batch model is unaffected by
     // a toggle that's specifically about chat mode.
     const autoApply = mode === "chat" && getStoredAutoApply();
@@ -520,7 +520,7 @@ export function useSuggestionSession(mode: CallMode, sheetId: string): Suggestio
     }
   }
 
-  // Addendum AA: reachable from chat mode too now, whenever a suggestion is
+  // reachable from chat mode too now, whenever a suggestion is
   // still pending — which happens either in sheet_editor mode (always) or
   // in chat mode with auto-apply switched off in Settings.
   async function handleAccept(message: SessionMessage, index: number) {
@@ -532,7 +532,7 @@ export function useSuggestionSession(mode: CallMode, sheetId: string): Suggestio
   }
 
   function handleReject(message: SessionMessage, index: number) {
-    // §4.2: rejecting never creates a version and never mutates the sheet.
+    // Rejecting never creates a version and never mutates the sheet.
     updateSuggestionStatus(message.id, index, "rejected");
   }
 
@@ -552,7 +552,7 @@ export function useSuggestionSession(mode: CallMode, sheetId: string): Suggestio
 
     const syntheticMessage = buildRevisionMessage(display.suggestion, instruction);
 
-    // Addendum E 6.2.6: reuses the originating call's mode/preamble.
+    // Reuses the originating call's mode/preamble.
     const [localHead, globalHead] = await Promise.all([
       ensureInitialized(sheetId),
       ensureInitialized(GLOBAL_MEMORIES_SHEET_ID),
@@ -567,7 +567,7 @@ export function useSuggestionSession(mode: CallMode, sheetId: string): Suggestio
     updateSuggestionStatus(message.id, index, "revised");
     setRevising(null);
     setRevisionDraft("");
-    // Addendum AA: revision is only ever reachable from a still-pending
+    // revision is only ever reachable from a still-pending
     // card (sheet_editor mode, or chat mode with auto-apply off) — so the
     // follow-up it produces is always manually reviewed too, regardless of
     // the current auto-apply setting.

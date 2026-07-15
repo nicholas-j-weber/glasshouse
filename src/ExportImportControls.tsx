@@ -3,9 +3,9 @@ import { exportSheetWithGlobalPool, importSheetWithGlobalPool } from "./globalMe
 import { parseSheetExport } from "./sheetExportValidation";
 import { resetOverlay } from "./sheetOverlayStore";
 
-// §8.3: "Core PoC feature, not a stretch goal" — the full sheet, exportable
+// "Core PoC feature, not a stretch goal" — the full sheet, exportable
 // and importable as a single JSON file, so a user can inspect their own
-// context outside the app (§8.3's legibility rationale). Addendum U, 8.3.2:
+// context outside the app (legibility rationale). Also
 // exports/imports the global memory pool alongside the local sheet, so the
 // file reflects everything the model actually saw, not a partial view.
 export function ExportImportControls({ sheetId }: { sheetId: string }) {

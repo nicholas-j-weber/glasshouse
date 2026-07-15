@@ -42,7 +42,7 @@ describe("serializeSheet", () => {
     expect(result).not.toContain("Freeform Notes");
   });
 
-  it("never omits Conversation Summary — shows a labeled example when there are no turns (Addendum P)", () => {
+  it("never omits Conversation Summary — shows a labeled example when there are no turns", () => {
     const result = serializeSheet(makeSheet());
     expect(result).toContain("## Conversation Summary");
     expect(result).toContain("No entries yet");
@@ -67,7 +67,7 @@ describe("serializeSheet", () => {
     expect(result).toContain("1. User asked about X; I explained Y. (id: cs1)");
   });
 
-  it("orders conversation turns chronologically (ascending), independent of pinRank (Addendum O 5.1.3)", () => {
+  it("orders conversation turns chronologically (ascending), independent of pinRank", () => {
     const result = serializeSheet(
       makeSheet({
         memories: [
@@ -104,7 +104,7 @@ describe("serializeSheet", () => {
     expect(result).toContain("## Memory: Ordinary fact");
   });
 
-  it("includes Freeform Notes when non-empty, after Tone in §5.1 order", () => {
+  it("includes Freeform Notes when non-empty, after Tone in the expected section order", () => {
     const result = serializeSheet(makeSheet({ freeformNotes: "Loose scratch note." }));
     const toneIndex = result.indexOf("## Tone");
     const notesIndex = result.indexOf("## Freeform Notes");
@@ -151,14 +151,14 @@ describe("serializeSheet", () => {
     expect(result).not.toContain("Inactive memory");
   });
 
-  it("includes the memory's id in its block, per Addendum H 5.3.2", () => {
+  it("includes the memory's id in its block", () => {
     const memory = makeMemory({ id: "mem-abc-123", label: "Deadline", body: "July 10" });
     const result = serializeSheet(makeSheet({ memories: [memory] }));
 
     expect(result).toContain("## Memory: Deadline (id: mem-abc-123)\nJuly 10");
   });
 
-  describe("kind: summary (Addendum AL)", () => {
+  describe("kind: summary", () => {
     it("renders an active summary ahead of the numbered turn list, in its own [Summary] line", () => {
       const result = serializeSheet(
         makeSheet({
@@ -227,7 +227,7 @@ describe("orderConversationTurns", () => {
     expect(orderConversationTurns(memories).map((m) => m.id)).toEqual(["a", "b"]);
   });
 
-  it("includes inactive turns (§2: excluded from calls, not from the sheet view)", () => {
+  it("includes inactive turns (excluded from calls, not from the sheet view)", () => {
     const memories = [turn({ id: "inactive-turn", active: false })];
     expect(orderConversationTurns(memories).map((m) => m.id)).toEqual(["inactive-turn"]);
   });
@@ -238,7 +238,7 @@ describe("orderConversationTurns", () => {
   });
 });
 
-describe("orderSummaries (Addendum AL)", () => {
+describe("orderSummaries", () => {
   it("returns only kind: summary memories, chronologically ascending", () => {
     const memories = [
       summary({ id: "b", lastModified: "2026-02-01T00:00:00.000Z" }),
@@ -248,7 +248,7 @@ describe("orderSummaries (Addendum AL)", () => {
     expect(orderSummaries(memories).map((m) => m.id)).toEqual(["a", "b"]);
   });
 
-  it("includes inactive summaries (§2: excluded from calls, not from the sheet view)", () => {
+  it("includes inactive summaries (excluded from calls, not from the sheet view)", () => {
     const memories = [summary({ id: "inactive-summary", active: false })];
     expect(orderSummaries(memories).map((m) => m.id)).toEqual(["inactive-summary"]);
   });

@@ -3,7 +3,7 @@ import { ModelField } from "./ModelField";
 import { getStoredApiKey, getStoredWelcomeDismissed, setStoredApiKey, setStoredWelcomeDismissed } from "./settingsStorage";
 import { useModalFocus } from "./useModalFocus";
 
-// Addendum BC: a one-time explanation for a first-time viewer of the
+// a one-time explanation for a first-time viewer of the
 // running app — distinct from README.md, which explains the project to
 // someone reading the repo, not someone who's just landed on the live
 // demo. Reuses SettingsModal's exact .modal-overlay/.modal shape for
@@ -12,14 +12,14 @@ import { useModalFocus } from "./useModalFocus";
 // Two distinct dismissals, not one: closing (overlay click, ×, or "Got
 // it") only hides it for this page load — component-local state, nothing
 // written to storage, so it reappears on the next fresh load same as
-// before this addendum. "Don't show again" is the only path that writes
+// before. "Don't show again" is the only path that writes
 // getStoredWelcomeDismissed/setStoredWelcomeDismissed and hides it for
-// good. Addendum BB originally treated every dismissal as permanent;
+// good. Every dismissal used to be treated as permanent;
 // splitting these gives a first-time viewer who just closed it without
 // really reading it a second chance next time, while still offering an
 // explicit opt-out for anyone who's already seen it.
 //
-// Addendum BG: also hosts the same API key field SettingsModal has —
+// also hosts the same API key field SettingsModal has —
 // same aria-label, same immediate-write-on-change pattern, same
 // getStoredApiKey/setStoredApiKey, just a second entry point onto
 // identical state (there's no separate "welcome" key). Without this, a
@@ -28,15 +28,15 @@ import { useModalFocus } from "./useModalFocus";
 // recovery path, but still a failure-first experience for the one thing
 // nearly every viewer needs to do before anything else works. Entering a
 // key here is optional — dismissing without one is still allowed, same
-// as before this addendum, since Settings remains available for anyone
+// as before, since Settings remains available for anyone
 // who skips this.
 //
-// Addendum BI: Model sits beside the API key here too, same
-// .modal-field-row layout as SettingsModal. Addendum BJ: both now share
+// Model sits beside the API key here too, same
+// .modal-field-row layout as SettingsModal. Both now share
 // ModelField.tsx (a <select> with an "Other…" escape hatch), replacing a
 // <datalist>-backed input that turned out to be broken on inspection.
 //
-// Addendum BL: mentions the compression banner, now that
+// mentions the compression banner, now that
 // getStoredRecommendCompression defaults to true (settingsStorage.ts) — a
 // deliberate break from every other recommend/collapse-by-default toggle
 // in this app, made specifically so this is worth surfacing here. Before
@@ -44,7 +44,7 @@ import { useModalFocus } from "./useModalFocus";
 // off-by-default, opt-in feature didn't belong in an explanation of the
 // app's default behavior.
 //
-// Addendum BM: that sentence originally stood alone as a fourth
+// that sentence originally stood alone as a fourth
 // paragraph; folded into the end of the second paragraph instead (both
 // are about the same Context panel/Token Estimator relationship, so
 // splitting it out read as more separate than it actually was) and

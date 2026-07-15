@@ -1,6 +1,6 @@
 import type { Memory, Sheet } from "./types";
 
-// Addendum AQ: status and detail are kept separate (rather than one
+// status and detail are kept separate (rather than one
 // pre-joined string) so the renderer can bold the status word without it
 // running straight into a turn's body text, which itself often starts with
 // "User asked..." — visually indistinguishable from the status prefix when
@@ -15,19 +15,19 @@ function memoryMap(memories: Memory[]): Map<string, Memory> {
   return new Map(memories.map((m) => [m.id, m]));
 }
 
-// Addendum O: every conversation-turn memory shares the same generic label
+// every conversation-turn memory shares the same generic label
 // ("Conversation Summary"), so "Added memory <label>" would be identical
 // and unhelpful for every turn — use the entry text instead, so version
-// history actually distinguishes one turn from another. Addendum AQ: a
-// kind: "summary" memory (Addendum AL) shares that same generic label too,
+// history actually distinguishes one turn from another. a
+// kind: "summary" memory shares that same generic label too,
 // and the same fix applies for the same reason.
 function memoryDiffLabel(memory: Memory): string {
   return memory.kind === "conversation_turn" || memory.kind === "summary" ? memory.body : `"${memory.label}"`;
 }
 
-// §4.3: "A rendered diff against its parent, computed and shown in the UI
+// "A rendered diff against its parent, computed and shown in the UI
 // (not necessarily stored — can be computed on demand from two snapshots)."
-// parent is null only for the very first version (§8.1's skeleton).
+// parent is null only for the very first version (skeleton).
 export function diffSheets(parent: Sheet | null, sheet: Sheet): VersionDiffLine[] {
   if (parent === null) {
     // "Context," not "sheet" — matches the app's own vocabulary elsewhere

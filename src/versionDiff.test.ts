@@ -44,7 +44,7 @@ describe("diffSheets", () => {
     expect(statuses).toContain("Edited Freeform Notes");
   });
 
-  it("shows a conversation turn's body, not its generic label, as the detail (Addendum O)", () => {
+  it("shows a conversation turn's body, not its generic label, as the detail", () => {
     const parent = makeSheet();
     const sheet = makeSheet({
       memories: [
@@ -61,7 +61,7 @@ describe("diffSheets", () => {
     ]);
   });
 
-  it("shows a summary's body, not its generic label, as the detail (Addendum AQ)", () => {
+  it("shows a summary's body, not its generic label, as the detail", () => {
     const parent = makeSheet();
     const sheet = makeSheet({
       memories: [

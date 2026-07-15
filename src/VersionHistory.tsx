@@ -13,7 +13,7 @@ function formatAttribution(attribution: VersionAttribution): string {
     case "ai_suggestion_accepted":
       return "AI suggestion accepted";
     case "ai_suggestion_auto_applied":
-      // Addendum Z: chat mode auto-applies suggestions (toast + undo,
+      // chat mode auto-applies suggestions (toast + undo,
       // rather than a manual Accept click) — History should say so, not
       // imply every version came from a click.
       return "AI suggestion auto-applied";
@@ -30,16 +30,16 @@ function formatTimestamp(iso: string): string {
   return new Date(iso).toLocaleString();
 }
 
-// §4.4: linear undo — "Revert to version N" moves head back; nothing is
-// deleted. §1.1's core claim ("the full history of what the AI has known...
+// Linear undo — "Revert to version N" moves head back; nothing is
+// deleted. The core claim ("the full history of what the AI has known...
 // is reconstructable, inspectable, and reversible") is what this makes true
 // in the UI rather than just in the store.
 export function VersionHistory({ sheetId }: { sheetId: string }) {
   const lineage = useActiveLineage(sheetId); // oldest first, head last
-  // Addendum AR: per-version override for the diff-line list's collapse
+  // per-version override for the diff-line list's collapse
   // state — versionId -> explicit collapsed state, same live-default-
-  // fallback pattern as Addendum AC's collapsedOverrides and SheetPanel's
-  // collapsedRowOverrides (Addendum AR): flipping the setting should
+  // fallback pattern as SuggestionSessionView's collapsedOverrides and SheetPanel's
+  // collapsedRowOverrides: flipping the setting should
   // visibly affect entries already on screen, not just future ones.
   const [collapsedOverrides, setCollapsedOverrides] = useState<Record<string, boolean>>({});
 
@@ -53,7 +53,7 @@ export function VersionHistory({ sheetId }: { sheetId: string }) {
 
   async function handleRevert(versionId: string) {
     await revertToVersion(versionId, sheetId);
-    // Addendum A 4.2.1: pending overlay is discarded on revert, not carried back.
+    // Pending overlay is discarded on revert, not carried back.
     resetOverlay();
   }
 

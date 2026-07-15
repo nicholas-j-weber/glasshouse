@@ -3,10 +3,10 @@ import os from "node:os";
 import path from "node:path";
 import { addMemory, assert, createChat, setApiKey, showSheetPanelTab, test, withFreshPage } from "./support.mjs";
 
-// Addendum U coverage: export/import round-trips both the local sheet and
+// export/import round-trips both the local sheet and
 // the global memory pool — verified through a real file download from one
 // browser context and a real upload into a completely separate, empty one,
-// since that's the actual thing §8.3 promises ("inspect your context
+// since that's the actual thing this feature promises ("inspect your context
 // outside the app") and jsdom/mocking can't meaningfully fake a real file.
 export async function run(browser, baseUrl) {
   let ok = true;
@@ -71,7 +71,7 @@ export async function run(browser, baseUrl) {
     })) && ok;
   });
 
-  // Addendum AV: the two blocks above always import into a totally fresh,
+  // the two blocks above always import into a totally fresh,
   // empty browser context — no shared IndexedDB with the export's source
   // sheet — which is exactly why this never caught the real reported bug:
   // db.ts's versions store keys id table-wide, not per sheetId, so
@@ -99,7 +99,7 @@ export async function run(browser, baseUrl) {
     await createChat(page, "Duplicate Target");
     await page.waitForTimeout(300);
 
-    ok = (await test("importing an export into a different, still-existing chat in the same session doesn't throw ConstraintError (Addendum AV, fixes a confirmed real bug)", async () => {
+    ok = (await test("importing an export into a different, still-existing chat in the same session doesn't throw ConstraintError (fixes a confirmed real bug)", async () => {
       await page.setInputFiles("input[type=file]", sameSessionFile);
       await page.waitForTimeout(500);
 

@@ -1,8 +1,8 @@
 import { assert, setApiKey, test, withFreshPage } from "./support.mjs";
 
-// Addendum BJ coverage: Model is a <select> (with an "Other…" escape hatch
-// that reveals a text input), not the <datalist>-backed text input
-// Addendum BI shipped — that turned out to be broken on live testing, not
+// Model is a <select> (with an "Other…" escape hatch
+// that reveals a text input), not the earlier <datalist>-backed text input
+// this replaced — that turned out to be broken on live testing, not
 // just DOM inspection: a native datalist filters its suggestions against
 // whatever the field's current value already is, so a field pre-filled
 // with a complete, valid model id ("claude-sonnet-5") showed only that one
@@ -28,14 +28,14 @@ export async function run(browser, baseUrl) {
         assert(Math.abs(modelBox.y - apiKeyBox.y) < 2, "Model should sit on the same row as the API key field, not stacked below it");
         assert(modelBox.x > apiKeyBox.x, "Model should sit to the right of the API key field");
         assert((await modelSelect.inputValue()) === "claude-sonnet-5", "should default to claude-sonnet-5");
-        // Addendum BK: a <select> doesn't respect line-height the way a
+        // a <select> doesn't respect line-height the way a
         // text input does, so identical padding/border alone left it ~5px
         // shorter — confirmed live before fixing.
         assert(modelBox.height === apiKeyBox.height, `expected equal heights, got API key ${apiKeyBox.height} vs Model ${modelBox.height}`);
       })) && ok;
 
       ok = (await test("the welcome modal's Model select always lists every known model plus Other…, regardless of the current value", async () => {
-        // The bug this addendum fixes: a <datalist> filtered its options
+        // The bug this fixes: a <datalist> filtered its options
         // against the current value, showing only the one already
         // selected. A real <select> always exposes every <option> in the
         // DOM — this is what actually catches a regression back to that.

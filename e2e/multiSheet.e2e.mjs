@@ -1,8 +1,8 @@
 import { assert, createChat, mockApi, setApiKey, showSheetPanelTab, test, withFreshPage } from "./support.mjs";
 
-// Addendum S coverage: bootstrap, create/switch, per-sheet chat log
+// Bootstrap, create/switch, per-sheet chat log
 // isolation, persistence across a real page reload, rename, and — the
-// architectural guarantee behind Addendum S 8.6 — that the persisted chat
+// architectural guarantee — that the persisted chat
 // log never leaks into a request's system prompt.
 export async function run(browser, baseUrl) {
   let ok = true;
@@ -65,7 +65,7 @@ export async function run(browser, baseUrl) {
 
     ok = (await test("the persisted chat log never leaks into any request's system prompt", () => {
       const leaked = requestSystems.some((s) => s.includes("SHEET1_MESSAGE_UNIQUE_TOKEN"));
-      assert(!leaked, "chat log text must never appear in a system prompt (§3 statelessness)");
+      assert(!leaked, "chat log text must never appear in a system prompt (statelessness)");
       assert(requestSystems.length === 1, `expected exactly 1 API call across this scenario, got ${requestSystems.length}`);
     })) && ok;
 
@@ -97,7 +97,7 @@ export async function run(browser, baseUrl) {
       );
     })) && ok;
 
-    ok = (await test("Addendum AG: the chat pane auto-scrolls to the newest message as the transcript grows", async () => {
+    ok = (await test("the chat pane auto-scrolls to the newest message as the transcript grows", async () => {
       // Reuses the transcript grown by the previous test (12 filler
       // messages plus their auto-generated replies) — already tall enough
       // to scroll, per that test's own assertion.
@@ -134,7 +134,7 @@ export async function run(browser, baseUrl) {
       // direct DOM measurement (window.scrollTo actually moved the page)
       // before finding the fix: contain: layout on .sheet-panel (App.css).
       //
-      // Addendum Z: conversation_summary_update auto-applies now — no
+      // conversation_summary_update auto-applies now — no
       // accept click needed to grow the Conversation Summary, sending the
       // message is enough on its own.
       for (let i = 0; i < 15; i++) {
@@ -348,7 +348,7 @@ export async function run(browser, baseUrl) {
     })) && ok;
   });
 
-  // Addendum Z coverage: auto-apply's non-memory suggestion types, and the
+  // auto-apply's non-memory suggestion types, and the
   // sequential-apply guarantee for a multi-suggestion batch.
   await withFreshPage(browser, async (page) => {
     await page.goto(baseUrl);
@@ -386,7 +386,7 @@ export async function run(browser, baseUrl) {
     ok = (await test("multiple suggestions in one response apply sequentially and correctly, not just the first", async () => {
       // Includes a conversation_summary_update alongside the two
       // new_memory suggestions specifically so the mandatory-proposal
-      // fallback/follow-up mechanism (Addendum K/Q/R) never kicks in —
+      // fallback/follow-up mechanism never kicks in —
       // keeps this test focused on sequential-apply correctness, not that
       // separate mechanism.
       await mockApi(

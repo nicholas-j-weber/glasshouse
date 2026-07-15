@@ -10,7 +10,7 @@ import { useHeadVersion } from "./useHeadVersion";
 import { useSheetOverlay } from "./useSheetOverlay";
 import type { Sheet } from "./types";
 
-// §6.3's AI-collaboration surface, reimagined as a one-shot review panel
+// The AI-collaboration surface, reimagined as a one-shot review panel
 // instead of a back-and-forth embedded chat (the previous SheetEditor.tsx,
 // now removed): the user describes a restructuring in one instruction, gets
 // back a set of proposed changes shown as before/after cards, and
@@ -41,14 +41,14 @@ import type { Sheet } from "./types";
 // own instructions.
 //
 // Revise used to be its own inline form on each card — but it's really
-// just another instruction call (identical mechanics to the main field,
-// per Addendum D), auto-scoped to one prior suggestion instead of
+// just another instruction call (identical mechanics to the main field),
+// auto-scoped to one prior suggestion instead of
 // freeform. Rather than two parallel input mechanisms that do almost the
 // same thing, clicking a card's Revise now re-aims the *same* top field at
 // that suggestion: the label swaps to "How should this change?", the field
 // binds to revisionDraft instead of draft, and Go is replaced by a button
-// that reads Send once there's something typed, Cancel otherwise (Addendum
-// AF — one button doing double duty, not Send and Cancel shown together).
+// that reads Send once there's something typed, Cancel otherwise
+// — one button doing double duty, not Send and Cancel shown together.
 // The card itself just shows which one is currently targeted, rather than
 // growing its own form. (The chat pane's inline revise, same underlying
 // hook in "chat" mode, deliberately keeps its own separate form — there's
@@ -60,7 +60,7 @@ export function ManageWithAIPanel({
   onBack,
 }: {
   sheetId: string;
-  // Addendum AL: set by App.tsx when something (currently only the Token
+  // set by App.tsx when something (currently only the Token
   // Estimator's compression banner) wants this panel to open pre-filled
   // with a starting instruction — the field's normal empty default
   // otherwise. Still just a pre-fill, not auto-submitted; the user reviews
@@ -111,7 +111,7 @@ export function ManageWithAIPanel({
     editSuggestionBody,
   } = session;
 
-  // Addendum AL: applies the compression banner's (or anything else's)
+  // applies the compression banner's (or anything else's)
   // pre-filled instruction once, right after this panel mounts — runs
   // exactly once per mount since this panel is conditionally rendered by
   // App.tsx (a fresh instance every time it's opened, never reused across
@@ -267,7 +267,7 @@ function ResponseBlock({
   }
 
   if (!message.suggestions || message.suggestions.length === 0) {
-    // §6.3.1 explicitly allows "no changes are warranted" as a valid reply.
+    // "No changes are warranted" is explicitly allowed as a valid reply.
     // Neither branch here has a suggestion of its own to accept/reject, so
     // — unlike a change card or a note that disappears alongside its now-
     // resolved cards — nothing else would ever make this go away.

@@ -39,7 +39,7 @@ describe("mergeMemoryPools", () => {
     expect(merged.memories).toEqual([turn, globalFact]);
   });
 
-  it("hides a stray ordinary memory left in local storage from before this addendum", () => {
+  it("hides a stray ordinary memory left in local storage from before this change", () => {
     const strayLocalOrdinary = makeMemory({ label: "Old local fact", body: "should be invisible now" });
     const turn = makeMemory({ kind: "conversation_turn", body: "turn 1" });
     const merged = mergeMemoryPools(makeSheet([strayLocalOrdinary, turn]), makeSheet([]));
@@ -47,7 +47,7 @@ describe("mergeMemoryPools", () => {
     expect(merged.memories).toEqual([turn]);
   });
 
-  it("includes local kind: summary memories too, not just conversation turns (Addendum AL)", () => {
+  it("includes local kind: summary memories too, not just conversation turns", () => {
     const digest = makeMemory({ kind: "summary", body: "Condensed digest" });
     const turn = makeMemory({ kind: "conversation_turn", body: "turn 1" });
     const merged = mergeMemoryPools(makeSheet([digest, turn]), makeSheet([]));
@@ -70,7 +70,7 @@ describe("mergeMemoryPools", () => {
   });
 });
 
-describe("exportSheetWithGlobalPool / importSheetWithGlobalPool (Addendum U)", () => {
+describe("exportSheetWithGlobalPool / importSheetWithGlobalPool", () => {
   let db: ContextSheetDB;
   const sheetId = "sheet-1";
 

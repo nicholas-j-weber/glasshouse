@@ -1,6 +1,6 @@
 import type { SuggestionToast } from "./suggestionSession";
 
-// Addendum Z: the correction window for chat mode's auto-applied
+// the correction window for chat mode's auto-applied
 // suggestions — a fixed-position, non-blocking stack (doesn't interrupt
 // typing/reading the chat the way a modal or inline review card would),
 // stays up for a few seconds, offers Undo while it's showing for anything

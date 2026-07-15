@@ -8,8 +8,8 @@ function generateId(): string {
   return crypto.randomUUID();
 }
 
-// Addendum O: Sheets persisted with the old dedicated conversationSummary
-// field (Addendum I through the version just before this one) have real,
+// Sheets persisted with the old dedicated conversationSummary
+// field (used by earlier versions of this app) have real,
 // accumulated conversation history in a field the current Sheet type no
 // longer declares. Without migration, that content would just silently
 // disappear the moment it's read back under the new shape.
@@ -50,7 +50,7 @@ function migrateLegacyConversationSummary(legacy: Memory): Memory[] {
 }
 
 // Backward-compatibility shim, read-time-only: never rewrites the stored
-// Version (§4.3's snapshots stay immutable, full history preserved) — only
+// Version (snapshots stay immutable, full history preserved) — only
 // the in-memory Sheet handed to callers is normalized. The stray
 // conversationSummary property (if present) is always stripped, even when
 // empty, so it can never get carried forward into a newly-created real
@@ -80,11 +80,11 @@ function notifyIfDefaultDb(db: ContextSheetDB): void {
   if (db === defaultDb) notifyHeadChanged();
 }
 
-// §8.1: ensures a head version exists for the given sheet, creating the
-// default skeleton (default Tone, no memories — Addendum J/O) if this sheet
+// Ensures a head version exists for the given sheet, creating the
+// default skeleton (default Tone, no memories) if this sheet
 // has no versions yet. Idempotent — safe to call on every mount.
 //
-// Addendum S, 8.4: scoped by sheetId — every sheet has its own independent
+// scoped by sheetId — every sheet has its own independent
 // version chain and head pointer (the `head` table's row id is the sheetId
 // itself now, not a fixed singleton string).
 export async function ensureInitialized(sheetId: string, db: ContextSheetDB = defaultDb): Promise<Version> {
@@ -112,10 +112,10 @@ export async function getHeadVersion(sheetId: string, db: ContextSheetDB = defau
   return readVersion(db, headRecord.versionId);
 }
 
-// §4.1/§4.3: creates a new version as a child of the current head and
+// Creates a new version as a child of the current head and
 // advances head to it. Callers must only invoke this for accepted content
-// changes (§4.1) — active/inactive toggles and pin-only reorders (§4.2,
-// Addendum A 4.2.1) are not version-worthy and must not call this.
+// changes — active/inactive toggles and pin-only reorders are not
+// version-worthy and must not call this.
 export async function createVersion(
   sheet: Sheet,
   attribution: VersionAttribution,
@@ -138,9 +138,9 @@ export async function createVersion(
   return version;
 }
 
-// §4.4: moves the head pointer back to version N. Non-destructive —
+// Moves the head pointer back to version N. Non-destructive —
 // versions created after N remain in storage but fall off the active
-// line (Addendum A 4.2.1's pending pin state is session-only and isn't
+// line (the pending pin state is session-only and isn't
 // touched here; it's the caller's responsibility to discard it).
 export async function revertToVersion(
   versionId: string,
@@ -155,7 +155,7 @@ export async function revertToVersion(
   notifyIfDefaultDb(db);
 }
 
-// §4.4: "the current head and its ancestors" — walks parentId back from
+// "the current head and its ancestors" — walks parentId back from
 // head. Returned oldest-first (skeleton first, head last).
 export async function getActiveLineage(sheetId: string, db: ContextSheetDB = defaultDb): Promise<Version[]> {
   const head = await getHeadVersion(sheetId, db);
@@ -172,8 +172,8 @@ export async function getActiveLineage(sheetId: string, db: ContextSheetDB = def
   return lineage.reverse();
 }
 
-// §8.3.1: export is head + its ancestors — "sufficient to reconstruct
-// rollback history" — not every version ever created. §4.4 may leave
+// Export is head + its ancestors — "sufficient to reconstruct
+// rollback history" — not every version ever created. Reverting may leave
 // reverted-past branches in storage that are no longer reachable from
 // head; those are intentionally excluded.
 export async function exportSheet(sheetId: string, db: ContextSheetDB = defaultDb): Promise<SheetExport> {
@@ -189,16 +189,16 @@ export async function exportSheet(sheetId: string, db: ContextSheetDB = defaultD
   };
 }
 
-// §8.3.1: "Import replaces the local store's version chain with the
+// "Import replaces the local store's version chain with the
 // imported one and sets head to headVersionId."
 //
-// Addendum S: scoped to the target sheetId only — clears just this sheet's
+// scoped to the target sheetId only — clears just this sheet's
 // versions (not the whole shared table, now that other sheets live in it)
 // and stamps sheetId onto every imported version, so an older export file
-// (predating Addendum S, with no sheetId at all) still imports cleanly into
+// (from before multi-sheet support, with no sheetId at all) still imports cleanly into
 // whichever sheet it's imported into.
 //
-// Addendum AV: confirmed real bug — db.ts's versions store is keyed "id,
+// confirmed real bug — db.ts's versions store is keyed "id,
 // sheetId, parentId", i.e. id is a *table-wide* primary key across every
 // sheet, not scoped per sheetId. Re-stamping sheetId while keeping each
 // version's original id (as this used to do) only avoids colliding with

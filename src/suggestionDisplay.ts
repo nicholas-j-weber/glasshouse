@@ -20,10 +20,10 @@ export function describeSuggestion(suggestion: SheetSuggestion): string {
   }
 }
 
-// Addendum E, 3.2: "the original suggestion... serialized the same way a
+// "the original suggestion... serialized the same way a
 // Memory block would be." new_memory/edit_memory/tone_update map naturally
-// onto that (§5.3's `## Memory: <label>` / `## Tone` shape); the two
-// Addendum E suggestion types (deactivate_memory, reorder_pins) predate 3.2's
+// onto that (`## Memory: <label>` / `## Tone` shape); the two
+// overlay-only suggestion types (deactivate_memory, reorder_pins) predate this
 // wording and have no memory-block analog, so they get a plain descriptive
 // line instead.
 export function formatSuggestionAsSourceBlock(suggestion: SheetSuggestion): string {

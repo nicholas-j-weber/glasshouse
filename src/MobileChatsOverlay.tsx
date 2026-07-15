@@ -3,7 +3,7 @@ import { ChatsSidebarContent } from "./ChatsSidebarContent";
 import type { SheetMeta } from "./types";
 import { useModalFocus } from "./useModalFocus";
 
-// Addendum BN: the narrow-viewport (< 1024px, App.css) presentation of
+// the narrow-viewport (< 1024px, App.css) presentation of
 // Chats — a full-screen overlay reusing .modal-overlay's existing
 // backdrop, rather than trying to make the desktop .chats-sidebar column
 // itself stretch via a media query. No onClick on .modal-overlay here:

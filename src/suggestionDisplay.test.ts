@@ -23,7 +23,7 @@ describe("describeSuggestion", () => {
 });
 
 describe("formatSuggestionAsSourceBlock", () => {
-  it("renders new_memory and edit_memory as a Memory block (Addendum E 3.2)", () => {
+  it("renders new_memory and edit_memory as a Memory block", () => {
     expect(formatSuggestionAsSourceBlock({ type: "new_memory", label: "Deadline", body: "July 10" })).toBe(
       "## Memory: Deadline\nJuly 10",
     );

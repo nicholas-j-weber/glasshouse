@@ -1,12 +1,12 @@
 import { assert, setApiKey, test, withFreshPage } from "./support.mjs";
 
-// Addendum AW coverage: a confirmed real bug — five checkboxes' worth of
+// a confirmed real bug — five checkboxes' worth of
 // settings (plus their hint text, on top of the original API key/model
 // fields) can now exceed a short viewport's height, and .modal had no
 // max-height/overflow-y to scroll the rest into view. Reproduced live at
 // 900x500 before fixing: the modal centered itself off both the top and
 // bottom edges with nothing reachable to bring the cut-off parts back.
-// Width bumped from the original 900 to 1100 (Addendum BN): 900 is below
+// Width bumped from the original 900 to 1100: 900 is below
 // the new 1024px mobile-layout breakpoint, which now hides .chats-sidebar
 // (and .sheet-switcher inside it) entirely — this test is about a *short*
 // viewport, not a narrow one, so it needs to stay clear of that width

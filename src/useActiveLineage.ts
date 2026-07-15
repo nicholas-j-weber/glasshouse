@@ -3,10 +3,10 @@ import { subscribeHeadChanged } from "./headSubscription";
 import { getActiveLineage } from "./store";
 import type { Version } from "./types";
 
-// §4.4: "the current head and its ancestors" — reactive wrapper around
+// "the current head and its ancestors" — reactive wrapper around
 // store.getActiveLineage(), refreshing on the same notifications
 // useHeadVersion listens for. Oldest first (skeleton first, head last),
-// matching getActiveLineage's own ordering. Addendum S: scoped by sheetId,
+// matching getActiveLineage's own ordering. Scoped by sheetId,
 // re-fetching (and clearing to []) whenever it changes.
 export function useActiveLineage(sheetId: string): Version[] {
   const [lineage, setLineage] = useState<Version[]>([]);

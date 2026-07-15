@@ -32,7 +32,7 @@ describe("getTotalUsage", () => {
   });
 
   it("counts a disambiguated-follow-up-style call the same as any other recorded call", async () => {
-    // Addendum V: the point of decoupling usage from messages — a call that
+    // the point of decoupling usage from messages — a call that
     // never produces its own visible chat message still has a real cost.
     await recordUsage("sheet-1", { inputTokens: 40, outputTokens: 15 }, db);
     const total = await getTotalUsage("sheet-1", db);

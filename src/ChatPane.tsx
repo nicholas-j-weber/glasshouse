@@ -5,12 +5,12 @@ import { useSuggestionSession } from "./suggestionSession";
 import { useHeadVersion } from "./useHeadVersion";
 import { useSheetOverlay } from "./useSheetOverlay";
 
-// §3: the chat pane. Every send is a fully stateless call — system prompt
-// (serialized sheet, per Addendum F) + this one user message → response.
-// Addendum S: scoped to whichever sheet is currently active.
+// The chat pane. Every send is a fully stateless call — system prompt
+// (serialized sheet) + this one user message → response.
+// Scoped to whichever sheet is currently active.
 export function ChatPane({ sheetId }: { sheetId: string }) {
   const session = useSuggestionSession("chat", sheetId);
-  // Addendum AA: only needed to render a still-pending suggestion's
+  // only needed to render a still-pending suggestion's
   // before/after diff (ChangeCard, shown when auto-apply is off) — same
   // merged-pool-plus-overlay computation ManageWithAIPanel already does for
   // the same reason.
