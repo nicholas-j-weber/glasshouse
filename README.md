@@ -1,17 +1,24 @@
 # ACM2: Browser Demo
 
 A browser demo of Auditable Context & Memory Methodology (ACM2), a
-legible, stateless-per-call methodology for managing AI context. See
-[SPEC.md](./SPEC.md) for the full spec.
+legible, stateless-per-call methodology for managing AI context. The
+spec itself is being rewritten; [old-spec.md](./old-spec.md) is the
+previous version, whose lettered addenda are still the fullest record of
+the design rationale behind most of what's here.
 
 ## Status
 
 **Beta — functional proof-of-concept.** Chat, memory management, versioned
 history with revert, export/import, and AI-assisted restructuring
-("Manage with AI") all work end-to-end. Built with an automated test suite
-(unit + browser end-to-end) run before every change — see
-[SPEC.md](./SPEC.md) for the full spec, whose lettered addenda double as a
-running log of every non-trivial design decision along the way.
+("Manage with AI") all work end-to-end. Context updates apply
+automatically as you chat by default, with a manual accept/reject/revise
+mode available per suggestion or globally in Settings. Once a chat's
+context grows large, a banner offers AI-assisted compression — folding
+older turns into a summary, pruning stale memories — before you hit any
+hard limit. The layout is responsive, working on both desktop and mobile
+(down to ~375px wide, via a full-screen overlay for Chats/Context
+navigation below ~1024px), and has had a pass for keyboard navigation,
+modal focus management, and color contrast.
 
 Known limitations, by design or by current scope:
 
@@ -24,14 +31,9 @@ Known limitations, by design or by current scope:
   browser — there's no backend proxy. Use a key you're comfortable having
   live client-side.
 - **Anthropic only.** The protocol itself is designed to be
-  provider-agnostic (SPEC.md §7.1), but only the Anthropic adapter is
-  actually implemented.
-- **Desktop layout only.** Built and tested as a fixed-width desktop
-  layout; not yet usable on small screens.
-- **No dedicated accessibility audit.** Semantic HTML throughout, but no
-  systematic screen-reader/keyboard-navigation pass.
-- **No auto-apply.** Every AI-proposed change requires an explicit
-  accept — this one's deliberate (SPEC.md §6.5), not a gap.
+  provider-agnostic, but only the Anthropic adapter is actually
+  implemented. Model choice (Claude Sonnet, Opus, Haiku, or Fable, or a
+  custom model id) is configurable in Settings or the welcome screen.
 
 Found something broken that isn't listed here? Feedback's welcome — open
 an issue.
@@ -41,4 +43,11 @@ an issue.
 ```
 npm install
 npm run dev
+```
+
+Tests run before every change:
+
+```
+npm test           # unit tests
+npm run test:e2e   # browser end-to-end tests
 ```
