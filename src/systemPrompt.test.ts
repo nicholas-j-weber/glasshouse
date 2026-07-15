@@ -1,0 +1,101 @@
+import { describe, expect, it } from "vitest";
+import { buildSystemPrompt } from "./systemPrompt";
+import { serializeSheet } from "./serializer";
+import type { Memory, Sheet } from "./types";
+
+function makeMemory(overrides: Partial<Memory> = {}): Memory {
+  return {
+    id: overrides.id ?? "id",
+    label: overrides.label ?? "Label",
+    body: overrides.body ?? "Body",
+    pinRank: overrides.pinRank ?? null,
+    active: overrides.active ?? true,
+    lastModified: overrides.lastModified ?? "2026-01-01T00:00:00.000Z",
+    provenance: overrides.provenance ?? { source: "manual" },
+  };
+}
+
+function makeSheet(overrides: Partial<Sheet> = {}): Sheet {
+  return {
+    tone: overrides.tone ?? makeMemory({ id: "tone", label: "Tone", body: "Clear and direct." }),
+    memories: overrides.memories ?? [],
+    freeformNotes: overrides.freeformNotes ?? "",
+  };
+}
+
+describe("buildSystemPrompt", () => {
+  const sheet = makeSheet();
+
+  it("uses the chat preamble in chat mode and not the sheet-editor preamble", () => {
+    const result = buildSystemPrompt(sheet, "chat");
+    expect(result).toContain("Respond to the user's message directly and conversationally");
+    expect(result).not.toContain("dedicated sheet-editing session");
+  });
+
+  it("uses the sheet-editor preamble in sheet_editor mode and not the chat preamble", () => {
+    const result = buildSystemPrompt(sheet, "sheet_editor");
+    expect(result).toContain("dedicated sheet-editing session");
+    expect(result).not.toContain("Respond to the user's message directly and conversationally");
+  });
+
+  it("includes the exact serializeSheet output for the given sheet, unmodified", () => {
+    const result = buildSystemPrompt(sheet, "chat");
+    expect(result).toContain(serializeSheet(sheet));
+  });
+
+  it("includes the suggestion instructions and delimiter in both modes", () => {
+    for (const mode of ["chat", "sheet_editor"] as const) {
+      const result = buildSystemPrompt(sheet, mode);
+      expect(result).toContain("SHEET_SUGGESTIONS");
+      expect(result).toContain("deactivate_memory");
+      expect(result).toContain("reorder_pins");
+      expect(result).toContain("conversation_summary_update");
+    }
+  });
+
+  it("orders parts as preamble, then sheet, then suggestion instructions", () => {
+    const result = buildSystemPrompt(sheet, "chat");
+    const preambleIndex = result.indexOf("Respond to the user's message");
+    const sheetIndex = result.indexOf("## Tone");
+    const instructionsIndex = result.indexOf("## Suggesting Sheet Changes");
+
+    expect(preambleIndex).toBeLessThan(sheetIndex);
+    expect(sheetIndex).toBeLessThan(instructionsIndex);
+  });
+
+  it("makes conversation_summary_update mandatory only in chat mode (Addendum K 6.2.11)", () => {
+    const chatResult = buildSystemPrompt(sheet, "chat");
+    const editorResult = buildSystemPrompt(sheet, "sheet_editor");
+
+    expect(chatResult).toContain("without exception");
+    expect(chatResult).toContain("never optional");
+    expect(chatResult).toContain("User asked/said");
+    // Sheet-editor's own preamble text shouldn't mention it; the suggestion
+    // *type* is still listed in the shared instructions (checked above).
+    expect(editorResult).not.toContain("without exception");
+  });
+
+  it("instructs the model to send only the new entry, not the whole list (Addendum L 6.2.13)", () => {
+    const result = buildSystemPrompt(sheet, "chat");
+    expect(result).toContain("do not repeat or rewrite earlier entries");
+    expect(result).toContain("appended automatically");
+  });
+
+  it("states the Conversation Summary's temporal ordering explicitly (Addendum M 6.2.14)", () => {
+    const chatResult = buildSystemPrompt(sheet, "chat");
+    const editorResult = buildSystemPrompt(sheet, "sheet_editor");
+
+    expect(chatResult).toContain("the message you are responding to now is always the newest one");
+    expect(editorResult).not.toContain("the message you are responding to now is always the newest one");
+  });
+
+  it("instructs the model to keep ordinary memories atomic, not a catch-all (Addendum I 6.2.10)", () => {
+    const result = buildSystemPrompt(sheet, "chat");
+    expect(result).toContain("not a catch-all");
+  });
+
+  it("instructs the model to use shown memory ids rather than inventing one (Addendum H 5.3.2)", () => {
+    const result = buildSystemPrompt(sheet, "chat");
+    expect(result).toContain("do not guess or invent one");
+  });
+});

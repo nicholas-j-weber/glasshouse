@@ -1,0 +1,2130 @@
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100svh;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+/* Addendum BN: groups the mobile-only Chats trigger with the titles so
+   .app-header keeps exactly 2 top-level children (this + .header-icon-
+   buttons) under its existing justify-content: space-between — a 3rd
+   top-level child would spread evenly across the header instead of
+   sitting immediately left of the title. */
+.app-header-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.app-header-titles {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* index.css's global line-height (145%) is tuned for paragraph text —
+   applied to a short one-line heading it adds ~9px of pure whitespace
+   above/below the glyphs for no legibility benefit. Tightening it here is
+   most of where the header's remaining height was actually going,
+   separate from font-size. */
+.app-header-titles h1 {
+  line-height: 1.2;
+}
+
+/* Smaller than the previous 12px, but legible despite that — same recipe
+   as .sheet-section h2/.inline-field-label: uppercase + slight
+   letter-spacing (both proven to help small text read cleanly), and
+   dimmed via opacity from the *bright* --text-h rather than the already-
+   muted --text — the previous version compounded two dimming steps
+   (muted color, then opacity on top of it), which is why it was already
+   close to illegible before shrinking it further. */
+.app-header-subtitle {
+  margin: 0;
+  font-size: 10px;
+  line-height: 1.2;
+  color: var(--text-h);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.7;
+}
+
+.header-icon-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+/* Addendum BN: the "Chats"/"Context" header triggers that open the
+   narrow-viewport overlays below. Hidden by default (desktop keeps its
+   always-visible sidebars) — display: inline-flex is turned back on only
+   inside the @media block at the bottom of this file, the single place
+   every narrow-viewport rule lives. Reuses .manage-ai-trigger's visual
+   language (border + text, accent-highlighted while its panel is open)
+   rather than inventing a new button style. */
+.mobile-nav-trigger {
+  display: none;
+  font: inherit;
+  font-size: 13px;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text-h);
+  cursor: pointer;
+}
+
+.mobile-nav-trigger[aria-pressed="true"] {
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.icon-button {
+  width: 32px;
+  height: 32px;
+  flex: none;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.icon-button:hover {
+  background: var(--border);
+}
+
+/* Same accent-border language as .manage-ai-trigger--active/.sheet-panel-
+   tab--active/.change-card--revising — "this is the thing currently on"
+   reads the same way everywhere in the app. Used by MemoryRow's Pin
+   button: the glyph itself (📌) doesn't change between Pin/Unpin, so this
+   is what actually signals current state.
+   Compound selector (.icon-button.icon-button--active, two classes on one
+   element), not a bare .icon-button--active — a container-scoped rule
+   like .memory-row-actions button (class+element, outranking a single
+   class) would otherwise win and silently swallow this, the same
+   specificity trap .suggestion-actions button already caught elsewhere. */
+.icon-button.icon-button--active {
+  border-color: var(--accent);
+}
+
+.icon-emoji {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--overlay-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+/* Addendum BN: fills .modal-overlay completely (unlike the centered,
+   fixed-width .modal used by Settings/Welcome) — the mobile Chats/Context
+   overlays are full-screen panels, not dialogs, so there's no visible
+   backdrop gap left to click for dismissal (Back/re-tap the trigger/
+   Escape only). */
+.mobile-panel {
+  width: 100%;
+  height: 100%;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* Addendum AW: this many settings' worth of content (5 checkboxes plus
+   hints, on top of the original API key/model fields) can now exceed a
+   short viewport's height — confirmed live at 900x500, the modal centered
+   itself right off both the top and bottom edges with nothing to scroll it
+   back into view. max-height caps it the same way max-width already does;
+   display: flex column + .modal-body's own overflow-y below lets the
+   header/close button stay pinned in place while only the body scrolls. */
+.modal {
+  width: 360px;
+  max-width: calc(100vw - 32px);
+  max-height: calc(100vh - 32px);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Accessibility audit fix: .modal/.mobile-panel are focused
+   programmatically on open (useModalFocus.ts), not by a user tabbing to
+   them — they're not themselves an interactive control, just the
+   container real focus (on the buttons/inputs inside) lands in next, so
+   the default focus ring here would read as chrome around the whole
+   dialog rather than a meaningful affordance. */
+.modal:focus,
+.mobile-panel:focus {
+  outline: none;
+}
+
+/* Addendum BH: wider than the base 360px (Settings keeps that width —
+   short labels/inputs don't benefit from it) so the welcome text's
+   paragraphs wrap into fewer lines, cutting the modal's total height
+   enough to avoid .modal-body's scroll at ordinary viewport heights —
+   confirmed live it was actually scrolling below ~650px tall once the
+   API key field (Addendum BG) pushed content past that.
+   Addendum BL bumped this to 520px for a fourth paragraph (the
+   compression banner, now on by default); Addendum BM merged that
+   sentence into the second paragraph instead of keeping it separate
+   (see WelcomeModal.tsx) and re-measured from scratch rather than
+   assuming the same width was still the right number — 500px, slightly
+   narrower than BL's 520px, restores the same ~600px no-scroll
+   threshold for the merged 3-paragraph version. Not widened further
+   than whatever the content actually needs — width has diminishing
+   returns against height for a control this narrow, and the existing
+   max-height/overflow-y fallback (Addendum AW) is the correct backstop
+   for whatever a fixed width doesn't cover. */
+.modal--welcome {
+  width: 500px;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  flex-shrink: 0;
+}
+
+.modal-header h2 {
+  font-size: 15px;
+  margin: 0;
+}
+
+/* Visual consistency audit: unified with .toast-dismiss/.manage-ai-dismiss
+   — three "×" buttons doing the identical job (dismiss/close) had drifted
+   into three different sizes/weights with no reason for this one to be
+   the odd one out. Same recipe now, including the hover brighten those two
+   already had and this one was missing. */
+.modal-close {
+  font-size: 16px;
+  line-height: 1;
+  padding: 0 2px;
+  border: none;
+  background: none;
+  color: var(--text-h);
+  opacity: 0.6;
+  cursor: pointer;
+}
+
+.modal-close:hover {
+  opacity: 1;
+}
+
+.modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow-y: auto;
+  /* .modal is now a flex column — without this, a flex item defaults to
+     its content's full height regardless of the parent's max-height,
+     defeating overflow-y here the same way min-width: 0 is needed
+     elsewhere for overflow-wrap (Addendum AK/AR/AU's already-learned
+     lesson, the same shape on the other axis). */
+  min-height: 0;
+}
+
+.modal-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+}
+
+/* Addendum BI: API key and Model side by side, in both SettingsModal and
+   WelcomeModal — min-width: 0 on the fields themselves is load-bearing
+   here (Addendum AK/AR/AU/AW's already-learned lesson): without it, a
+   flex item sizes to its input's natural content width, which for a
+   password-masked key can push Model out past the container regardless
+   of flex-basis. */
+.modal-field-row {
+  display: flex;
+  gap: 8px;
+}
+
+.modal-field-row .modal-field {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Addendum BJ: select added alongside input — ModelField's dropdown gets
+   the exact same treatment as every text field in this modal, so the two
+   read as one consistent set of controls rather than the browser's
+   unstyled default select standing out next to them.
+   Addendum BK: identical padding/border alone still left select ~5px
+   shorter than input, confirmed live — a <select>'s content box doesn't
+   respect line-height the way a text input's does (browsers size a
+   select's content by its own UA font metrics regardless), so the two
+   settled at different heights even with matching box-model properties.
+   An explicit height sidesteps that mismatch deterministically rather
+   than trying to reverse-engineer matching line-heights across two
+   different rendering models. */
+.modal-field input,
+.modal-field select {
+  font: inherit;
+  height: 38px;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text-h);
+}
+
+/* Addendum BD: paragraphs inside their own wrapper (not .modal-body's
+   direct flex children) so .modal-body's gap: 12px — shared with
+   SettingsModal, where that spacing is still wanted between field rows —
+   doesn't apply here. margin: 0 on the paragraphs themselves clears their
+   own default UA spacing; the + p rule below adds back a smaller, single
+   8px gap between paragraphs only (not above the first or below the
+   last), replacing Addendum BC's zero-gap version, which read as too
+   dense once actually seen. */
+.welcome-text p {
+  margin: 0;
+}
+
+.welcome-text p + p {
+  margin-top: 8px;
+}
+
+/* Addendum BC: two dismiss actions side by side — "Got it" (closes for
+   this load only) stays the accent-filled primary, "Don't show again"
+   (permanent) is visually secondary, same bordered-not-filled treatment
+   .modal-field input already uses, so it doesn't compete with the
+   primary action for attention. Sits below .modal-body as .modal's third
+   flex child, staying pinned the same way .modal-header already does. */
+.welcome-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.welcome-dismiss {
+  flex: 1;
+  font: inherit;
+  font-size: 13px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: none;
+  background: var(--accent-strong);
+  color: var(--on-accent);
+  cursor: pointer;
+}
+
+.welcome-dismiss--secondary {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-h);
+}
+
+/* Addendum AA: the auto-apply toggle — a row, not a column, and the
+   checkbox itself shouldn't take on .modal-field input's text-field
+   styling (border/padding meant for the API key/model fields above it). */
+.modal-field--checkbox {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+
+.modal-field--checkbox input {
+  width: auto;
+  /* Addendum BK: .modal-field input's new height: 38px (for matching the
+     API key/Model row) would otherwise leak onto every checkbox here too,
+     since this selector only overrides width/padding/border/background,
+     not height — confirmed live before shipping, not assumed safe. */
+  height: auto;
+  padding: 0;
+  border: none;
+  background: none;
+}
+
+.modal-field-hint {
+  margin: -6px 0 0;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+/* Chats sidebar (left) — the sheet switcher, presented as a vertical list
+   like a familiar chatbot's conversation history. */
+/* Same fixed-header/internally-scrolling-content pattern as
+   .controls-sidebar/.sheet-panel — matters more now that this column can
+   also show ManageWithAIPanel, whose change-card list can grow long
+   enough to scroll; without this, scrolling would carry the "Manage with
+   AI"/Back header out of view along with it. */
+.chats-sidebar {
+  width: 250px;
+  flex: none;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--border);
+}
+
+.chats-sidebar--collapsed {
+  display: none;
+}
+
+/* Shared by both sidebars — same title treatment as .chat-header-title in
+   the center column, so all three panels read as one consistent set of
+   headers across the layout. Padding lives on the title, not the sidebar
+   itself, so its border spans the full width regardless of how the
+   sidebar's own content (which owns its own padding) is laid out. */
+.sidebar-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0;
+  height: 54px;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+/* Addendum BN: groups Context's "Manage with AI" trigger with the
+   mobile-only Back button so .sidebar-title still reads as exactly 2
+   children — (title) / (actions) — under its space-between above,
+   whether or not Back is present. */
+.sidebar-title-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* contain: layout — see .sheet-panel's comment for why this pairs with
+   overflow-y: auto here (prevents this region's full, unclipped content
+   height from leaking into the document's own scrollable area once
+   enough chats accumulate). */
+.sheet-switcher {
+  flex: 1;
+  min-height: 0;
+  contain: layout;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px;
+}
+
+.sheet-switcher-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.sheet-switcher-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  padding: 4px 6px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.sheet-switcher-item--active {
+  border-color: var(--text-h);
+}
+
+/* font: inherit previously meant this rode on the body's 16px paragraph
+   line-height, unusually large for a compact list item — everything else
+   in the app's chrome (.chat-header-title, .sidebar-title, memory rows)
+   uses 14px. That, more than the sidebar's own width, was why names
+   truncated so early; fixed both. */
+.sheet-switcher-name {
+  font-size: 14px;
+  font-weight: 600;
+  border: none;
+  background: none;
+  color: var(--text-h);
+  cursor: pointer;
+  padding: 2px 4px;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sheet-switcher-item--active .sheet-switcher-name {
+  text-decoration: underline;
+}
+
+.sheet-switcher-actions {
+  display: flex;
+  gap: 2px;
+  flex: none;
+}
+
+/* Rename/Delete as small icon buttons — same emoji-icon-button technique
+   as the header's gear icon and TurnRow's Edit/Delete (.icon-button/
+   .icon-emoji), scaled down to fit this dense per-chat row, same sizing
+   .memory-row-actions already uses for the same reason. */
+.sheet-switcher-actions .icon-button {
+  width: 28px;
+  height: 28px;
+}
+
+.sheet-switcher-actions .icon-emoji {
+  font-size: 16px;
+}
+
+/* Now the button itself, not a wrapper around an input+button pair — no
+   name field anymore, creating a chat is a single click (it starts named
+   "New chat" and the header's own rename field auto-focuses right after,
+   see ChatHeaderTitle). Explicit width since it lost the flex-column
+   parent that used to stretch it to fill the sidebar. Same accent-button
+   treatment as .new-memory-form button/.chat-input-row's Send — this had
+   never had its own styling (rode on the browser's native default button
+   look, same as its pre-refactor input+submit form did), which stood out
+   against every other button in the app being custom-styled. */
+.sheet-switcher-new {
+  width: 100%;
+  font: inherit;
+  font-size: 13px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: none;
+  background: var(--accent-strong);
+  color: var(--on-accent);
+  cursor: pointer;
+}
+
+.app-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+/* IDE-style edge handle (e.g. VS Code's sidebar collapse arrow) — a
+   sibling of the collapsible aside, not nested inside it, so it stays
+   reachable even when its sidebar is hidden. Thin by default, widens
+   slightly on hover so it's easy to find without being visually loud. */
+.sidebar-handle {
+  flex: none;
+  width: 14px;
+  min-height: 0;
+  padding: 0;
+  border: none;
+  border-left: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text-h);
+  opacity: 0.5;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.sidebar-handle:hover {
+  opacity: 1;
+  width: 18px;
+  background: var(--border);
+}
+
+.chat-column {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+}
+
+.chat-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  height: 54px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+/* ChatHeaderTitle's display state: the name plus its own rename icon —
+   a second, deliberately-kept rename entry point alongside the Chats
+   sidebar's pencil (this one can only rename the currently open chat, but
+   is what auto-focuses right after a brand-new chat is created). */
+.chat-header-title-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+
+.chat-header-title-row .icon-button {
+  width: 28px;
+  height: 28px;
+  flex: none;
+}
+
+.chat-header-title-row .icon-emoji {
+  font-size: 16px;
+}
+
+.chat-header-title {
+  /* No flex:1 — that stretched this box to fill the whole row (whether or
+     not the name was long enough to need it), pushing the pencil icon to
+     the row's far right edge instead of sitting right next to short
+     names. min-width:0 (not a default for flex-shrink) plus the row's own
+     flex:1 above is still enough for genuinely long names to shrink and
+     ellipsize rather than overflow the header. */
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ChatHeaderTitle's editing state — same input treatment as the Chats
+   sidebar's own inline rename field, just sized to match the header's
+   14px/600 title instead of the sidebar's smaller default text. */
+.chat-header-title-form {
+  flex: 1;
+  min-width: 0;
+}
+
+.chat-header-title-form input {
+  width: 100%;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text-h);
+}
+
+/* Wraps ExportImportControls at the bottom of the "This Chat" tab (moved
+   back from the chat header — see App.tsx) — the border-top gives it a
+   visually distinct "footer" treatment, separating it from the editable
+   fields above rather than reading as one more of them. Extra top padding
+   (well past the parent's own 20px gap) so that separation actually reads,
+   rather than the divider sitting flush against the buttons below it. */
+.sheet-panel-footer {
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.export-import {
+  flex: none;
+}
+
+/* Right-justified to match this tab's other action buttons (Save,
+   Add entry) — left-aligned was the odd one out. */
+.export-import-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.export-import-buttons button {
+  font: inherit;
+  font-size: 13px;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text-h);
+  cursor: pointer;
+}
+
+.export-import-error {
+  font-size: 12px;
+  color: var(--error);
+  margin: 4px 0 0;
+}
+
+/* Same look as .export-import-buttons button (now back in the chat header,
+   not alongside this one) — kept the same style anyway for consistency
+   with the app's other secondary action buttons. */
+.manage-ai-trigger {
+  font: inherit;
+  font-size: 13px;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text-h);
+  cursor: pointer;
+}
+
+/* Shown while the panel it opens (ManageWithAIPanel) is actually visible in
+   the Chats column — same accent-highlight language as .sheet-panel-tab's
+   active state, so "this button's view is currently on screen" reads the
+   same way everywhere in the app. */
+.manage-ai-trigger--active {
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.chat-pane {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+}
+
+/* Addendum Z: sits in normal flow between .chat-messages and
+   .chat-input-row (not position: fixed/absolute) — collapses to nothing
+   when empty (ToastStack returns null), and when present just nudges the
+   input row down slightly rather than overlapping either. Simpler than
+   computing an offset to clear the input row's own height, and avoids any
+   z-index/stacking-context concerns. */
+.toast-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 0 16px;
+}
+
+.toast {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--code-bg);
+  font-size: 13px;
+}
+
+.toast--failed {
+  border-color: var(--error);
+  color: var(--error);
+}
+
+.toast-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.toast-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+}
+
+/* An emoji glyph (↩️), not text — color is a no-op here (emoji render
+   their own colors regardless), kept off rather than left as a stale
+   leftover from when this was an accent-colored text button. */
+.toast-undo {
+  font: inherit;
+  font-size: 12px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  cursor: pointer;
+}
+
+.toast-dismiss {
+  font-size: 16px;
+  line-height: 1;
+  padding: 0 2px;
+  border: none;
+  background: none;
+  color: var(--text-h);
+  opacity: 0.6;
+  cursor: pointer;
+}
+
+.toast-dismiss:hover {
+  opacity: 1;
+}
+
+/* §2: the Context Sheet's controls, in a sidebar on the right. */
+.controls-sidebar {
+  width: 380px;
+  flex: none;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid var(--border);
+}
+
+.controls-sidebar--collapsed {
+  display: none;
+}
+
+/* contain: layout is load-bearing, not boilerplate — found by direct
+   testing (bisecting which element's removal fixed a real bug: as
+   Conversation Summary entries accumulated in "This Chat", an invisible,
+   ever-growing scrollable gap appeared at the bottom of the *whole page*,
+   scrollable via window scroll even though every individual container in
+   the chain — .controls-sidebar, .sheet-panel itself, its tab-content
+   child — reported perfectly normal, bounded clientHeight/scrollHeight
+   when queried directly). The actual mechanism: .sheet-panel-tab-content
+   is a plain (non-overflow) flex-column child of this overflow-y: auto
+   region; once it's tall enough, its full unclipped layout size can still
+   count toward the *document's* own scrollable-overflow computation, even
+   though it's correctly clipped/scrollable right here visually. Setting
+   overflow to hidden/auto/scroll on `html`/`body` did NOT fix this (ruled
+   out first) — contain: layout does, by isolating this region's internal
+   layout from ever affecting anything outside it, with zero effect on its
+   own scrolling (verified: clientHeight/scrollHeight identical before and
+   after). Same fix applied to every sibling scroll region with this same
+   nested-flex-column shape (.chat-messages, .sheet-switcher,
+   .manage-ai-panel-body) as a precaution, even where not reproduced at
+   the content sizes tested. */
+.sheet-panel {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  contain: layout;
+  overflow-y: auto;
+  /* No top padding — the Token Estimator (the panel's first child) supplies
+     its own top margin instead, so it can match its bottom margin exactly
+     (see .token-estimator-wrap) rather than being tied to whatever this
+     panel's padding happens to be. */
+  padding: 0 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.sheet-panel-tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--border);
+  margin: -8px 0 -12px;
+}
+
+.sheet-panel-tab {
+  font: inherit;
+  font-size: 13px;
+  padding: 6px 10px;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: var(--text-h);
+  opacity: 0.6;
+  cursor: pointer;
+}
+
+.sheet-panel-tab--active {
+  opacity: 1;
+  border-bottom-color: var(--accent);
+  font-weight: 600;
+}
+
+.sheet-panel-tab-content {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.sheet-panel-tab-content--hidden {
+  display: none;
+}
+
+.sheet-section h2 {
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.7;
+  margin: 0 0 6px;
+}
+
+/* Only used ahead of the Memories list now — no .sheet-section h2 above
+   it anymore to sit close under, so no negative top margin needed. */
+.sheet-section-caption {
+  font-size: 12px;
+  color: var(--text-dim);
+  margin: 0 0 8px;
+}
+
+.sheet-section textarea,
+.sheet-section input[type="text"] {
+  width: 100%;
+  font: inherit;
+  font-size: 14px;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text-h);
+  resize: vertical;
+}
+
+/* Tone, Freeform Notes, and the Conversation Summary "add entry" field —
+   title and submit button live inside the field's own box instead of
+   above/below it, to cut vertical space across a panel that already
+   stacks a lot of sections. Only padding-top is reserved (for the label,
+   which text would otherwise start directly under) — the button floats
+   over the bottom-right corner with no reserved space, since that only
+   collides with typed text in the rare case of a field filled to its last
+   line, an acceptable trade for the added compactness.
+   Scoped as `.inline-field .inline-field-input` (two classes) rather than
+   a bare `.inline-field-input` (one class) specifically to out-specificity
+   `.sheet-section textarea` below — the Conversation Summary field is
+   still nested inside a .sheet-section (for its turn list/heading), so
+   without this its padding/resize would be silently overridden by the
+   lower-specificity-looking-but-actually-higher rule. */
+.inline-field {
+  position: relative;
+}
+
+.inline-field-label {
+  position: absolute;
+  top: 8px;
+  left: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
+  pointer-events: none;
+}
+
+.inline-field .inline-field-input {
+  width: 100%;
+  font: inherit;
+  font-size: 14px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text-h);
+  resize: none;
+}
+
+.inline-field .inline-field-input--labeled {
+  padding-top: 32px;
+}
+
+/* Flush against the box's own corner (not inset) — border-radius matches
+   only the outer corner (bottom-right), squared on the other three sides,
+   so it reads as an integrated part of the box rather than a separate
+   floating button sitting inside it. */
+.inline-field-button {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  font: inherit;
+  /* Visual consistency audit: matches .welcome-dismiss/.sheet-switcher-new
+     now (13px) — same tier of button (solid --accent-strong fill, white
+     text, 6px-family radius), no reason this one read a size smaller just
+     for living inside a field. */
+  font-size: 13px;
+  padding: 4px 10px;
+  border-radius: 0 0 6px 0;
+  border: none;
+  background: var(--accent-strong);
+  color: var(--on-accent);
+  cursor: pointer;
+}
+
+/* Solid, not translucent — this button overlaps the textarea's own text,
+   unlike most disabled buttons which sit in normal flow next to other
+   content. opacity would let the field's background/border bleed through
+   it; a flat muted color reads as "inactive" without that see-through
+   artifact. */
+.inline-field-button:disabled {
+  background: var(--border);
+  color: var(--text);
+  cursor: default;
+}
+
+.memory-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.memory-row {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.memory-row--inactive {
+  opacity: 0.5;
+}
+
+.memory-row-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 14px;
+}
+
+/* Addendum AR: the collapse caret sits beside the row's text (TurnRow) or
+   its "Summary" label (SummaryRow) on one line; align-items: flex-start
+   keeps the caret pinned to the top when the text below/beside it wraps to
+   multiple lines, rather than centering against the full wrapped block. */
+.memory-row-body-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+/* Same minimal transparent-button treatment as .chat-suggestions-toggle —
+   this is a disclosure control, not a primary action, so it shouldn't
+   compete visually with Edit/Delete/Pin. */
+.memory-row-collapse-toggle {
+  display: flex;
+  align-items: center;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--text-h);
+  opacity: 0.65;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.memory-row-collapse-toggle:hover {
+  opacity: 1;
+}
+
+.memory-row-collapse-caret {
+  display: inline-block;
+  font-size: 10px;
+}
+
+.memory-row-collapse-caret--flipped {
+  transform: rotate(180deg);
+}
+
+/* Addendum AU: this element didn't exist yet when Addendum AK swept the
+   app for overflow-wrap, so it was missed — a long unbroken token (e.g.
+   "contact→feeling→perception→thinking→proliferation", no spaces to break
+   at) overflowed a turn's row instead of wrapping, confirmed live. Applying
+   overflow-wrap: break-word here follows the same rule as everywhere else
+   arbitrary user/model text renders (.chat-message p, .markdown-text,
+   .change-card). min-width: 0 was already here (Addendum AR) for the
+   ellipsis truncation below, and is the same prerequisite this needs too —
+   without it, a flex item sizes to its unwrapped content width regardless
+   of overflow-wrap. */
+.memory-row-body {
+  min-width: 0;
+  overflow-wrap: break-word;
+}
+
+.memory-row-body--collapsed {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.memory-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+}
+
+.memory-row-actions button {
+  font: inherit;
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text-h);
+  cursor: pointer;
+}
+
+/* Only reachable via a Save button (Pin/Edit/Delete are icon-buttons now,
+   never conditionally disabled) — same solid muted treatment as
+   .inline-field-button:disabled, not translucent opacity (established
+   earlier: opacity bleed-through over a bordered row looked bad). */
+.memory-row-actions button:disabled {
+  background: var(--border);
+  color: var(--text);
+  cursor: default;
+}
+
+.memory-toggle {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+/* Addendum AL: the compressed-digest list, rendered above the numbered
+   turn list within the same Conversation Summary section — its own
+   .memory-list instance (same flex-column/gap base already shared by
+   every other list here), separated from the turn list below it by its
+   own bottom margin. */
+.conversation-summary-digests {
+  margin-bottom: 8px;
+}
+
+/* Accent border, not the plain .memory-row default — visually marks a
+   summary as a distinct kind of entry, not just another turn that happens
+   to sit above the numbered ones. Same accent-means-"this one's different"
+   language as .change-card--revising/.icon-button--active elsewhere. */
+.conversation-summary-digest {
+  border-color: var(--accent);
+}
+
+.conversation-summary-digest-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--accent);
+}
+
+/* Edit/Delete as small icon buttons within a turn row's dense action bar —
+   same emoji-icon-button technique as the header's gear icon
+   (.icon-button/.icon-emoji), just scaled down to fit here. */
+.memory-row-actions .icon-button {
+  width: 28px;
+  height: 28px;
+}
+
+.memory-row-actions .icon-emoji {
+  font-size: 16px;
+}
+
+.memory-row--editing input,
+.memory-row--editing textarea {
+  width: 100%;
+  font: inherit;
+  font-size: 14px;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text-h);
+}
+
+/* Just wraps the trigger button now — the label/body fields moved into
+   .memory-row--editing (below), shown only once the user actually clicks
+   through, so there's no input/textarea styling needed here anymore. */
+.new-memory-form {
+  margin-top: 10px;
+}
+
+.new-memory-form button {
+  align-self: flex-start;
+  font: inherit;
+  font-size: 13px;
+  padding: 4px 12px;
+  border-radius: 6px;
+  border: none;
+  background: var(--accent-strong);
+  color: var(--on-accent);
+  cursor: pointer;
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: default;
+  }
+}
+
+/* A visually distinct "drawer" — set apart from the rest of the Context
+   panel with its own gold border, since these two statistics (Addendum V:
+   Context size, the live estimate, and Tokens consumed, the real running
+   total) are informational rather than editable content like the sections
+   below. Uses real <fieldset>/<legend> rather than a faked "label
+   overlapping a background-colored patch" — the browser natively cuts a
+   gap in the border around the legend's content, so the title sits right
+   on the border line with no manual positioning/masking needed.
+   .token-estimator-wrap (not the fieldset itself) is still the flex:none
+   item that holds the fieldset and its flush-against-it handle together as
+   one unit (mirroring how .chats-sidebar and its handle are separate flex
+   siblings with no gap between them), but it owns no margin of its own now
+   — spacing before the tabs below comes entirely from .sheet-panel's own
+   gap plus .sheet-panel-tabs' negative margin. The *top* margin (spacing
+   above the box) lives on the fieldset itself — the Estimator's own box,
+   not the wrap. That has a real consequence when collapsed: the fieldset
+   (and its margin) disappears entirely via display:none, so the handle
+   ends up hugging the panel's true top edge with zero gap, rather than
+   sitting at a fixed offset regardless of state. */
+.token-estimator-wrap {
+  display: flex;
+  flex-direction: column;
+  flex: none;
+}
+
+.token-estimator {
+  border: 2.5px solid var(--gold);
+  border-radius: 8px;
+  margin: 12px 0;
+  padding: 0 10px 8px;
+  min-width: 0;
+}
+
+.token-estimator--collapsed {
+  display: none;
+}
+
+.token-estimator-legend {
+  padding: 0 4px;
+  margin-left: 4px;
+}
+
+/* Same typographic treatment as .sheet-section h2 (Conversation Summary,
+   Memories, etc.) — uppercase + slight letter-spacing — just kept at full
+   gold intensity (no opacity dimming) rather than that rule's 0.7, since
+   this element's whole point is to stand out as its own accented drawer,
+   not blend in as a subdued section label. */
+.token-estimator-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--gold);
+}
+
+/* 🪙 is a color emoji glyph, not a font-path outline — CSS `color` has no
+   effect on it, so unlike the rest of the gold text here, it needs an
+   actual pixel tint. grayscale(1) sepia(1) strips the glyph's own colors
+   down to a warm monochrome base (largely independent of its original
+   art), then saturate/hue-rotate/brightness re-tint that base to match
+   --gold as closely as a filter chain can. Values picked by rendering the
+   glyph to a canvas, averaging its opaque pixels, and minimizing color
+   distance to --gold's actual hex, not eyeballed — lands within ~15 RGB
+   units of #e0b34c. Dark-only (index.css no longer defines a light
+   variant), so there's just the one recipe now. */
+.token-estimator-coin {
+  filter: grayscale(1) sepia(1) saturate(3) hue-rotate(-2deg) brightness(1.15);
+}
+
+.token-estimator-content {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding-top: 4px;
+}
+
+.token-stat {
+  font-size: 12px;
+  color: var(--gold);
+}
+
+/* Addendum AL: sits below the two stats, inside the same box — not its own
+   accent-colored callout, since this is a suggestion the user opted into
+   seeing (the Settings toggle), not an error or an urgent state the gold
+   Token Estimator styling is otherwise reserved for. */
+.compression-banner {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--border);
+}
+
+.compression-banner-text {
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+/* Visual consistency audit: matches .manage-ai-trigger/.mobile-nav-trigger
+   now — same bordered-secondary-button language (border + --bg fill +
+   --text-h text), no functional reason this one ran a visibly denser
+   scale than its siblings. */
+.compression-banner-button {
+  font: inherit;
+  font-size: 13px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text-h);
+  cursor: pointer;
+}
+
+.compression-banner-button:hover {
+  background: var(--border);
+}
+
+/* Vertical mirror of .sidebar-handle: same "thin strip, sibling of the
+   collapsible element, widens/brightens on hover" mechanism, just rotated
+   — height instead of width, top/bottom border instead of left/right. */
+/* Bleeds past .sheet-panel's 16px padding on both sides so the handle
+   spans the full width of the Context panel edge-to-edge — the same
+   "ignores the padding everything else respects" quality the sidebar
+   handles get for free by living outside their padded aside entirely.
+   The fieldset above it stays within the padding on purpose (it should
+   look like the rest of the panel's boxed sections); only the handle
+   bleeds. */
+.token-estimator-handle {
+  flex: none;
+  width: calc(100% + 32px);
+  margin: 0 -16px;
+  height: 14px;
+  min-width: 0;
+  padding: 0;
+  border: none;
+  /* Same color as the dividers on either side of the chat column
+     (.chats-sidebar's border-right, .controls-sidebar's border-left),
+     just thicker on top so the handle reads clearly as its own element. */
+  border-top: 2px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text-h);
+  opacity: 0.5;
+  font-size: 12px;
+  cursor: pointer;
+  /* Without this, the caret sits wherever default inline/baseline text flow
+     puts it — fine for most glyphs, but "⌃" (U+2303) isn't centered on its
+     own baseline the way ordinary punctuation is, so in this very short
+     (14px) button it visibly reads as off-center (confirmed by comparing
+     screenshots with/without this). Explicit flex centering (same
+     technique .icon-button already uses) fixes it regardless of the
+     glyph's own font metrics. */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.token-estimator-handle:hover {
+  opacity: 1;
+  height: 18px;
+  background: var(--border);
+}
+
+.token-estimator-caret {
+  display: inline-block;
+}
+
+.token-estimator-caret--flipped {
+  transform: rotate(180deg);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+
+
+.version-history {
+  margin-top: 10px;
+}
+
+.version-list {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.version-row {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 13px;
+}
+
+.version-row--head {
+  border-color: var(--accent);
+}
+
+.version-row-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 12px;
+}
+
+/* Accessibility audit fix: the dimming used to live on .version-row-meta
+   itself via opacity: 0.7 — which, since opacity compounds through the
+   render tree, also dimmed .version-current-badge's --accent text down
+   from its own comfortably-passing ~6.8:1 to a failing ~3.9:1, even
+   though the badge's own color was never meant to be muted. Scoping the
+   dimming to just the plain timestamp/attribution spans (via `color`,
+   which doesn't compound the same way) leaves the badge at full strength. */
+.version-row-meta > span:not(.version-current-badge) {
+  color: var(--text-dim);
+}
+
+.version-current-badge {
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* Addendum AR: same rotating-caret disclosure language as
+   .chat-suggestions-toggle — this collapses one version entry's diff-line
+   list, not a whole panel, so it's an inline text button rather than a
+   full-width edge handle. margin-top separates it from .version-row-meta
+   above, mirroring .chat-suggestions-block's spacing. */
+.version-diff-toggle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font: inherit;
+  font-size: 12px;
+  padding: 0;
+  margin-top: 6px;
+  border: none;
+  background: none;
+  color: var(--text-h);
+  opacity: 0.65;
+  cursor: pointer;
+}
+
+.version-diff-toggle:hover {
+  opacity: 1;
+}
+
+.version-diff-caret {
+  display: inline-block;
+  font-size: 10px;
+}
+
+.version-diff-caret--flipped {
+  transform: rotate(180deg);
+}
+
+.version-diff {
+  margin: 6px 0;
+  padding-left: 18px;
+}
+
+/* Addendum AZ: with the diff list collapsed (Addendum AR), this "Revert to
+   here" button sat directly against .version-diff-toggle above it — 0px
+   gap, confirmed live via getBoundingClientRect. margin-top fixes that.
+   Buttons default to inline-block, not block, so this doesn't margin-
+   collapse with .version-diff's own margin-bottom when expanded — the two
+   add (12px total there) rather than merge — confirmed that still reads
+   fine, just a little more generous than the 6px it was before. */
+.version-row > button {
+  font: inherit;
+  font-size: 12px;
+  padding: 2px 10px;
+  margin-top: 6px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text-h);
+  cursor: pointer;
+}
+
+/* min-height: 0 + contain: layout — the standard pairing for a scrollable
+   flex region nested inside a fixed-height shell, same as .sheet-switcher/
+   .sheet-panel/.manage-ai-panel-body. min-height: 0 lets this shrink
+   instead of forcing .chat-pane to grow with every message. contain:
+   layout addresses a separate, easy-to-miss issue: verified via direct
+   testing (see .sheet-panel's identical comment for the full story) that
+   a tall flex-column child inside an overflow:auto region can still leak
+   its full, unclipped height into the *document's* own scrollable area —
+   an invisible, ever-growing gap you can scroll into at the bottom of the
+   whole page, even though every individual container's own clientHeight/
+   overflow looks correctly bounded. contain: layout stops that leak
+   without changing this element's own internal scrolling at all. */
+.chat-messages {
+  flex: 1;
+  min-height: 0;
+  contain: layout;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.chat-message {
+  max-width: 80%;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: var(--code-bg);
+}
+
+/* overflow-wrap: normal word-wrapping only breaks at spaces — one long
+   unbroken token (a URL, a long id, a run-on word) blows straight through
+   max-width otherwise, confirmed happening for real with both a user's own
+   pasted text and a model's reply. Applied everywhere else in this file
+   that renders arbitrary user/model text for the same reason (chat
+   bubbles, .markdown-text, suggestion summaries, change-card diffs,
+   Manage with AI's note/error text) — not just here. */
+.chat-message p {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+}
+
+.chat-message--user {
+  align-self: flex-end;
+  background: var(--accent-bg);
+}
+
+.chat-message--assistant {
+  align-self: flex-start;
+}
+
+.chat-message--error {
+  align-self: stretch;
+  background: var(--error-bg);
+  color: var(--error);
+}
+
+/* overflow-wrap is inherited, so setting it once here covers every
+   .markdown-text descendant (p, li, etc.) — this is model-generated text
+   with no guarantee of wrap-friendly spacing (a long URL, an unbroken
+   token). See .chat-message p's own comment for the confirmed bug this
+   fixes. */
+.markdown-text {
+  overflow-wrap: break-word;
+  /* .manage-ai-empty is a flex row (Addendum AD, the dismiss button sits
+     beside this); a flex item's default min-width: auto sizes it to its
+     unwrapped content width regardless of overflow-wrap above unless told
+     it's allowed to shrink below that — confirmed still overflowing
+     without this, even with overflow-wrap alone. A no-op everywhere
+     .markdown-text isn't a flex item (chat-message--assistant, etc.). */
+  min-width: 0;
+}
+
+/* Rendered model reply text (MarkdownText) — chat-message--assistant, plus
+   Manage with AI's .manage-ai-note/.manage-ai-empty. Deliberately doesn't
+   set its own font-size/color, so it inherits whatever context it's
+   dropped into (a chat bubble, an italic dimmed note, etc.) rather than
+   fighting it. .chat-message p's margin: 0/white-space: pre-wrap (for the
+   plain-text user/error case) is a descendant selector, so without this,
+   it would also apply here — same specificity, source order after it wins.
+   Only :last-child gets margin-bottom: 0, not a blanket margin: 0, so a
+   multi-paragraph reply still gets visible spacing between paragraphs. */
+.markdown-text p {
+  margin: 0 0 8px;
+  white-space: normal;
+}
+
+.markdown-text p:last-child {
+  margin-bottom: 0;
+}
+
+.markdown-text ul,
+.markdown-text ol {
+  margin: 0 0 8px;
+  padding-left: 20px;
+}
+
+.markdown-text ul:last-child,
+.markdown-text ol:last-child {
+  margin-bottom: 0;
+}
+
+.markdown-text li {
+  margin: 2px 0;
+}
+
+.markdown-text pre {
+  margin: 0 0 8px;
+  padding: 8px 10px;
+  overflow-x: auto;
+  background: var(--code-bg);
+  border-radius: 6px;
+}
+
+/* Unset the global `code` rule's own padding/background (index.css) —
+   doubled up inside a <pre> that already supplies both. */
+.markdown-text pre code {
+  padding: 0;
+  background: none;
+}
+
+.markdown-text blockquote {
+  margin: 0 0 8px;
+  padding-left: 10px;
+  border-left: 2px solid var(--border);
+  opacity: 0.85;
+}
+
+.markdown-text a {
+  color: var(--accent);
+}
+
+/* Sized to match body text, not an actual heading scale — a full-size H1
+   would blow out the compact chat bubble/note contexts this renders
+   inside. Weight is what still marks it as a heading. */
+.markdown-text h1,
+.markdown-text h2,
+.markdown-text h3 {
+  margin: 0 0 6px;
+  font-size: 1em;
+  font-weight: 600;
+}
+
+/* Addendum AC: the "N changes" disclosure wrapping every message's
+   suggestions block — conversation/memory updates otherwise made the chat
+   quite tall as it grew. margin-top separates it from the message text
+   above; the toggle button and whatever's inside it (.chat-applied-list/
+   .chat-pending-cards) carry their own spacing below that. */
+.chat-suggestions-block {
+  margin-top: 8px;
+}
+
+/* Same rotating-caret disclosure language as .token-estimator-handle's
+   caret, just an inline text button here instead of a full-width edge
+   handle — this toggles one message's block, not a whole panel. */
+.chat-suggestions-toggle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font: inherit;
+  font-size: 12px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--text-h);
+  opacity: 0.65;
+  cursor: pointer;
+}
+
+.chat-suggestions-toggle:hover {
+  opacity: 1;
+}
+
+.chat-suggestions-caret {
+  display: inline-block;
+  font-size: 10px;
+}
+
+.chat-suggestions-caret--flipped {
+  transform: rotate(180deg);
+}
+
+/* Addendum Z: replaces the old .chat-suggestions review list — a plain
+   historical record (what got applied, or failed to) for suggestions that
+   already resolved, not an interactive list with actions. Addendum AA:
+   also used for resolved (accepted/rejected/revised/failed) suggestions
+   when auto-apply is off — only still-pending ones get a .chat-pending-
+   cards ChangeCard instead. */
+.chat-applied-list {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  font-size: 13px;
+  color: var(--text-dim);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  overflow-wrap: break-word;
+}
+
+/* Accessibility audit fix: this used to be `opacity: 1` trying to cancel
+   .chat-applied-list's opacity: 0.75 for failed items — a no-op, since
+   opacity compounds through the render tree regardless of a child's own
+   value (a child can never be more opaque than its parent's stacking
+   context allows). Moving the dimming above to a real `color` fixes that
+   along with the contrast failure: .chat-applied-item--failed's --error
+   red now actually renders at full strength like it was always meant to. */
+.chat-applied-item--failed {
+  color: var(--error);
+}
+
+/* Addendum AA: still-pending suggestions in the chat pane, shown only when
+   the auto-apply setting is off — same spacing role as .manage-ai-changes/
+   .manage-ai-response, sitting inline in a chat-message instead of its own
+   panel. */
+.chat-pending-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+/* Wraps rather than shrinks — "Revise with AI" doesn't reliably fit
+   alongside Accept/Reject in Manage with AI's narrower ~226px cards.
+   Shared with the chat pane too (Addendum AA) whenever auto-apply is off. */
+.suggestion-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+/* Accept/Reject are emoji (✅/❌) — same "bigger glyph reads more clearly
+   than a small one" lesson as TurnRow's Edit/Delete icons (22px/12px →
+   28px/16px) earlier in this project. Revise is real text ("Revise with
+   AI" — a bare 🤖 turned out to carry no reliable meaning on its own, and
+   pairing it with a short word didn't fix that if neither half was clear
+   independently), so it overrides this rule's size below. */
+.suggestion-actions button {
+  font: inherit;
+  font-size: 16px;
+  line-height: 1;
+  padding: 4px 10px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text-h);
+  cursor: pointer;
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+}
+
+/* Own font-size/padding, not the base rule's 16px/4px 10px — that was
+   sized around emoji glyphs, which left noticeably more empty shell
+   around real text ("Revise with AI") than around its ✅/❌ neighbors.
+   Shared with the chat pane too (Addendum AA) whenever auto-apply is off. */
+.revise-with-ai-button {
+  font-size: 12px;
+  padding: 3px 8px;
+  white-space: nowrap;
+}
+
+/* Addendum AB: the "flexbox line break" trick — an empty item with
+   flex-basis: 100% consumes whatever's left of the current line, pushing
+   everything after it (Revise with AI) onto a new one. width: 0 keeps it
+   from taking up any visible space itself, so Revise with AI still sizes
+   to its own content rather than stretching to fill the row. Only
+   rendered on conversation_summary_update cards, the one case with four
+   controls (Accept/Reject/Edit/Revise) crowding a single row; three-
+   control cards keep Accept/Reject/Revise together on one line. */
+.suggestion-actions-break {
+  flex-basis: 100%;
+  width: 0;
+}
+
+/* Addendum AB: the conversation_summary_update Edit button — same
+   .icon-button/.icon-emoji treatment as TurnRow's Edit, scaled to the
+   same 28px/16px .memory-row-actions already uses (a plain .icon-button
+   here would otherwise lose its own padding/border-radius to
+   .suggestion-actions button's higher-specificity element+class rule
+   above; .suggestion-actions .icon-button's two classes outrank it). */
+.suggestion-actions .icon-button {
+  width: 28px;
+  height: 28px;
+}
+
+.suggestion-actions .icon-emoji {
+  font-size: 16px;
+}
+
+.suggestion-status {
+  font-size: 12px;
+  text-transform: none;
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
+}
+
+/* Only "failed" is ever reached — ManageWithAIPanel's ResponseBlock only
+   ever renders pending/failed cards at all (accepted/rejected ones
+   disappear rather than showing a badge there), and the chat pane's
+   ChangeCard (Addendum AA) follows the same pending/failed-only rule. */
+.suggestion-status--failed {
+  color: var(--error);
+}
+
+.suggestion-fallback-marker,
+.suggestion-followup-marker {
+  font-size: 12px;
+  font-style: italic;
+  color: var(--text-dim);
+}
+
+/* ManageWithAIPanel: a one-shot instruction in, change cards out — no
+   message transcript, so this reuses .suggestion-actions/.suggestion-
+   status/.change-card (also shared with the chat pane's own ChangeCards,
+   Addendum AA) but its own input row and card layout instead of
+   .chat-message/.chat-applied-list/.chat-pending-cards. Temporarily
+   occupies .chats-sidebar in place of .sheet-switcher, so it fills that
+   column exactly the way .sheet-switcher does — fixed .sidebar-title
+   header up top, its own internally-scrolling body below. */
+.manage-ai-panel {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Text label ("← Back"), not the single "×" glyph .modal-close's 18px was
+   sized for. */
+.manage-ai-back {
+  font-size: 13px;
+  line-height: 1;
+  padding: 2px 6px;
+  border: none;
+  background: none;
+  color: var(--text-h);
+  cursor: pointer;
+}
+
+/* contain: layout — see .sheet-panel's comment for the full story (this
+   region has the same nested-flex-column shape: .manage-ai-changes is a
+   plain flex-column child of this overflow-y: auto container). */
+.manage-ai-panel-body {
+  flex: 1;
+  min-height: 0;
+  contain: layout;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px;
+}
+
+.manage-ai-label {
+  font-size: 13px;
+  color: var(--text-dim);
+  margin: 0 0 6px;
+}
+
+/* Addendum AF: no longer its own flex row — .manage-ai-input-row now just
+   wraps a single .inline-field (the same Tone/Freeform Notes/Add-entry
+   pattern, §5.1's This Chat tab), a taller textarea with its submit button
+   overlaid in the bottom-right corner instead of sitting beside it in its
+   own column. Kept as a class (carrying no rules of its own) purely as a
+   stable scoping selector — plenty of e2e coverage still reads
+   ".manage-ai-input-row textarea"/"button" to mean "the top instruction
+   field," regardless of which button is currently showing inside it. */
+
+/* Same field-in-a-box shape as .inline-field-input, just enough rows to
+   read as noticeably taller than a normal one-line composer — restructuring
+   instructions ("merge duplicate memories, prune stale ones, adjust tone,
+   reorder pins") tend to run longer than a single line. */
+.manage-ai-input-row .inline-field-input {
+  min-height: 88px;
+}
+
+/* Addendum AF: previously two buttons (Send + Cancel) shown side by side
+   while revising. Now one — Go outside revising, and while revising, Send
+   only when there's something non-empty to send and nothing's already in
+   flight; every other moment (nothing typed yet, or a request currently
+   sending) shows Cancel instead, reusing the same slot rather than a
+   second button. Cancel never actually aborts an in-flight call (nothing
+   in this app does) — it just resets the revising UI early; the response
+   still lands as a new card whenever it arrives, same as it always has.
+   .manage-ai-go/.manage-ai-send get no rule of their own here —
+   .inline-field-button's own accent/white default already matches. */
+
+/* Muted, not accent — Cancel isn't the primary action in this slot. Reuses
+   .inline-field-button:disabled's exact color pair rather than inventing a
+   new one, since both mean the same thing here: "not the button to reach
+   for right now." */
+.manage-ai-cancel {
+  background: var(--border);
+  color: var(--text);
+}
+
+/* No max-height/overflow of its own — .manage-ai-panel-body is the single
+   scroll region for the whole panel body (input row + changes together),
+   same one-scroll-region-per-column pattern as .sheet-panel. */
+.manage-ai-changes {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* Addendum AD: both now also host a dismiss button (an error or a "no
+   changes needed" response has no suggestion of its own to accept/reject,
+   so unlike a change card or a note next to one, nothing else would ever
+   make them go away) — flex row so the × sits beside the text instead of
+   below it, top-aligned in case the text wraps to multiple lines. Still
+   fine for .manage-ai-empty's other, dismiss-button-less use (the "Nothing
+   proposed yet." empty state) — a single flex child just renders as before. */
+.manage-ai-empty,
+.manage-ai-error {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 13px;
+  margin: 0;
+  /* Inherited — cascades to whichever child actually holds the text
+     (.markdown-text below, or .manage-ai-error-text). Doesn't by itself
+     fix a flex item's default min-width: auto sizing to its unwrapped
+     content width regardless of overflow-wrap; that needs min-width: 0 on
+     the item itself, set separately on each of those two. */
+  overflow-wrap: break-word;
+}
+
+/* .manage-ai-error's text is a bare child of the flex row above (no
+   wrapping element of its own, unlike .manage-ai-empty's .markdown-text)
+   — needed one purely so min-width: 0 has somewhere to land; see the
+   comment above for why that's required at all. */
+.manage-ai-error-text {
+  min-width: 0;
+}
+
+.manage-ai-empty {
+  color: var(--text-dim);
+}
+
+.manage-ai-error {
+  color: var(--error);
+}
+
+/* Same dismiss-× treatment as .toast-dismiss. */
+.manage-ai-dismiss {
+  flex: none;
+  font-size: 16px;
+  line-height: 1;
+  padding: 0 2px;
+  border: none;
+  background: none;
+  color: var(--text-h);
+  opacity: 0.6;
+  cursor: pointer;
+}
+
+.manage-ai-dismiss:hover {
+  opacity: 1;
+}
+
+.manage-ai-response {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.manage-ai-note {
+  font-size: 13px;
+  font-style: italic;
+  color: var(--text-dim);
+  margin: 0;
+}
+
+.change-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  /* Inherited, so this covers .change-card-before/-after too — a
+     suggestion's body is arbitrary model text, same risk as everywhere
+     else this property got added (see .chat-message p's comment). */
+  overflow-wrap: break-word;
+}
+
+/* The card currently targeted by the top field's "How should this
+   change?" — same accent language as .manage-ai-trigger--active/
+   .sheet-panel-tab--active, so "this is the thing currently in focus"
+   reads the same way everywhere in the app. */
+.change-card--revising {
+  border-color: var(--accent);
+}
+
+.change-card-revising-hint {
+  font-size: 12px;
+  font-style: italic;
+  color: var(--text-dim);
+  margin: 0;
+}
+
+.change-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.change-card-title {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
+}
+
+/* Struck through and muted — this is what's being replaced, not the
+   current state of anything. */
+.change-card-before {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-dim);
+  text-decoration: line-through;
+}
+
+.change-card-after {
+  margin: 0;
+  font-size: 14px;
+  color: var(--text-h);
+}
+
+/* Addendum AB: the conversation_summary_update Edit form's textarea —
+   same field treatment as .memory-row--editing's, this card just isn't
+   scoped under that class. */
+.change-card textarea {
+  font: inherit;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text-h);
+  resize: vertical;
+}
+
+.chat-input-row {
+  display: flex;
+  padding: 16px;
+  border-top: 1px solid var(--border);
+}
+
+/* Textarea and Send button share one border instead of each having their
+   own — no gap between them, and the touching inner edges (textarea's
+   right, button's left) drop their border entirely, so the pair's outer
+   silhouette reads as a single continuous outline rather than two
+   separate floating boxes. */
+.chat-input-row textarea {
+  flex: 1;
+  font: inherit;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-right: none;
+  border-radius: 6px 0 0 6px;
+  background: var(--bg);
+  color: var(--text-h);
+  resize: none;
+  min-height: 40px;
+}
+
+.chat-input-row button {
+  font: inherit;
+  padding: 8px 16px;
+  border: 1px solid var(--border);
+  border-left: none;
+  cursor: pointer;
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+}
+
+/* Addendum AA: normal (non-revising) state — a single button, rounds both
+   right corners, same treatment as .manage-ai-go. */
+.chat-send {
+  border-radius: 0 6px 6px 0;
+  background: var(--accent-strong);
+  color: var(--on-accent);
+}
+
+/* Revising state (Addendum AA — auto-apply off, a card's Revise with AI
+   re-aims this row instead of opening its own form, same pattern as
+   ManageWithAIPanel): Send sits flush against Cancel, same two-button
+   split as .manage-ai-send/.manage-ai-cancel. */
+.chat-send--revising {
+  border-right: none;
+  border-radius: 0;
+  background: var(--accent-strong);
+  color: var(--on-accent);
+}
+
+.chat-revise-cancel {
+  border-radius: 0 6px 6px 0;
+  background: var(--bg);
+  color: var(--text-h);
+}
+
+/* Addendum BN: the app's first responsive rules — everything narrow-
+   viewport-specific lives in this one consolidated block so the 1024px
+   breakpoint appears exactly once and stays trivially greppable (CSS
+   custom properties can't be used inside @media feature values, so a
+   literal number is otherwise unavoidable). 1024px is derived from the
+   fixed chrome math: .chats-sidebar (250px) + .controls-sidebar (380px) +
+   two 14px .sidebar-handles (28px) = 658px fixed chrome; at 1024px that
+   still leaves 366px for .chat-column, versus an already-confirmed-broken
+   110px at 768px. Below this width the sidebars are replaced by the
+   full-screen Chats/Context overlays (.mobile-panel) triggered from
+   .mobile-nav-trigger above; the edge .sidebar-handles are hidden too
+   since the header triggers replace them rather than coexisting. */
+@media (max-width: 1023px) {
+  .mobile-nav-trigger {
+    display: inline-flex;
+    align-items: center;
+  }
+
+  /* Addendum BP: at 375px, the ~180px left for .app-header-titles wasn't
+     enough for "ACM2: Browser Demo" plus the subtitle without both
+     wrapping to 2 lines each — measured live at 99px tall, on a 700px-tall
+     viewport that's not a small line item. The subtitle is purely
+     decorative (the Welcome modal already explains what ACM2 is) and the
+     ": Browser Demo" suffix is dropped from the title itself, leaving
+     just "ACM2" — full name still lives in the document title and the
+     Welcome modal, just not repeated in the persistent nav bar on mobile. */
+  .app-header-title-full,
+  .app-header-subtitle {
+    display: none;
+  }
+
+  .sidebar-handle {
+    display: none;
+  }
+
+  .chats-sidebar,
+  .controls-sidebar {
+    display: none;
+  }
+
+  /* Found via live click-through, not spec'd upfront, and took two tries.
+     First attempt kept .modal-overlay's normal position: fixed; inset: 0
+     (covering the whole viewport, header included) and gave .app-header
+     z-index: 101 to stay on top of it so re-tapping a trigger could still
+     close the overlay — but that meant the header now intercepted clicks
+     on the overlay's own Back button, which sits in .mobile-panel's title
+     row directly underneath it (a higher z-index element wins the hit-
+     test for its whole region regardless of what's "visible" below it).
+     Second attempt tried leaving .mobile-overlay's `top` unset so
+     position: absolute would fall back to its normal-flow "static
+     position" (right after the header) — except .app is a flex container,
+     and flexbox's static-position algorithm for absolutely-positioned flex
+     children ignores DOM order entirely and resolves to the flex
+     container's own start corner, i.e. right back at the very top,
+     reproducing the same bug from the opposite direction.
+     What actually works: mount the overlay *inside* .app-body (a sibling
+     of the desktop asides/chat-column, guarded above by mobileChatsOpen/
+     mobileContextOpen the same way they are) rather than as a top-level
+     sibling of the header. .app-body already starts right after the
+     header via ordinary document flow — position: absolute; inset: 0 here
+     is fully explicit (no static-position fallback involved at all), so
+     it can only ever cover .app-body's own box, never the header's. */
+  .app-body {
+    position: relative;
+  }
+
+  .modal-overlay.mobile-overlay {
+    position: absolute;
+    inset: 0;
+  }
+}

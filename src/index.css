@@ -1,0 +1,86 @@
+/* Dark-only, deliberately — no light-theme variant, so this is the single
+   source of truth for every color in the app rather than one half of a
+   light/dark pair (contrast App.css's .token-estimator-coin, which still
+   needs its own note about why an emoji glyph can't just use these vars
+   directly). */
+:root {
+  --text: #9ca3af;
+  --text-h: #f3f4f6;
+  /* Accessibility audit fix: hints/captions/metadata throughout the app
+     were dimmed via `opacity: 0.6–0.75` on top of --text rather than a
+     real color — opacity always multiplies down whatever contrast the
+     color underneath already had, and several of these (e.g. --text at
+     0.6 opacity, or --accent inherited through a 0.7-opacity ancestor)
+     dropped well under WCAG AA's 4.5:1. This is a deliberately chosen,
+     genuinely muted color instead — computed to still clear 4.5:1 against
+     both --bg and the slightly lighter --code-bg, the two backgrounds it
+     actually gets used on. */
+  --text-dim: #848a95;
+  --bg: #16171d;
+  --border: #2e303a;
+  --code-bg: #1f2028;
+  --accent: #c084fc;
+  --accent-bg: rgba(192, 132, 252, 0.15);
+  /* Accessibility audit fix: white text directly on --accent measures
+     ~2.64:1 — well under WCAG AA's 4.5:1 for normal-size text. This is
+     --accent darkened (same hue/ratios, RGB × 0.68) rather than a new
+     unrelated color, so filled buttons still read as "the same purple,"
+     just deep enough for white text to pass at ~5.2:1. Text/border uses of
+     --accent itself (already ~6.8:1 against --bg) are unaffected. */
+  --accent-strong: #835aab;
+  --error: #ff8a80;
+  --error-bg: rgba(255, 138, 128, 0.12);
+  --gold: #e0b34c;
+  /* Visual consistency audit: the six solid --accent-strong buttons and
+     the modal backdrop were the only two colors in the app not routed
+     through a custom property — not actually inconsistent in value (all
+     six agreed with each other already), just not tokenized, so a future
+     palette pass wouldn't catch them via a search on a token name. */
+  --on-accent: #fff;
+  --overlay-bg: rgba(0, 0, 0, 0.4);
+
+  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
+  --mono: ui-monospace, Consolas, monospace;
+
+  font: 16px/145% var(--sans);
+  color-scheme: dark;
+  color: var(--text);
+  background: var(--bg);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+#root {
+  min-height: 100svh;
+}
+
+h1,
+h2 {
+  font-family: var(--sans);
+  font-weight: 600;
+  color: var(--text-h);
+}
+
+h1 {
+  font-size: 20px;
+  margin: 0;
+}
+
+code {
+  font-family: var(--mono);
+  font-size: 14px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--code-bg);
+  color: var(--text-h);
+}
