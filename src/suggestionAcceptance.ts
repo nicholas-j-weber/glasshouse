@@ -74,7 +74,7 @@ export function resolveAttribution(
 // which independent version chain a content-changing
 // suggestion's result belongs to. Overlay-only types (deactivate_memory,
 // reorder_pins) never reach this — they never touch a chain at all.
-export type MemoryChain = "local" | "global";
+type MemoryChain = "local" | "global";
 
 export interface ResolvedContentChange {
   chain: MemoryChain;

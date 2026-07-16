@@ -13,7 +13,7 @@ const COLLAPSE_TURNS_KEY = "context-sheets:collapse-turns-by-default";
 const COLLAPSE_HISTORY_KEY = "context-sheets:collapse-history-by-default";
 const WELCOME_DISMISSED_KEY = "context-sheets:welcome-dismissed";
 
-export const DEFAULT_MODEL = "claude-sonnet-5";
+const DEFAULT_MODEL = "claude-sonnet-5";
 
 // known model ids, offered as <datalist> suggestions (not a
 // strict <select>) in both SettingsModal and WelcomeModal's Model field —

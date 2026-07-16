@@ -52,7 +52,7 @@ import { useSheetOverlay } from "./useSheetOverlay";
 // surfaced visibly rather than silently accepted as a no-op. Re-exported
 // from types.ts so the persisted and in-memory shapes
 // share a single definition.
-export type SuggestionStatus = PersistedSuggestionStatus;
+type SuggestionStatus = PersistedSuggestionStatus;
 export type DisplaySuggestion = PersistedDisplaySuggestion;
 
 export interface SessionMessage {

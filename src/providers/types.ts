@@ -8,7 +8,7 @@ export interface ProviderConfig {
   maxTokens?: number;
 }
 
-export type ProviderErrorKind =
+type ProviderErrorKind =
   | "auth" // invalid/expired API key
   | "rate_limit" // provider-side throttling
   | "malformed_response" // malformed or empty response

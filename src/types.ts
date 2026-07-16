@@ -52,7 +52,7 @@ export interface Sheet {
 // explicitly accepted ("ai_suggestion_accepted") — both are genuinely
 // AI-suggested (Provenance.source stays "ai_suggested" for either), this
 // is specifically about *how* the version came to exist, for History.
-export type VersionAttributionKind =
+type VersionAttributionKind =
   | "manual_edit"
   | "ai_suggestion_accepted"
   | "ai_suggestion_auto_applied"
@@ -97,12 +97,6 @@ export interface SheetMeta {
   id: string;
   name: string;
   createdAt: string; // ISO 8601
-}
-
-// pending pin reorder is session state only,
-// never a field on Sheet or Version.
-export interface PendingPinReorder {
-  pinOrder: string[]; // Memory ids, in new relative order
 }
 
 // The SHEET_SUGGESTIONS wire format.
