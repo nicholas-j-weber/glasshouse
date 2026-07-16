@@ -1,10 +1,10 @@
 # ACM2: Browser Demo
 
 A browser demo of Auditable Context & Memory Methodology (ACM2), a
-legible, stateless-per-call methodology for managing AI context. The
-spec itself is being rewritten; [old-spec.md](./old-spec.md) is the
-previous version, whose lettered addenda are still the fullest record of
-the design rationale behind most of what's here.
+legible, stateless-per-call methodology for managing AI context.
+[old-spec.md](./old-spec.md) is a previous-version reference, whose
+lettered addenda are still the fullest record of the design rationale
+behind most of what's here.
 
 ## Status
 
@@ -30,7 +30,7 @@ Known limitations, by design or by current scope:
   browser storage and is sent directly to Anthropic's API from the
   browser — there's no backend proxy. Use a key you're comfortable having
   live client-side.
-- **Anthropic only.** The protocol itself is designed to be
+- **Anthropic only.** The methodology itself is designed to be
   provider-agnostic, but only the Anthropic adapter is actually
   implemented. Model choice (Claude Sonnet, Opus, Haiku, or Fable, or a
   custom model id) is configurable in Settings or the welcome screen.
