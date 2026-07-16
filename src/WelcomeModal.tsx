@@ -100,7 +100,7 @@ export function WelcomeModal() {
               opaque chat history.
             </p>
             <p>
-              Everything the AI knows about you lives in the Context panel, where you can see, edit, and revert it —
+              Everything the AI knows lives in the Context panel, where you can see, edit, and revert it —
               no hidden memory or chat history you can't inspect. AI-suggested changes are shown before they're applied, and nothing is ever
               silently deleted: deactivated content stays visible for audit in History. When your context exceeds
               roughly 3000 tokens, you'll be prompted to compress it in the Token Estimator.
