@@ -170,7 +170,7 @@ export interface SuggestionSession {
   handleSend: () => Promise<void>;
   handleAccept: (message: SessionMessage, index: number) => Promise<void>;
   handleReject: (message: SessionMessage, index: number) => void;
-  revising: { messageId: string; index: number } | null;
+  revising: RevisionTarget | null;
   revisionDraft: string;
   setRevisionDraft: (value: string) => void;
   startRevision: (messageId: string, index: number) => void;
@@ -189,6 +189,26 @@ export interface SuggestionSession {
   toasts: SuggestionToast[];
   dismissToast: (id: string) => void;
   undoToast: (id: string) => Promise<void>;
+}
+
+interface RevisionTarget {
+  messageId: string;
+  index: number;
+}
+
+// Shared by ManageWithAIPanel and SuggestionSessionView — both need a
+// short reference to what's being revised, so the input label stays
+// meaningful even if the target card has scrolled out of view (each is
+// one shared scroll region — the field isn't sticky above it).
+export function getRevisingContext(
+  messages: SessionMessage[],
+  revising: RevisionTarget | null,
+  sheet: Sheet | null,
+): { revisingMessage: SessionMessage | undefined; revisingTitle: string | null } {
+  const revisingMessage = revising ? messages.find((m) => m.id === revising.messageId) : undefined;
+  const revisingDisplay = revising ? revisingMessage?.suggestions?.[revising.index] : undefined;
+  const revisingTitle = sheet && revisingDisplay ? describeSuggestionChange(revisingDisplay.suggestion, sheet).title : null;
+  return { revisingMessage, revisingTitle };
 }
 
 interface ApplyOutcome {
@@ -211,7 +231,7 @@ export function useSuggestionSession(mode: CallMode, sheetId: string): Suggestio
   // session-only until folded into the next real version. Shared across
   // every surface via sheetOverlayStore.ts so they don't diverge.
   const overlay = useSheetOverlay();
-  const [revising, setRevising] = useState<{ messageId: string; index: number } | null>(null);
+  const [revising, setRevising] = useState<RevisionTarget | null>(null);
   const [revisionDraft, setRevisionDraft] = useState("");
   const [toasts, setToasts] = useState<SuggestionToast[]>([]);
 

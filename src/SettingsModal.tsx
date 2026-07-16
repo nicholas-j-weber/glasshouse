@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { ModelField } from "./ModelField";
+import { useEscapeKey } from "./useEscapeKey";
 import { useModalFocus } from "./useModalFocus";
 import {
   getStoredApiKey,
@@ -31,14 +32,7 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
   const [collapseTurns, setCollapseTurns] = useState(getStoredCollapseTurnsByDefault());
   const [collapseHistory, setCollapseHistory] = useState(getStoredCollapseHistoryByDefault());
   const panelRef = useModalFocus<HTMLDivElement>(true);
-
-  useEffect(() => {
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
-    }
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [onClose]);
+  useEscapeKey(onClose);
 
   return (
     <div className="modal-overlay" onClick={onClose}>

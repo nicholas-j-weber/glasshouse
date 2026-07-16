@@ -1,11 +1,12 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef } from "react";
 import { ChangeCard } from "./ChangeCard";
 import { MarkdownText } from "./MarkdownText";
 import { getStoredCollapseSuggestionsByDefault } from "./settingsStorage";
 import { ToastStack } from "./Toast";
-import { describeSuggestionChange } from "./suggestionChangeDisplay";
 import { describeSuggestion } from "./suggestionDisplay";
 import type { DisplaySuggestion, SessionMessage, SuggestionSession } from "./suggestionSession";
+import { getRevisingContext } from "./suggestionSession";
+import { useCollapsedOverrides } from "./useCollapsedOverrides";
 import type { Sheet } from "./types";
 
 // The chat pane's rendering. ManageWithAIPanel uses the same
@@ -92,30 +93,24 @@ export function SuggestionSessionView({
     prevMessageCountRef.current = messages.length;
   }, [messages]);
 
-  // per-message override for the "N changes" disclosure below
-  // — messageId -> explicit collapsed state, set only once a user manually
-  // toggles that message. Anything absent falls back to the live global
-  // default rather than a value captured once, since this is a pure
-  // display preference (see settingsStorage.ts's comment on why that's
-  // different from autoApplied): flipping the setting should
-  // visibly affect messages already on screen, not just future ones.
-  const [collapsedOverrides, setCollapsedOverrides] = useState<Record<string, boolean>>({});
+  // per-message override for the "N changes" disclosure below,
+  // falling back to the live global default — flipping the setting should
+  // visibly affect messages already on screen, not just future ones (see
+  // settingsStorage.ts's comment on why that's different from
+  // autoApplied).
+  const { isCollapsed: isMessageOverrideCollapsed, toggle: toggleSuggestionsCollapsed } = useCollapsedOverrides<SessionMessage>(
+    getStoredCollapseSuggestionsByDefault,
+  );
 
-  function isSuggestionsCollapsed(messageId: string): boolean {
+  function isSuggestionsCollapsed(message: SessionMessage): boolean {
     // Never hide the one message whose card is actively being revised —
     // collapsing it mid-revision would strand the "Revising — answer
     // above" hint with nothing visible to attach it to.
-    if (revising?.messageId === messageId) return false;
-    return collapsedOverrides[messageId] ?? getStoredCollapseSuggestionsByDefault();
+    if (revising?.messageId === message.id) return false;
+    return isMessageOverrideCollapsed(message);
   }
 
-  function toggleSuggestionsCollapsed(messageId: string) {
-    setCollapsedOverrides((prev) => ({ ...prev, [messageId]: !isSuggestionsCollapsed(messageId) }));
-  }
-
-  const revisingMessage = revising ? messages.find((m) => m.id === revising.messageId) : undefined;
-  const revisingDisplay = revising ? revisingMessage?.suggestions?.[revising.index] : undefined;
-  const revisingTitle = sheet && revisingDisplay ? describeSuggestionChange(revisingDisplay.suggestion, sheet).title : null;
+  const { revisingMessage, revisingTitle } = getRevisingContext(messages, revising, sheet);
 
   return (
     <div className="chat-pane">
@@ -128,17 +123,17 @@ export function SuggestionSessionView({
                 <button
                   type="button"
                   className="chat-suggestions-toggle"
-                  onClick={() => toggleSuggestionsCollapsed(message.id)}
+                  onClick={() => toggleSuggestionsCollapsed(message)}
                 >
                   <span
-                    className={`chat-suggestions-caret${isSuggestionsCollapsed(message.id) ? "" : " chat-suggestions-caret--flipped"}`}
+                    className={`chat-suggestions-caret${isSuggestionsCollapsed(message) ? "" : " chat-suggestions-caret--flipped"}`}
                     aria-hidden="true"
                   >
                     ⌃
                   </span>
                   {message.suggestions.length} change{message.suggestions.length === 1 ? "" : "s"}
                 </button>
-                {!isSuggestionsCollapsed(message.id) && (
+                {!isSuggestionsCollapsed(message) && (
                   <MessageSuggestions
                     message={message}
                     sheet={sheet}

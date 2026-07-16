@@ -1,3 +1,4 @@
+import { orderPinned } from "./serializer";
 import type { Memory, Sheet, SheetSuggestion } from "./types";
 
 export interface SuggestionChangeDisplay {
@@ -51,10 +52,7 @@ export function describeSuggestionChange(suggestion: SheetSuggestion, sheet: She
     }
 
     case "reorder_pins": {
-      const currentOrder = sheet.memories
-        .filter((m) => m.pinRank !== null)
-        .sort((a, b) => (a.pinRank as number) - (b.pinRank as number))
-        .map((m) => m.label);
+      const currentOrder = orderPinned(sheet.memories).map((m) => m.label);
       const proposedOrder = suggestion.pinOrder.map((id) => findMemory(sheet, id)?.label ?? id);
       return {
         title: "Reorder pins",

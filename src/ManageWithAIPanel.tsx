@@ -3,9 +3,9 @@ import { ChangeCard } from "./ChangeCard";
 import { GLOBAL_MEMORIES_SHEET_ID, mergeMemoryPools } from "./globalMemories";
 import { MarkdownText } from "./MarkdownText";
 import { applyOverlay } from "./sheetOverlay";
-import { describeSuggestionChange } from "./suggestionChangeDisplay";
 import type { SessionMessage } from "./suggestionSession";
-import { useSuggestionSession } from "./suggestionSession";
+import { getRevisingContext, useSuggestionSession } from "./suggestionSession";
+import { useEscapeKey } from "./useEscapeKey";
 import { useHeadVersion } from "./useHeadVersion";
 import { useSheetOverlay } from "./useSheetOverlay";
 import type { Sheet } from "./types";
@@ -87,13 +87,7 @@ export function ManageWithAIPanel({
     setDismissedIds((prev) => new Set(prev).add(id));
   }
 
-  useEffect(() => {
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") onBack();
-    }
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [onBack]);
+  useEscapeKey(onBack);
 
   const {
     draft,
@@ -136,12 +130,7 @@ export function ManageWithAIPanel({
 
   const sheet = localHead && globalHead ? applyOverlay(mergeMemoryPools(localHead.sheet, globalHead.sheet), overlay) : null;
 
-  // A short reference to what's being revised, so the label stays
-  // meaningful even if the target card has scrolled out of view (the panel
-  // body is one shared scroll region — the field isn't sticky above it).
-  const revisingMessage = revising ? session.messages.find((m) => m.id === revising.messageId) : undefined;
-  const revisingDisplay = revising ? revisingMessage?.suggestions?.[revising.index] : undefined;
-  const revisingTitle = sheet && revisingDisplay ? describeSuggestionChange(revisingDisplay.suggestion, sheet).title : null;
+  const { revisingMessage, revisingTitle } = getRevisingContext(session.messages, revising, sheet);
 
   return (
     <div className="manage-ai-panel">

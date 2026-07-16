@@ -1,5 +1,5 @@
-import { useEffect } from "react";
 import { ContextSidebarContent } from "./ContextSidebarContent";
+import { useEscapeKey } from "./useEscapeKey";
 import { useModalFocus } from "./useModalFocus";
 
 // narrow-viewport presentation of Context, mirroring
@@ -26,14 +26,7 @@ export function MobileContextOverlay({
   onClose: () => void;
 }) {
   const panelRef = useModalFocus<HTMLDivElement>(true);
-
-  useEffect(() => {
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
-    }
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [onClose]);
+  useEscapeKey(onClose);
 
   return (
     <div className="modal-overlay mobile-overlay">

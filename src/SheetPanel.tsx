@@ -20,6 +20,7 @@ import {
 } from "./settingsStorage";
 import { createVersion, ensureInitialized } from "./store";
 import { estimateTokenCount } from "./tokenEstimate";
+import { useCollapsedOverrides } from "./useCollapsedOverrides";
 import { useHeadVersion } from "./useHeadVersion";
 import { useSheetOverlay } from "./useSheetOverlay";
 import { useTotalUsage } from "./useTotalUsage";
@@ -91,28 +92,19 @@ export function SheetPanel({
   const [tokenEstimatorOpen, setTokenEstimatorOpen] = useState(true);
   // per-row override for This Chat's turn/summary collapse —
   // memoryId -> explicit collapsed state, set only once a user manually
-  // toggles that row. Anything absent falls back to the live global default
-  // rather than a value captured once, same reasoning as
-  // SuggestionSessionView's collapsedOverrides: flipping the setting should visibly affect rows
-  // already on screen, not just future ones. Shared by turns and summaries
-  // — one setting, one map, since both live in the same This Chat list.
-  const [collapsedRowOverrides, setCollapsedRowOverrides] = useState<Record<string, boolean>>({});
-
-  // an inactive conversation turn starts collapsed by default
-  // too, independent of the global setting — it's no longer sent to the
-  // model at all (kept only for audit), so there's little reason for it to
-  // take up the same space as an active one. Scoped to turns specifically,
-  // not summaries — a deactivated summary has no equivalent "superseded by
-  // something else already visible" story the way a compressed-away turn
-  // does, so its collapse state stays governed by the global setting alone.
-  function isRowCollapsed(memory: Memory): boolean {
-    const inactiveTurnDefault = memory.kind === "conversation_turn" && !memory.active;
-    return collapsedRowOverrides[memory.id] ?? (getStoredCollapseTurnsByDefault() || inactiveTurnDefault);
-  }
-
-  function toggleRowCollapsed(memory: Memory) {
-    setCollapsedRowOverrides((prev) => ({ ...prev, [memory.id]: !isRowCollapsed(memory) }));
-  }
+  // toggles that row, falling back to a live global default. Shared by
+  // turns and summaries — one setting, one map, since both live in the
+  // same This Chat list. An inactive conversation turn starts collapsed
+  // by default too, independent of the global setting — it's no longer
+  // sent to the model at all (kept only for audit), so there's little
+  // reason for it to take up the same space as an active one. Scoped to
+  // turns specifically, not summaries — a deactivated summary has no
+  // equivalent "superseded by something else already visible" story the
+  // way a compressed-away turn does, so its collapse state stays governed
+  // by the global setting alone.
+  const { isCollapsed: isRowCollapsed, toggle: toggleRowCollapsed } = useCollapsedOverrides<Memory>(
+    (memory) => getStoredCollapseTurnsByDefault() || (memory.kind === "conversation_turn" && !memory.active),
+  );
 
   if (!localHead || !globalHead) {
     return <div className="sheet-panel">Loading…</div>;

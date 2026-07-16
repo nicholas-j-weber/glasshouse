@@ -1,6 +1,6 @@
-import { useEffect } from "react";
 import { ChatsSidebarContent } from "./ChatsSidebarContent";
 import type { SheetMeta } from "./types";
+import { useEscapeKey } from "./useEscapeKey";
 import { useModalFocus } from "./useModalFocus";
 
 // the narrow-viewport (< 1024px, App.css) presentation of
@@ -32,18 +32,12 @@ export function MobileChatsOverlay({
 
   // Guarded on !manageAIOpen: ManageWithAIPanel (rendered inside
   // ChatsSidebarContent when manageAIOpen is true) already has its own
-  // document-level Escape listener that steps back to the Chats list
-  // (onManageAIBack). Without this guard, both listeners would fire on
-  // the same keypress and Escape would skip past the Chats list straight
-  // to closing this whole overlay — one press should only ever step back
-  // one level.
-  useEffect(() => {
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape" && !manageAIOpen) onClose();
-    }
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [onClose, manageAIOpen]);
+  // Escape listener (useEscapeKey(onBack)) that steps back to the Chats
+  // list. Without this guard, both listeners would fire on the same
+  // keypress and Escape would skip past the Chats list straight to
+  // closing this whole overlay — one press should only ever step back one
+  // level.
+  useEscapeKey(onClose, !manageAIOpen);
 
   return (
     <div className="modal-overlay mobile-overlay">

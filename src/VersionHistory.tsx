@@ -1,8 +1,8 @@
-import { useState } from "react";
 import { getStoredCollapseHistoryByDefault } from "./settingsStorage";
 import { resetOverlay } from "./sheetOverlayStore";
 import { revertToVersion } from "./store";
 import { useActiveLineage } from "./useActiveLineage";
+import { useCollapsedOverrides } from "./useCollapsedOverrides";
 import { diffSheets } from "./versionDiff";
 import type { Version, VersionAttribution } from "./types";
 
@@ -36,20 +36,12 @@ function formatTimestamp(iso: string): string {
 // in the UI rather than just in the store.
 export function VersionHistory({ sheetId }: { sheetId: string }) {
   const lineage = useActiveLineage(sheetId); // oldest first, head last
-  // per-version override for the diff-line list's collapse
-  // state — versionId -> explicit collapsed state, same live-default-
-  // fallback pattern as SuggestionSessionView's collapsedOverrides and SheetPanel's
-  // collapsedRowOverrides: flipping the setting should
+  // per-version override for the diff-line list's collapse state,
+  // falling back to the live global default — flipping the setting should
   // visibly affect entries already on screen, not just future ones.
-  const [collapsedOverrides, setCollapsedOverrides] = useState<Record<string, boolean>>({});
-
-  function isVersionCollapsed(versionId: string): boolean {
-    return collapsedOverrides[versionId] ?? getStoredCollapseHistoryByDefault();
-  }
-
-  function toggleVersionCollapsed(versionId: string) {
-    setCollapsedOverrides((prev) => ({ ...prev, [versionId]: !isVersionCollapsed(versionId) }));
-  }
+  const { isCollapsed: isVersionCollapsed, toggle: toggleVersionCollapsed } = useCollapsedOverrides<Version>(
+    getStoredCollapseHistoryByDefault,
+  );
 
   async function handleRevert(versionId: string) {
     await revertToVersion(versionId, sheetId);
@@ -79,17 +71,17 @@ export function VersionHistory({ sheetId }: { sheetId: string }) {
               <button
                 type="button"
                 className="version-diff-toggle"
-                onClick={() => toggleVersionCollapsed(version.id)}
+                onClick={() => toggleVersionCollapsed(version)}
               >
                 <span
-                  className={`version-diff-caret${isVersionCollapsed(version.id) ? "" : " version-diff-caret--flipped"}`}
+                  className={`version-diff-caret${isVersionCollapsed(version) ? "" : " version-diff-caret--flipped"}`}
                   aria-hidden="true"
                 >
                   ⌃
                 </span>
                 {diffLines.length} change{diffLines.length === 1 ? "" : "s"}
               </button>
-              {!isVersionCollapsed(version.id) && (
+              {!isVersionCollapsed(version) && (
                 <ul className="version-diff">
                   {diffLines.map((line, i) => (
                     <li key={i}>

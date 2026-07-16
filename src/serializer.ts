@@ -12,6 +12,14 @@ function renderMemoryBlock(memory: Memory): string {
   return `## Memory: ${memory.label} (id: ${memory.id})\n${memory.body}`;
 }
 
+// Pinned memories, ascending by rank — also used standalone by
+// suggestionChangeDisplay.ts's reorder_pins case (it only ever needs the
+// pinned half, never the interleaved unpinned tail below), so the
+// tie-breaking/ordering rule for pins lives in exactly one place.
+export function orderPinned(memories: Memory[]): Memory[] {
+  return memories.filter((m) => m.pinRank !== null).sort((a, b) => (a.pinRank as number) - (b.pinRank as number));
+}
+
 // The ordering rule (pinned by ascending rank, then unpinned by
 // most-recently-modified-first) — exported separately from the active
 // filter below, since the sheet panel needs the same order for *display*
@@ -21,15 +29,11 @@ function renderMemoryBlock(memory: Memory): string {
 // memories before calling this — those are ordered by orderConversationTurns
 // instead, never by pinRank/recency.
 export function orderMemoriesForDisplay(memories: Memory[]): Memory[] {
-  const pinned = memories
-    .filter((m) => m.pinRank !== null)
-    .sort((a, b) => (a.pinRank as number) - (b.pinRank as number));
-
   const unpinned = memories
     .filter((m) => m.pinRank === null)
     .sort((a, b) => b.lastModified.localeCompare(a.lastModified));
 
-  return [...pinned, ...unpinned];
+  return [...orderPinned(memories), ...unpinned];
 }
 
 // conversation turns are ordered by their own
