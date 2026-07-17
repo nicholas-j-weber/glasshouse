@@ -23,7 +23,7 @@ modal focus management, and color contrast.
 Known limitations, by design or by current scope:
 
 - **Single local user, browser-only.** No accounts, no server, no sync
-  across devices — everything (memories, version history) lives in this
+  across devices — everything (memories, version history) lives in the
   browser's IndexedDB. Clearing site data, or opening the app in a
   different browser, starts fresh.
 - **API key stored client-side.** Your Anthropic API key lives in local
