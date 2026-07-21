@@ -4,10 +4,6 @@ import { notifyHeadChanged } from "./headSubscription";
 import { createSkeletonSheet } from "./skeleton";
 import type { Memory, Sheet, SheetExport, Version, VersionAttribution } from "./types";
 
-function generateId(): string {
-  return crypto.randomUUID();
-}
-
 // Sheets persisted with the old dedicated conversationSummary
 // field (used by earlier versions of this app) have real,
 // accumulated conversation history in a field the current Sheet type no
@@ -92,7 +88,7 @@ export async function ensureInitialized(sheetId: string, db: ContextSheetDB = de
   if (existing) return existing;
 
   const skeleton: Version = {
-    id: generateId(),
+    id: crypto.randomUUID(),
     sheetId,
     parentId: null,
     createdAt: new Date().toISOString(),
@@ -124,7 +120,7 @@ export async function createVersion(
 ): Promise<Version> {
   const head = await getHeadVersion(sheetId, db);
   const version: Version = {
-    id: generateId(),
+    id: crypto.randomUUID(),
     sheetId,
     parentId: head?.id ?? null,
     createdAt: new Date().toISOString(),
@@ -215,7 +211,7 @@ export async function exportSheet(sheetId: string, db: ContextSheetDB = defaultD
 // this only changes what were previously (silently, until they collided)
 // spurious id matches.
 export async function importSheet(data: SheetExport, sheetId: string, db: ContextSheetDB = defaultDb): Promise<void> {
-  const idMap = new Map(data.versions.map((v) => [v.id, generateId()]));
+  const idMap = new Map(data.versions.map((v) => [v.id, crypto.randomUUID()]));
   const remapped = data.versions.map((v) => ({
     ...v,
     id: idMap.get(v.id)!,

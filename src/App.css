@@ -168,6 +168,18 @@
   flex-direction: column;
 }
 
+/* Settings/Welcome are native <dialog class="modal"> now (useDialog.ts) —
+   showModal() centers the dialog itself via the UA stylesheet, same visual
+   result .modal-overlay's flex centering gave the old wrapper-div version;
+   this just replaces .modal-overlay's background for the two dialogs that
+   no longer render one. The mobile Chats/Context overlays still use a real
+   .modal-overlay div (see its own rule above) — native <dialog> can't
+   reproduce their app-body-scoped, header-avoiding positioning, so those
+   two stayed as hand-rolled overlays. */
+dialog.modal::backdrop {
+  background: var(--overlay-bg);
+}
+
 /* Accessibility audit fix: .modal/.mobile-panel are focused
    programmatically on open (useModalFocus.ts), not by a user tabbing to
    them — they're not themselves an interactive control, just the

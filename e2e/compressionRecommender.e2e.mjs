@@ -16,6 +16,10 @@ async function setRecommendCompression(page, enabled) {
   const checkbox = page.locator('input[aria-label="Recommend compression when context grows large"]');
   if ((await checkbox.isChecked()) !== enabled) await checkbox.click();
   await page.click('button[aria-label="Close settings"]');
+  // Settings is a native <dialog> (useDialog.ts) — its close() dispatches
+  // the real 'close' event, and the React unmount that follows, a tick
+  // after this click resolves, not synchronously within it.
+  await page.waitForTimeout(150);
 }
 
 export async function run(browser, baseUrl) {

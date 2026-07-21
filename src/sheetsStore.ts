@@ -6,10 +6,6 @@ import { resetOverlay } from "./sheetOverlayStore";
 import { ensureInitialized } from "./store";
 import type { SheetMeta } from "./types";
 
-function generateId(): string {
-  return crypto.randomUUID();
-}
-
 // Same hygiene as store.ts's notifyIfDefaultDb: only the app's single real
 // database should notify subscribers, not the isolated instances tests
 // construct.
@@ -26,7 +22,7 @@ export async function listSheets(db: ContextSheetDB = defaultDb): Promise<SheetM
 // store.ts's ensureInitialized, so skeleton-creation logic isn't
 // duplicated), then makes it the active sheet.
 export async function createSheet(name: string, db: ContextSheetDB = defaultDb): Promise<string> {
-  const id = generateId();
+  const id = crypto.randomUUID();
   const meta: SheetMeta = { id, name: name.trim() || "Untitled Sheet", createdAt: new Date().toISOString() };
   await db.sheets.add(meta);
   await ensureInitialized(id, db);

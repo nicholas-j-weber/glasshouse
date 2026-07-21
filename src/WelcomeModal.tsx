@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { ModelField } from "./ModelField";
 import { getStoredApiKey, getStoredWelcomeDismissed, setStoredApiKey, setStoredWelcomeDismissed } from "./settingsStorage";
-import { useModalFocus } from "./useModalFocus";
+import { useDialog } from "./useDialog";
 
 // a one-time explanation for a first-time viewer of the
 // running app — distinct from README.md, which explains the project to
 // someone reading the repo, not someone who's just landed on the live
-// demo. Reuses SettingsModal's exact .modal-overlay/.modal shape for
+// demo. Reuses SettingsModal's exact .modal <dialog> shape for
 // visual consistency rather than inventing a second modal pattern.
 //
 // Two distinct dismissals, not one: closing (overlay click, ×, or "Got
@@ -59,83 +59,78 @@ export function WelcomeModal() {
   const [closed, setClosed] = useState(false);
   const [dismissedPermanently, setDismissedPermanently] = useState(getStoredWelcomeDismissed());
   const [apiKey, setApiKey] = useState(getStoredApiKey());
-  // Passed `open` rather than relying on mount/unmount — this component
-  // stays mounted for the whole session and just renders null below once
-  // dismissed, so the hook needs the boolean transition, not the
-  // component's own lifecycle, to know when to move/restore focus.
-  const panelRef = useModalFocus<HTMLDivElement>(!closed && !dismissedPermanently);
+  // Called once on mount (like SettingsModal) — this component stays
+  // mounted for the whole session, but once closed/dismissedPermanently it
+  // returns null below and never renders the <dialog> again, so there's no
+  // second open to wire up. Escape now closes this too (previously
+  // unhandled — this component never had useEscapeKey), same as every
+  // other native <dialog> gets for free.
+  const dialog = useDialog(() => setClosed(true));
 
   if (closed || dismissedPermanently) return null;
 
-  function close() {
-    setClosed(true);
-  }
-
   function dismissPermanently() {
+    dialog.close();
     setStoredWelcomeDismissed(true);
     setDismissedPermanently(true);
   }
 
   return (
-    <div className="modal-overlay" onClick={close}>
-      <div
-        className="modal modal--welcome"
-        ref={panelRef}
-        tabIndex={-1}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="welcome-modal-title"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="modal-header">
-          <h2 id="welcome-modal-title">Welcome to ACM2</h2>
-          <button type="button" className="modal-close" onClick={close} aria-label="Close welcome message">
-            ×
-          </button>
-        </div>
-        <div className="modal-body">
-          <div className="welcome-text">
-            <p>
-              This is a live demo of Auditable Context & Memory Methodology — a versioned, inspectable alternative to
-              opaque chat history.
-            </p>
-            <p>
-              Everything the AI knows lives in the Context panel, where you can see, edit, and revert it —
-              no hidden memory or chat history you can't inspect. AI-suggested changes are shown before they're applied, and nothing is ever
-              silently deleted: deactivated content stays visible for audit in History. When your context exceeds
-              roughly 3000 tokens, you'll be prompted to compress it in the Token Estimator.
-            </p>
-            <p>
-              The Context panel has three tabs — This Chat, Memories, and History — or try Manage with AI to ask
-              for changes directly.
-            </p>
-          </div>
-          <div className="modal-field-row">
-            <label className="modal-field">
-              <span>Anthropic API key</span>
-              <input
-                type="password"
-                aria-label="Anthropic API key"
-                value={apiKey}
-                onChange={(e) => {
-                  setApiKey(e.target.value);
-                  setStoredApiKey(e.target.value);
-                }}
-              />
-            </label>
-            <ModelField />
-          </div>
-          <p className="modal-field-hint">Needed to chat — stored locally, sent only to Anthropic. Both are optional here; set or change them later in Settings too.</p>
-        </div>
-        <div className="welcome-actions">
-          <button type="button" className="welcome-dismiss" onClick={close}>
-            Got it
-          </button>
-          <button type="button" className="welcome-dismiss welcome-dismiss--secondary" onClick={dismissPermanently}>
-            Don't show again
-          </button>
-        </div>
+    <dialog
+      className="modal modal--welcome"
+      ref={dialog.ref}
+      onClose={dialog.onClose}
+      onClick={dialog.onBackdropClick}
+      aria-labelledby="welcome-modal-title"
+    >
+      <div className="modal-header">
+        <h2 id="welcome-modal-title">Welcome to ACM2</h2>
+        <button type="button" className="modal-close" onClick={dialog.close} aria-label="Close welcome message">
+          ×
+        </button>
       </div>
-    </div>
+      <div className="modal-body">
+        <div className="welcome-text">
+          <p>
+            This is a live demo of Auditable Context & Memory Methodology — a versioned, inspectable alternative to
+            opaque chat history.
+          </p>
+          <p>
+            Everything the AI knows lives in the Context panel, where you can see, edit, and revert it —
+            no hidden memory or chat history you can't inspect. AI-suggested changes are shown before they're applied, and nothing is ever
+            silently deleted: deactivated content stays visible for audit in History. When your context exceeds
+            roughly 3000 tokens, you'll be prompted to compress it in the Token Estimator.
+          </p>
+          <p>
+            The Context panel has three tabs — This Chat, Memories, and History — or try Manage with AI to ask
+            for changes directly.
+          </p>
+        </div>
+        <div className="modal-field-row">
+          <label className="modal-field">
+            <span>Anthropic API key</span>
+            <input
+              type="password"
+              aria-label="Anthropic API key"
+              value={apiKey}
+              onChange={(e) => {
+                setApiKey(e.target.value);
+                setStoredApiKey(e.target.value);
+              }}
+            />
+          </label>
+          <ModelField />
+        </div>
+        <p className="modal-field-hint">Needed to chat — stored locally, sent only to Anthropic. Both are optional here; set or change them later in Settings too.</p>
+      </div>
+      <div className="welcome-actions">
+        <button type="button" className="welcome-dismiss" onClick={dialog.close}>
+          Got it
+        </button>
+        <button type="button" className="welcome-dismiss welcome-dismiss--secondary" onClick={dismissPermanently}>
+          Don't show again
+        </button>
+      </div>
+    </dialog>
   );
 }

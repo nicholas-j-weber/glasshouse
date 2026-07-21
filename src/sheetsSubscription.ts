@@ -4,15 +4,9 @@
 // subscriber that needs this; components below it just receive the
 // resolved sheetId as a normal reactive prop/param once it changes.
 
-type Listener = () => void;
+import { createSignal } from "./signal";
 
-const listeners = new Set<Listener>();
+const signal = createSignal();
 
-export function notifySheetsChanged(): void {
-  for (const listener of listeners) listener();
-}
-
-export function subscribeSheetsChanged(listener: Listener): () => void {
-  listeners.add(listener);
-  return () => listeners.delete(listener);
-}
+export const notifySheetsChanged = signal.notify;
+export const subscribeSheetsChanged = signal.subscribe;

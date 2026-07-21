@@ -1,4 +1,4 @@
-import type { ProviderAdapter, ProviderCallResult, ProviderConfig, ProviderError } from "./types";
+import type { ProviderCallResult, ProviderConfig, ProviderError } from "./types";
 
 const DEFAULT_BASE_URL = "https://api.anthropic.com/v1/messages";
 const ANTHROPIC_VERSION = "2023-06-01";
@@ -47,10 +47,7 @@ function mapErrorResponse(response: Response, body: unknown): ProviderError {
 // specifically to support BYOK client-side tools like this one — direct
 // browser calls to api.anthropic.com are a supported, documented path,
 // unlike OpenAI's API.
-export function createAnthropicAdapter(
-  config: ProviderConfig,
-  options: AnthropicAdapterOptions = {},
-): ProviderAdapter {
+export function createAnthropicAdapter(config: ProviderConfig, options: AnthropicAdapterOptions = {}) {
   const baseUrl = options.baseUrl ?? DEFAULT_BASE_URL;
   const fetchImpl = options.fetchImpl ?? fetch;
 

@@ -25,26 +25,33 @@ const DEFAULT_MODEL = "claude-sonnet-5";
 // other.
 export const KNOWN_MODELS = ["claude-sonnet-5", "claude-opus-4-8", "claude-haiku-4-5-20251001", "claude-fable-5"];
 
-export function getStoredApiKey(): string {
-  return localStorage.getItem(API_KEY_KEY) ?? "";
+function makeStringSetting(key: string, defaultValue: string): [() => string, (value: string) => void] {
+  return [() => localStorage.getItem(key) ?? defaultValue, (value: string) => localStorage.setItem(key, value)];
 }
 
-export function setStoredApiKey(key: string): void {
-  localStorage.setItem(API_KEY_KEY, key);
+// stored === null (never toggled, or an older session predating this
+// setting) reads as defaultValue; otherwise the stored "true"/"false"
+// string. So a setting's default is entirely the defaultValue argument
+// each call site below passes — no !== "false" / === "true" tricks to read.
+function makeBoolSetting(key: string, defaultValue: boolean): [() => boolean, (value: boolean) => void] {
+  return [
+    () => {
+      const stored = localStorage.getItem(key);
+      return stored === null ? defaultValue : stored === "true";
+    },
+    (value: boolean) => localStorage.setItem(key, String(value)),
+  ];
 }
 
-export function getStoredModel(): string {
-  return localStorage.getItem(MODEL_KEY) ?? DEFAULT_MODEL;
-}
+export const [getStoredApiKey, setStoredApiKey] = makeStringSetting(API_KEY_KEY, "");
 
-export function setStoredModel(model: string): void {
-  localStorage.setItem(MODEL_KEY, model);
-}
+export const [getStoredModel, setStoredModel] = makeStringSetting(MODEL_KEY, DEFAULT_MODEL);
 
 // which sheet is currently displayed is a plain client
 // preference, same storage layer as the API key and model above — not a
 // Version and not something requiring its own history, since it isn't
-// sheet content.
+// sheet content. No default (unlike the settings above): null means
+// no sheet has been made active yet, not "assume some particular sheet."
 export function getStoredActiveSheetId(): string | null {
   return localStorage.getItem(ACTIVE_SHEET_ID_KEY);
 }
@@ -57,15 +64,8 @@ export function setStoredActiveSheetId(sheetId: string): void {
 // always reviews manually) auto-applies suggestions or leaves
 // them pending for manual Accept/Reject/Revise, same as Manage with AI
 // always has. Defaults to true, so
-// existing users see no change until they opt out; absence in localStorage
-// (never toggled, or an older session from before this setting existed) reads as "on", not "off".
-export function getStoredAutoApply(): boolean {
-  return localStorage.getItem(AUTO_APPLY_KEY) !== "false";
-}
-
-export function setStoredAutoApply(value: boolean): void {
-  localStorage.setItem(AUTO_APPLY_KEY, String(value));
-}
+// existing users see no change until they opt out.
+export const [getStoredAutoApply, setStoredAutoApply] = makeBoolSetting(AUTO_APPLY_KEY, true);
 
 // the chat pane's per-message "N changes" disclosure
 // (SuggestionSessionView.tsx) starts collapsed or expanded based on this —
@@ -75,13 +75,10 @@ export function setStoredAutoApply(value: boolean): void {
 // visibly re-collapse/re-expand everything already on screen, not just
 // change what happens to future messages. Defaults to false (expanded) —
 // existing behavior — so nothing changes until a user opts in.
-export function getStoredCollapseSuggestionsByDefault(): boolean {
-  return localStorage.getItem(COLLAPSE_SUGGESTIONS_KEY) === "true";
-}
-
-export function setStoredCollapseSuggestionsByDefault(value: boolean): void {
-  localStorage.setItem(COLLAPSE_SUGGESTIONS_KEY, String(value));
-}
+export const [getStoredCollapseSuggestionsByDefault, setStoredCollapseSuggestionsByDefault] = makeBoolSetting(
+  COLLAPSE_SUGGESTIONS_KEY,
+  false,
+);
 
 // whether the Token Estimator shows a compression-
 // recommendation banner once Context size crosses
@@ -91,17 +88,11 @@ export function setStoredCollapseSuggestionsByDefault(value: boolean): void {
 // considered decision, not an oversight — defaulting to true instead:
 // this is a demo, and compression is one of its more heavily-built
 // features (Addenda AL through AS); hiding it behind an opt-in setting
-// undersells it for a first-time viewer. Same absence-reads-as-on shape
-// as getStoredAutoApply above, for the same reason: existing sessions
-// that never touched this setting should see the new default, not be
-// silently exempted from it.
-export function getStoredRecommendCompression(): boolean {
-  return localStorage.getItem(RECOMMEND_COMPRESSION_KEY) !== "false";
-}
-
-export function setStoredRecommendCompression(value: boolean): void {
-  localStorage.setItem(RECOMMEND_COMPRESSION_KEY, String(value));
-}
+// undersells it for a first-time viewer.
+export const [getStoredRecommendCompression, setStoredRecommendCompression] = makeBoolSetting(
+  RECOMMEND_COMPRESSION_KEY,
+  true,
+);
 
 // Context size (tokens) past which the compression-
 // recommendation banner appears, when the setting above is on. A plain
@@ -119,31 +110,19 @@ export const COMPRESSION_RECOMMENDATION_THRESHOLD = 3000;
 // live at render time, not captured once, for the same reason as the
 // collapse-suggestions setting — flipping this should visibly affect rows already on
 // screen, not just future ones.
-export function getStoredCollapseTurnsByDefault(): boolean {
-  return localStorage.getItem(COLLAPSE_TURNS_KEY) === "true";
-}
+export const [getStoredCollapseTurnsByDefault, setStoredCollapseTurnsByDefault] = makeBoolSetting(
+  COLLAPSE_TURNS_KEY,
+  false,
+);
 
-export function setStoredCollapseTurnsByDefault(value: boolean): void {
-  localStorage.setItem(COLLAPSE_TURNS_KEY, String(value));
-}
-
-export function getStoredCollapseHistoryByDefault(): boolean {
-  return localStorage.getItem(COLLAPSE_HISTORY_KEY) === "true";
-}
-
-export function setStoredCollapseHistoryByDefault(value: boolean): void {
-  localStorage.setItem(COLLAPSE_HISTORY_KEY, String(value));
-}
+export const [getStoredCollapseHistoryByDefault, setStoredCollapseHistoryByDefault] = makeBoolSetting(
+  COLLAPSE_HISTORY_KEY,
+  false,
+);
 
 // whether the first-time welcome explanation has been
 // dismissed. Not a Settings toggle like everything else in this file —
 // there's nothing to reconfigure, just a one-time "seen it" flag with no
 // UI of its own to flip it back on (the whole point is it shows once and
 // gets out of the way permanently).
-export function getStoredWelcomeDismissed(): boolean {
-  return localStorage.getItem(WELCOME_DISMISSED_KEY) === "true";
-}
-
-export function setStoredWelcomeDismissed(value: boolean): void {
-  localStorage.setItem(WELCOME_DISMISSED_KEY, String(value));
-}
+export const [getStoredWelcomeDismissed, setStoredWelcomeDismissed] = makeBoolSetting(WELCOME_DISMISSED_KEY, false);

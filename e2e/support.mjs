@@ -100,12 +100,24 @@ export async function withFreshPage(browser, fn, { skipWelcomeDismiss = false } 
   }
 }
 
+// Settings is a native <dialog> (useDialog.ts) — its close() dispatches
+// the real 'close' event (and the React unmount that follows) a tick after
+// the click that triggered it, not synchronously within it, unlike the
+// plain div/keydown-listener version this replaced. Every setter below
+// closes Settings as its last step and callers immediately check DOM state
+// that depends on the close having actually finished, so this centralizes
+// the wait once instead of in every setter.
+async function closeSettings(page) {
+  await page.click('button[aria-label="Close settings"]');
+  await page.waitForTimeout(150);
+}
+
 // The API key lives behind the Settings modal (gear icon), not inline in
 // the header — opens it, fills the key, and closes it again.
 export async function setApiKey(page, key) {
   await page.click('button[aria-label="Settings"]');
   await page.fill('input[aria-label="Anthropic API key"]', key);
-  await page.click('button[aria-label="Close settings"]');
+  await closeSettings(page);
 }
 
 // the chat-mode auto-apply toggle, on by default — only
@@ -115,7 +127,7 @@ export async function setAutoApply(page, enabled) {
   await page.click('button[aria-label="Settings"]');
   const checkbox = page.locator('input[aria-label="Auto-apply context updates while chatting"]');
   if ((await checkbox.isChecked()) !== enabled) await checkbox.click();
-  await page.click('button[aria-label="Close settings"]');
+  await closeSettings(page);
 }
 
 // the chat pane's "collapse suggestion details by default"
@@ -124,7 +136,7 @@ export async function setCollapseSuggestionsByDefault(page, enabled) {
   await page.click('button[aria-label="Settings"]');
   const checkbox = page.locator('input[aria-label="Collapse suggestion details by default"]');
   if ((await checkbox.isChecked()) !== enabled) await checkbox.click();
-  await page.click('button[aria-label="Close settings"]');
+  await closeSettings(page);
 }
 
 // This Chat's turn/summary collapse-by-default toggle, off by
@@ -133,7 +145,7 @@ export async function setCollapseTurnsByDefault(page, enabled) {
   await page.click('button[aria-label="Settings"]');
   const checkbox = page.locator('input[aria-label="Collapse conversation turns and summaries by default"]');
   if ((await checkbox.isChecked()) !== enabled) await checkbox.click();
-  await page.click('button[aria-label="Close settings"]');
+  await closeSettings(page);
 }
 
 // History's per-version diff-list collapse-by-default toggle.
@@ -141,7 +153,7 @@ export async function setCollapseHistoryByDefault(page, enabled) {
   await page.click('button[aria-label="Settings"]');
   const checkbox = page.locator('input[aria-label="Collapse History entries by default"]');
   if ((await checkbox.isChecked()) !== enabled) await checkbox.click();
-  await page.click('button[aria-label="Close settings"]');
+  await closeSettings(page);
 }
 
 // The details sidebar's Memories/This-Chat tab content stays mounted

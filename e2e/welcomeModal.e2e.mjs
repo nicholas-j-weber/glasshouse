@@ -21,7 +21,11 @@ export async function run(browser, baseUrl) {
       })) && ok;
 
       ok = (await test("clicking outside the modal (the overlay) closes it, but it reappears on reload", async () => {
-        await page.click(".modal-overlay", { position: { x: 5, y: 5 } });
+        // Settings/Welcome are native <dialog> now — there's no .modal-overlay
+        // wrapper div to click on to reach the backdrop area, so this clicks a
+        // raw viewport position instead (5,5 is well outside the centered dialog
+        // at this test's default 1280x720 viewport).
+        await page.mouse.click(5, 5);
         await page.waitForTimeout(150);
         assert((await page.locator(".modal-header h2", { hasText: "Welcome to ACM2" }).count()) === 0, "clicking the overlay should close it");
 

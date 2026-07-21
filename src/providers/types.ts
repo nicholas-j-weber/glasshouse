@@ -33,8 +33,3 @@ export interface ProviderUsage {
 export type ProviderCallResult =
   | { ok: true; text: string; usage?: ProviderUsage }
   | { ok: false; error: ProviderError };
-
-export interface ProviderAdapter {
-  readonly name: string;
-  call(systemPrompt: string, userMessage: string): Promise<ProviderCallResult>;
-}

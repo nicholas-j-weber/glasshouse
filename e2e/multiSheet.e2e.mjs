@@ -249,13 +249,16 @@ export async function run(browser, baseUrl) {
     })) && ok;
 
     ok = (await test("the gear icon opens a Settings modal; Escape closes it", async () => {
-      assert((await page.locator(".modal-overlay").count()) === 0, "modal should not be open yet");
+      assert((await page.locator(".modal").count()) === 0, "modal should not be open yet");
       await page.click('button[aria-label="Settings"]');
-      assert(await page.locator(".modal-overlay").isVisible(), "Settings modal should open");
+      assert(await page.locator(".modal").isVisible(), "Settings modal should open");
       assert(await page.locator('input[aria-label="Anthropic API key"]').isVisible(), "API key input should live inside the modal");
 
       await page.keyboard.press("Escape");
-      assert((await page.locator(".modal-overlay").count()) === 0, "Escape should close the modal");
+      // Settings is a native <dialog> now — Escape's cancel/close events land
+      // a tick after Playwright's keypress resolves, not synchronously with it.
+      await page.waitForTimeout(150);
+      assert((await page.locator(".modal").count()) === 0, "Escape should close the modal");
     })) && ok;
 
     ok = (await test("the header no longer has a Memories shortcut — clicking the panel's own Memories tab is the only way in", async () => {

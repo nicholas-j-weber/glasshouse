@@ -2,15 +2,9 @@
 // store's head version changes, without pulling in a state-management
 // library for what's otherwise a single IndexedDB-backed pointer.
 
-type Listener = () => void;
+import { createSignal } from "./signal";
 
-const listeners = new Set<Listener>();
+const signal = createSignal();
 
-export function notifyHeadChanged(): void {
-  for (const listener of listeners) listener();
-}
-
-export function subscribeHeadChanged(listener: Listener): () => void {
-  listeners.add(listener);
-  return () => listeners.delete(listener);
-}
+export const notifyHeadChanged = signal.notify;
+export const subscribeHeadChanged = signal.subscribe;
