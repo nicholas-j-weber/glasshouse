@@ -90,6 +90,12 @@ export interface SessionMessage {
   // follow-up call never sets this, even mid-reasoning-toggled session —
   // see handleRevisionSubmit's comment.
   reasoningRunId?: string;
+  // set iff this pass touched code (spec.md "The Pass") — independent of
+  // routingMode. Links to the CodeVersion chain CodeDiffView.tsx renders as
+  // an expandable per-file diff. Nothing sets this yet — that's the coding-
+  // pass detection milestone 6 wires into the suggestion parser; this field
+  // and CodeDiffView are the read/render side, built ahead of it.
+  codeVersionId?: string;
 }
 
 // ephemeral (not persisted — a fresh page load starts with

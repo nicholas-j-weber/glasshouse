@@ -1693,6 +1693,85 @@ dialog.modal::backdrop {
   color: var(--text-dim);
 }
 
+/* spec.md "Code-diff lane" — a coding pass's expandable per-file diff
+   (CodeDiffView.tsx). Same disclosure toggle language as
+   .chat-suggestions-toggle/.reasoning-trace; the "diff, not inline code"
+   rule (milestone 6) makes this the only place a coding pass's actual
+   content is meant to be readable. */
+.code-diff-view {
+  margin-top: 8px;
+}
+
+.code-diff-files {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.code-diff-file {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.code-diff-file-header {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  padding: 6px 8px;
+  background: var(--code-bg);
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+
+.code-diff-file-status {
+  text-transform: uppercase;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.code-diff-file-status--added {
+  color: var(--diff-added);
+}
+
+.code-diff-file-status--removed {
+  color: var(--diff-removed);
+}
+
+.code-diff-file-status--modified {
+  color: var(--gold);
+}
+
+.code-diff-file-path {
+  font-family: var(--mono);
+  color: var(--text-h);
+}
+
+.code-diff-file-body {
+  margin: 0;
+  padding: 4px 0;
+  font-family: var(--mono);
+  font-size: 12px;
+  overflow-x: auto;
+}
+
+.code-diff-line {
+  padding: 0 8px;
+  white-space: pre;
+}
+
+.code-diff-line--added {
+  color: var(--diff-added);
+  background: var(--diff-added-bg);
+}
+
+.code-diff-line--removed {
+  color: var(--diff-removed);
+  background: var(--diff-removed-bg);
+}
+
 /* replaces the old .chat-suggestions review list — a plain
    historical record (what got applied, or failed to) for suggestions that
    already resolved, not an interactive list with actions. Also used for resolved (accepted/rejected/revised/failed) suggestions

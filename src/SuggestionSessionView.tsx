@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef } from "react";
 import { ChangeCard } from "./ChangeCard";
+import { CodeDiffView } from "./CodeDiffView";
 import { MarkdownText } from "./MarkdownText";
 import { ReasoningTrace } from "./ReasoningTrace";
 import { getStoredCollapseSuggestionsByDefault } from "./settingsStorage";
@@ -131,6 +132,7 @@ export function SuggestionSessionView({
             )}
             {message.role === "assistant" ? <MarkdownText text={message.text} /> : <p>{message.text}</p>}
             {message.role === "assistant" && message.reasoningRunId && <ReasoningTrace runId={message.reasoningRunId} />}
+            {message.role === "assistant" && message.codeVersionId && <CodeDiffView versionId={message.codeVersionId} />}
             {message.suggestions && message.suggestions.length > 0 && (
               <div className="chat-suggestions-block">
                 <button
