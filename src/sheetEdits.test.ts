@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   addConversationTurn,
+  addKnowledgeMemory,
   addMemory,
   deleteMemory,
   editFreeformNotes,
@@ -132,5 +133,37 @@ describe("addConversationTurn", () => {
 
     expect(result.memories).toHaveLength(2);
     expect(result.memories.find((m) => m.id === "existing")?.body).toBe("Earlier turn");
+  });
+});
+
+describe("addKnowledgeMemory", () => {
+  it("appends an active, unpinned memory with label/moduleId set to the filename", () => {
+    const sheet = makeSheet();
+    const result = addKnowledgeMemory(sheet, "knowledge", "onboarding.md", "Step one. Step two.", "2026-06-01T00:00:00.000Z");
+
+    expect(result.memories).toHaveLength(1);
+    expect(result.memories[0]).toMatchObject({
+      kind: "knowledge",
+      label: "onboarding.md",
+      moduleId: "onboarding.md",
+      body: "Step one. Step two.",
+      pinRank: null,
+      active: true,
+      provenance: { source: "file_upload", sourceExcerpt: "onboarding.md" },
+    });
+  });
+
+  it("tags a skill upload with kind: skill", () => {
+    const sheet = makeSheet();
+    const result = addKnowledgeMemory(sheet, "skill", "deploy.md", "1. Build. 2. Push.", "2026-06-01T00:00:00.000Z");
+    expect(result.memories[0].kind).toBe("skill");
+  });
+
+  it("leaves existing memories untouched", () => {
+    const sheet = makeSheet([makeMemory({ id: "existing", kind: "knowledge", label: "old.md" })]);
+    const result = addKnowledgeMemory(sheet, "knowledge", "new.md", "content", "2026-06-01T00:00:00.000Z");
+
+    expect(result.memories).toHaveLength(2);
+    expect(result.memories.find((m) => m.id === "existing")?.label).toBe("old.md");
   });
 });

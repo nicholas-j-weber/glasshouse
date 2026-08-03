@@ -1,4 +1,5 @@
 import { ContextSidebarContent } from "./ContextSidebarContent";
+import type { SheetPanelTab } from "./SheetPanel";
 import { useEscapeKey } from "./useEscapeKey";
 import { useModalFocus } from "./useModalFocus";
 
@@ -18,8 +19,8 @@ export function MobileContextOverlay({
   onClose,
 }: {
   sheetId: string;
-  detailsTab: "chat" | "memories" | "history";
-  onTabChange: (tab: "chat" | "memories" | "history") => void;
+  detailsTab: SheetPanelTab;
+  onTabChange: (tab: SheetPanelTab) => void;
   onOpenManageWithAI: (prefill?: string) => void;
   manageAIOpen: boolean;
   onToggleManageAI: () => void;

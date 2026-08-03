@@ -1000,6 +1000,86 @@ dialog.modal::backdrop {
   font-size: 14px;
 }
 
+.memory-row-title-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* spec.md "Knowledge & Skills" — badge distinguishing a Knowledge-tab
+   entry's kind, same visual language as .routing-badge (small, uppercase,
+   tinted). One shared color for both kinds — the badge's text already says
+   which, a second color pair would be distinguishing the same thing twice. */
+.memory-kind-badge {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  background: var(--accent-bg);
+  color: var(--accent);
+}
+
+/* spec.md "Modules" — one uploaded file's entries, grouped under a bulk-
+   toggle header (KnowledgeModule). Nested .memory-list reuses the same
+   list styling as the outer one, just indented slightly so entries read as
+   belonging to the module header above them. */
+.knowledge-module {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.knowledge-module-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.knowledge-module-count {
+  font-weight: 400;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.knowledge-module-entries {
+  padding-left: 12px;
+}
+
+/* spec.md "Acceptance: file upload" — the Knowledge tab's upload control.
+   Deliberately its own class rather than reusing .new-memory-form/
+   .export-import-buttons: both of those style *every* descendant <button>
+   (including the kind-picker's .segmented-toggle-option buttons nested
+   inside here), which would out-specificity the toggle's own styling. */
+.knowledge-upload-form {
+  margin-top: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.knowledge-upload-button {
+  font: inherit;
+  font-size: 13px;
+  padding: 4px 12px;
+  border-radius: 6px;
+  border: none;
+  background: var(--accent-strong);
+  color: var(--on-accent);
+  cursor: pointer;
+}
+
+.knowledge-upload-button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 /* the collapse caret sits beside the row's text (TurnRow) or
    its "Summary" label (SummaryRow) on one line; align-items: flex-start
    keeps the caret pinned to the top when the text below/beside it wraps to
@@ -2153,17 +2233,20 @@ dialog.modal::backdrop {
   color: var(--error);
 }
 
-/* The routing toggle itself — same two-button segmented-control language as
-   .chat-send--revising's paired buttons, just persistent rather than a
-   revise/cancel pair. Sits above the input row it governs. */
-.routing-toggle {
+/* A small two-button segmented control, same visual language as
+   .chat-send--revising's paired buttons — persistent rather than a
+   revise/cancel pair. Originally the chat pane's Reasoning/Blackbox and
+   Prose/Code toggles; reused as-is for SheetPanel.tsx's Knowledge-tab
+   upload kind picker, hence the generic name rather than a "routing"-
+   specific one. */
+.segmented-toggle {
   display: flex;
   gap: 0;
   padding: 0 16px;
   margin-top: 8px;
 }
 
-.routing-toggle-option {
+.segmented-toggle-option {
   font: inherit;
   font-size: 12px;
   padding: 4px 10px;
@@ -2174,16 +2257,16 @@ dialog.modal::backdrop {
   cursor: pointer;
 }
 
-.routing-toggle-option:first-child {
+.segmented-toggle-option:first-child {
   border-radius: 6px 0 0 6px;
   border-right: none;
 }
 
-.routing-toggle-option:last-child {
+.segmented-toggle-option:last-child {
   border-radius: 0 6px 6px 0;
 }
 
-.routing-toggle-option--active {
+.segmented-toggle-option--active {
   opacity: 1;
   background: var(--accent-bg);
 }

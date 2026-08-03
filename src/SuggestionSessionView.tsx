@@ -174,12 +174,12 @@ export function SuggestionSessionView({
           labeled honestly via the Blackbox badge. Disabled mid-send so a
           pass is always tagged with the routing that actually produced it,
           not one flipped after the call already started. */}
-      <div className="routing-toggle" role="radiogroup" aria-label="Message routing">
+      <div className="segmented-toggle" role="radiogroup" aria-label="Message routing">
         <button
           type="button"
           role="radio"
           aria-checked={routingMode === "blackbox"}
-          className={`routing-toggle-option${routingMode === "blackbox" ? " routing-toggle-option--active" : ""}`}
+          className={`segmented-toggle-option${routingMode === "blackbox" ? " segmented-toggle-option--active" : ""}`}
           onClick={() => setRoutingMode("blackbox")}
           disabled={isSending}
         >
@@ -189,7 +189,7 @@ export function SuggestionSessionView({
           type="button"
           role="radio"
           aria-checked={routingMode === "reasoning"}
-          className={`routing-toggle-option${routingMode === "reasoning" ? " routing-toggle-option--active" : ""}`}
+          className={`segmented-toggle-option${routingMode === "reasoning" ? " segmented-toggle-option--active" : ""}`}
           onClick={() => setRoutingMode("reasoning")}
           disabled={isSending}
         >
@@ -201,12 +201,12 @@ export function SuggestionSessionView({
           same deterministic-toggle posture as routing above. Independent of
           it: a reasoning-routed pass can still be a coding request, the
           reasoning trace just leads up to a code_change as its final step. */}
-      <div className="routing-toggle" role="radiogroup" aria-label="Message content">
+      <div className="segmented-toggle" role="radiogroup" aria-label="Message content">
         <button
           type="button"
           role="radio"
           aria-checked={contentMode === "prose"}
-          className={`routing-toggle-option${contentMode === "prose" ? " routing-toggle-option--active" : ""}`}
+          className={`segmented-toggle-option${contentMode === "prose" ? " segmented-toggle-option--active" : ""}`}
           onClick={() => setContentMode("prose")}
           disabled={isSending}
         >
@@ -216,7 +216,7 @@ export function SuggestionSessionView({
           type="button"
           role="radio"
           aria-checked={contentMode === "code"}
-          className={`routing-toggle-option${contentMode === "code" ? " routing-toggle-option--active" : ""}`}
+          className={`segmented-toggle-option${contentMode === "code" ? " segmented-toggle-option--active" : ""}`}
           onClick={() => setContentMode("code")}
           disabled={isSending}
         >

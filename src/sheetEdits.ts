@@ -84,3 +84,24 @@ export function addConversationTurn(sheet: Sheet, body: string, now: string): Sh
   };
   return { ...sheet, memories: [...sheet.memories, newMemory] };
 }
+
+// spec.md "Knowledge & Skills" — what an uploaded file becomes: label and
+// moduleId both the filename, body the file's full text content, kind and
+// provenance recording it's an upload rather than a chat suggestion or a
+// hand-typed entry. Lands as a new global-chain version directly (the
+// caller commits it immediately) — no accept/reject, same as whole-sheet
+// import already works.
+export function addKnowledgeMemory(sheet: Sheet, kind: "knowledge" | "skill", filename: string, body: string, now: string): Sheet {
+  const newMemory: Memory = {
+    id: crypto.randomUUID(),
+    label: filename,
+    body,
+    pinRank: null,
+    active: true,
+    lastModified: now,
+    kind,
+    moduleId: filename,
+    provenance: { source: "file_upload", sourceExcerpt: filename },
+  };
+  return { ...sheet, memories: [...sheet.memories, newMemory] };
+}

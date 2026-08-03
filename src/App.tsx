@@ -7,6 +7,7 @@ import { ContextSidebarContent } from "./ContextSidebarContent";
 import { MobileChatsOverlay } from "./MobileChatsOverlay";
 import { MobileContextOverlay } from "./MobileContextOverlay";
 import { SettingsModal } from "./SettingsModal";
+import type { SheetPanelTab } from "./SheetPanel";
 import { useSheets } from "./useSheets";
 import { WelcomeModal } from "./WelcomeModal";
 
@@ -32,7 +33,7 @@ function App() {
   // shortcut is gone, but this still needs to live here rather than as
   // local SheetPanel state, since App.tsx also needs to know it to
   // preserve tab selection across the sidebar's own hide/show toggle.
-  const [detailsTab, setDetailsTab] = useState<"chat" | "memories" | "history">("chat");
+  const [detailsTab, setDetailsTab] = useState<SheetPanelTab>("chat");
   // Which sheet was just created via "+ New chat" — drives ChatHeaderTitle's
   // one-time auto-edit (drop straight into renaming a brand-new chat rather
   // than requiring a click). Cleared by ChatHeaderTitle itself right after

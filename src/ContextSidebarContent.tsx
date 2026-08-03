@@ -1,4 +1,4 @@
-import { SheetPanel } from "./SheetPanel";
+import { SheetPanel, type SheetPanelTab } from "./SheetPanel";
 
 // extracted verbatim from App.tsx's .controls-sidebar aside,
 // same reasoning as ChatsSidebarContent — a single shared component
@@ -19,8 +19,8 @@ export function ContextSidebarContent({
   onClose,
 }: {
   sheetId: string;
-  detailsTab: "chat" | "memories" | "history";
-  onTabChange: (tab: "chat" | "memories" | "history") => void;
+  detailsTab: SheetPanelTab;
+  onTabChange: (tab: SheetPanelTab) => void;
   onOpenManageWithAI: (prefill?: string) => void;
   manageAIOpen: boolean;
   onToggleManageAI: () => void;
