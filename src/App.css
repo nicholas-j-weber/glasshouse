@@ -1642,6 +1642,57 @@ dialog.modal::backdrop {
   transform: rotate(180deg);
 }
 
+/* spec.md "The Pass" — a reasoning-routed message's expandable step trace
+   (ReasoningTrace.tsx). Same disclosure toggle language as
+   .chat-suggestions-toggle above it; the step list itself borrows
+   .chat-applied-list's dimmed/compact treatment since this is also a
+   read-only historical record. */
+.reasoning-trace {
+  margin-top: 8px;
+}
+
+.reasoning-trace-steps {
+  margin: 8px 0 0;
+  padding-left: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.reasoning-trace-step {
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+.reasoning-trace-step-header {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+  margin-bottom: 4px;
+}
+
+.reasoning-trace-step-role {
+  text-transform: uppercase;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--text-dim);
+}
+
+.reasoning-trace-step-instruction {
+  font-weight: 600;
+}
+
+.reasoning-trace-step-response {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  color: var(--text-dim);
+}
+
 /* replaces the old .chat-suggestions review list — a plain
    historical record (what got applied, or failed to) for suggestions that
    already resolved, not an interactive list with actions. Also used for resolved (accepted/rejected/revised/failed) suggestions

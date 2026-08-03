@@ -9,6 +9,7 @@ import { GLOBAL_MEMORIES_SHEET_ID, mergeMemoryPools } from "./globalMemories";
 import { loadMessages, saveMessage } from "./messagesStore";
 import { createAnthropicAdapter } from "./providers/anthropic";
 import { describeProviderError } from "./providers/errorMessage";
+import { runReasoningAgent, type ModelCallFn } from "./reasoningAgent";
 import { buildRevisionMessage } from "./revise";
 import { getStoredApiKey, getStoredAutoApply, getStoredDefaultRoutingMode, getStoredModel } from "./settingsStorage";
 import { memoryExists } from "./sheetEdits";
@@ -83,6 +84,12 @@ export interface SessionMessage {
   // the hook's routingMode toggle, same "captured at send time, not
   // re-derived from a live setting" treatment as autoApplied above.
   routingMode: RoutingMode;
+  // set iff routingMode === "reasoning" and the reasoning agent actually
+  // ran (spec.md "The Pass") — links to the RunLog/StepRecord trace
+  // ReasoningTrace.tsx renders as an expandable step list. A revision's
+  // follow-up call never sets this, even mid-reasoning-toggled session —
+  // see handleRevisionSubmit's comment.
+  reasoningRunId?: string;
 }
 
 // ephemeral (not persisted — a fresh page load starts with
@@ -269,12 +276,13 @@ export function useSuggestionSession(mode: CallMode, sheetId: string): Suggestio
     void saveMessage(sheetId, message);
   }
 
-  // Wraps makeMessage with this hook's own mode and the routingMode toggle's
-  // current value — every message this session creates is tagged with
-  // whichever surface (chat vs sheet_editor) produced it, and which routing
-  // it was sent under.
-  function makeSessionMessage(fields: Omit<SessionMessage, "id" | "createdAt" | "mode" | "routingMode">): SessionMessage {
-    return makeMessage({ ...fields, mode, routingMode });
+  // Wraps makeMessage with this hook's own mode — every message this
+  // session creates is tagged with whichever surface (chat vs sheet_editor)
+  // produced it. routingMode defaults to the toggle's live value but can be
+  // overridden (handleRevisionSubmit always forces "blackbox", since that
+  // call never goes through the reasoning agent regardless of the toggle).
+  function makeSessionMessage(fields: Omit<SessionMessage, "id" | "createdAt" | "mode" | "routingMode"> & { routingMode?: RoutingMode }): SessionMessage {
+    return makeMessage({ ...fields, mode, routingMode: fields.routingMode ?? routingMode });
   }
 
   function updateSuggestionStatus(messageId: string, index: number, status: SuggestionStatus) {
@@ -392,6 +400,66 @@ export function useSuggestionSession(mode: CallMode, sheetId: string): Suggestio
       // calls alike — this function is already shared across both modes.
       if (result.usage) void recordUsage(sheetId, result.usage);
       return parseModelResponse(result.text);
+    } finally {
+      setIsSending(false);
+    }
+  }
+
+  // Reasoning-routed counterpart to runCall (spec.md "Reasoning agent" +
+  // "The Pass"). systemPrompt becomes topLevelInstructions — the same
+  // "sheet's memories are one source of truth" value runCall would've sent
+  // as the system prompt — so every step (including the final one) carries
+  // the same suggestion-format instructions a direct call gets; the run's
+  // finalAnswer is parsed exactly like runCall's result.text. Each step's
+  // own model call already logs its full prompt/response in runSteps, so
+  // there's no separate system/user split here — modelCallFn just forwards
+  // the agent's one flat prompt string as the user message.
+  //
+  // chatMessageId is threaded in from the caller (generated before the
+  // assistant SessionMessage itself exists) so RunLog.chatMessageId can
+  // link back to it once that message is created.
+  async function runReasoningPass(
+    systemPrompt: string,
+    problem: string,
+    chatMessageId: string,
+  ): Promise<{ parsed: ParsedModelResponse; reasoningRunId: string } | { parsed: null; reasoningRunId?: never }> {
+    const apiKey = getStoredApiKey();
+    if (!apiKey) {
+      appendError("No API key set — add one above.");
+      return { parsed: null };
+    }
+
+    setIsSending(true);
+    try {
+      const adapter = createAnthropicAdapter({ apiKey, model: getStoredModel() });
+      const modelCallFn: ModelCallFn = async (prompt) => {
+        const result = await adapter.call("", prompt);
+        if (!result.ok) throw new Error(describeProviderError(result.error));
+        if (result.usage) void recordUsage(sheetId, result.usage);
+        return result.text;
+      };
+
+      let run;
+      try {
+        run = await runReasoningAgent({
+          sheetId,
+          chatMessageId,
+          problem,
+          topLevelInstructions: systemPrompt,
+          modelCallFn,
+          modelName: getStoredModel(),
+        });
+      } catch (e) {
+        // A step's model call failed (network/auth/rate-limit) — the run's
+        // db row is left "running" (reasoningAgent.ts has no error status of
+        // its own to set), but nothing here treats that as a completed pass:
+        // no message is added, same "failure never silently no-ops" contract
+        // as runCall's own error path.
+        appendError(e instanceof Error ? e.message : String(e));
+        return { parsed: null };
+      }
+
+      return { parsed: parseModelResponse(run.finalAnswer ?? ""), reasoningRunId: run.runId };
     } finally {
       setIsSending(false);
     }
@@ -527,7 +595,20 @@ export function useSuggestionSession(mode: CallMode, sheetId: string): Suggestio
     ]);
     const merged = mergeMemoryPools(localHead.sheet, globalHead.sheet);
     const systemPrompt = buildSystemPrompt(applyOverlay(merged, overlay), mode);
-    const parsed = await runCall(systemPrompt, messageText);
+
+    // Captured once, up front — routingMode is a live toggle the user could
+    // flip again before the (possibly multi-step) call resolves, but a pass
+    // must be tagged with whichever routing actually produced it, not
+    // whatever the toggle happens to read afterward.
+    const passRoutingMode = routingMode;
+    // Generated ahead of the call so a reasoning-routed run's RunLog can
+    // reference this message's id as chatMessageId before the SessionMessage
+    // itself exists.
+    const assistantMessageId = crypto.randomUUID();
+    const { parsed, reasoningRunId } =
+      passRoutingMode === "reasoning"
+        ? await runReasoningPass(systemPrompt, messageText, assistantMessageId)
+        : { parsed: await runCall(systemPrompt, messageText), reasoningRunId: undefined };
     if (!parsed) return; // error already appended; draft preserved, no "sent" turn added
 
     const suggestions = await resolveSuggestions(parsed, mode, messageText, attemptSummaryFollowup);
@@ -536,14 +617,19 @@ export function useSuggestionSession(mode: CallMode, sheetId: string): Suggestio
     // a toggle that's specifically about chat mode.
     const autoApply = mode === "chat" && getStoredAutoApply();
 
-    addMessage(makeSessionMessage({ role: "user", text: messageText }));
-    const assistantMessage = makeSessionMessage({
+    addMessage({ id: crypto.randomUUID(), createdAt: new Date().toISOString(), mode, role: "user", text: messageText, routingMode: passRoutingMode });
+    const assistantMessage: SessionMessage = {
+      id: assistantMessageId,
+      createdAt: new Date().toISOString(),
+      mode,
       role: "assistant",
       text: parsed.conversationalText,
       sourceText: messageText,
       suggestions,
       autoApplied: autoApply,
-    });
+      routingMode: passRoutingMode,
+      reasoningRunId,
+    };
     addMessage(assistantMessage);
     setDraft("");
 
@@ -602,8 +688,21 @@ export function useSuggestionSession(mode: CallMode, sheetId: string): Suggestio
     // revision is only ever reachable from a still-pending
     // card (sheet_editor mode, or chat mode with auto-apply off) — so the
     // follow-up it produces is always manually reviewed too, regardless of
-    // the current auto-apply setting.
-    addMessage(makeSessionMessage({ role: "assistant", text: parsed.conversationalText, sourceText: instruction, suggestions, autoApplied: false }));
+    // the current auto-apply setting. Always routingMode: "blackbox",
+    // regardless of the pane's current toggle — this always goes through
+    // runCall, never the reasoning agent, so tagging it "reasoning" would
+    // claim an audit trail (and suppress the Blackbox badge) that doesn't
+    // exist for this call.
+    addMessage(
+      makeSessionMessage({
+        role: "assistant",
+        text: parsed.conversationalText,
+        sourceText: instruction,
+        suggestions,
+        autoApplied: false,
+        routingMode: "blackbox",
+      }),
+    );
   }
 
   return {

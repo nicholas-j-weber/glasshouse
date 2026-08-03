@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef } from "react";
 import { ChangeCard } from "./ChangeCard";
 import { MarkdownText } from "./MarkdownText";
+import { ReasoningTrace } from "./ReasoningTrace";
 import { getStoredCollapseSuggestionsByDefault } from "./settingsStorage";
 import { ToastStack } from "./Toast";
 import { describeSuggestion } from "./suggestionDisplay";
@@ -129,6 +130,7 @@ export function SuggestionSessionView({
               </span>
             )}
             {message.role === "assistant" ? <MarkdownText text={message.text} /> : <p>{message.text}</p>}
+            {message.role === "assistant" && message.reasoningRunId && <ReasoningTrace runId={message.reasoningRunId} />}
             {message.suggestions && message.suggestions.length > 0 && (
               <div className="chat-suggestions-block">
                 <button
@@ -162,10 +164,12 @@ export function SuggestionSessionView({
       </div>
       <ToastStack toasts={toasts} onDismiss={dismissToast} onUndo={undoToast} />
       {/* spec.md "Routing: reasoning vs. blackbox" — a per-message toggle,
-          not a heuristic. Reasoning routing doesn't run the reasoning agent
-          yet (a later milestone still wires that call); this only tags the
-          message and, once "reasoning" is selected, stops it from wearing
-          the Blackbox badge. */}
+          not a heuristic. "Reasoning" routes the send through
+          reasoningAgent.ts's fixed-sequence loop (rendered per-message as
+          an expandable ReasoningTrace below); "Blackbox" is a direct call,
+          labeled honestly via the Blackbox badge. Disabled mid-send so a
+          pass is always tagged with the routing that actually produced it,
+          not one flipped after the call already started. */}
       <div className="routing-toggle" role="radiogroup" aria-label="Message routing">
         <button
           type="button"
@@ -173,6 +177,7 @@ export function SuggestionSessionView({
           aria-checked={routingMode === "blackbox"}
           className={`routing-toggle-option${routingMode === "blackbox" ? " routing-toggle-option--active" : ""}`}
           onClick={() => setRoutingMode("blackbox")}
+          disabled={isSending}
         >
           Blackbox
         </button>
@@ -182,6 +187,7 @@ export function SuggestionSessionView({
           aria-checked={routingMode === "reasoning"}
           className={`routing-toggle-option${routingMode === "reasoning" ? " routing-toggle-option--active" : ""}`}
           onClick={() => setRoutingMode("reasoning")}
+          disabled={isSending}
         >
           Reasoning
         </button>
