@@ -12,6 +12,7 @@ function makeMemory(overrides: Partial<Memory> = {}): Memory {
     active: overrides.active ?? true,
     lastModified: overrides.lastModified ?? "2026-01-01T00:00:00.000Z",
     provenance: overrides.provenance ?? { source: "manual" },
+    kind: overrides.kind,
   };
 }
 
@@ -123,5 +124,33 @@ describe("buildSystemPrompt", () => {
     const sheetIndex = result.indexOf("## Tone");
     expect(addendumIndex).toBeGreaterThan(-1);
     expect(addendumIndex).toBeLessThan(sheetIndex);
+  });
+
+  // Milestone 9: "Confirm active knowledge/skill entries flow into
+  // topLevelInstructions" — buildSystemPrompt's output *is*
+  // topLevelInstructions for both call paths (runCall's system prompt and
+  // runReasoningAgent's topLevelInstructions argument in suggestionSession.ts
+  // are the exact same string). No knowledge-specific code exists in this
+  // file either; this end-to-end pass confirms serializeSheet's inclusion
+  // (verified in serializer.test.ts) survives all the way through, in every
+  // mode and content mode.
+  it("includes an active knowledge entry's full content, in every mode and content mode", () => {
+    const sheetWithKnowledge = makeSheet({
+      memories: [makeMemory({ id: "k1", kind: "knowledge", label: "onboarding.md", body: "Step one. Step two." })],
+    });
+    for (const mode of ["chat", "sheet_editor"] as const) {
+      for (const contentMode of ["prose", "code"] as const) {
+        const result = buildSystemPrompt(sheetWithKnowledge, mode, contentMode);
+        expect(result).toContain("## Memory: onboarding.md (id: k1)\nStep one. Step two.");
+      }
+    }
+  });
+
+  it("excludes an inactive knowledge/skill entry the same way it excludes any inactive memory", () => {
+    const result = buildSystemPrompt(
+      makeSheet({ memories: [makeMemory({ id: "k1", kind: "skill", label: "stale.md", body: "Old procedure", active: false })] }),
+      "chat",
+    );
+    expect(result).not.toContain("stale.md");
   });
 });

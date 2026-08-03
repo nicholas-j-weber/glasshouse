@@ -215,6 +215,58 @@ describe("serializeSheet", () => {
       expect(result).toContain("## Memory: Ordinary fact");
     });
   });
+
+  // Milestone 9: "Confirm active knowledge/skill entries flow into
+  // topLevelInstructions through the same serialization path ordinary
+  // memories already use — no separate integration point." No dedicated
+  // knowledge/skill branch exists anywhere in this file — ordinaryMemories()
+  // only names conversation_turn/summary to exclude, so kind: "knowledge"/
+  // "skill" fall through into the exact same renderMemoryBlock path as an
+  // ordinary memory automatically. These tests are the confirmation, not a
+  // new integration.
+  describe("kind: knowledge / skill", () => {
+    it("renders an active knowledge entry as an ordinary Memory block, same format as a plain memory", () => {
+      const result = serializeSheet(
+        makeSheet({
+          memories: [makeMemory({ id: "k1", kind: "knowledge", label: "onboarding.md", body: "Step one. Step two." })],
+        }),
+      );
+      expect(result).toContain("## Memory: onboarding.md (id: k1)\nStep one. Step two.");
+    });
+
+    it("renders an active skill entry the same way", () => {
+      const result = serializeSheet(
+        makeSheet({ memories: [makeMemory({ id: "s1", kind: "skill", label: "deploy.md", body: "1. Build. 2. Push." })] }),
+      );
+      expect(result).toContain("## Memory: deploy.md (id: s1)\n1. Build. 2. Push.");
+    });
+
+    it("excludes an inactive knowledge/skill entry, same as an inactive ordinary memory", () => {
+      const result = serializeSheet(
+        makeSheet({
+          memories: [
+            makeMemory({ id: "k1", kind: "knowledge", label: "stale.md", body: "Outdated content", active: false }),
+          ],
+        }),
+      );
+      expect(result).not.toContain("stale.md");
+    });
+
+    it("participates in the same pin/recency ordering as ordinary memories", () => {
+      const pinned = makeMemory({ id: "k-pinned", kind: "knowledge", label: "Pinned knowledge", pinRank: 0 });
+      const unpinned = makeMemory({ id: "m-unpinned", label: "Ordinary unpinned memory", pinRank: null });
+      const result = serializeSheet(makeSheet({ memories: [unpinned, pinned] }));
+      expect(result.indexOf("Pinned knowledge")).toBeLessThan(result.indexOf("Ordinary unpinned memory"));
+    });
+
+    it("never appears in the Conversation Summary section", () => {
+      const result = serializeSheet(
+        makeSheet({ memories: [makeMemory({ id: "k1", kind: "knowledge", label: "notes.md", body: "Reference text" })] }),
+      );
+      const summaryBlock = result.slice(result.indexOf("## Conversation Summary"), result.indexOf("## Memory:"));
+      expect(summaryBlock).not.toContain("notes.md");
+    });
+  });
 });
 
 describe("orderConversationTurns", () => {
