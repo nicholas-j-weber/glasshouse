@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { ContextSheetDB } from "./db";
 import {
+  COMPILE_INSTRUCTION,
   FIXED_SEQUENCE,
   JUDGE_INSTRUCTION,
   filterSteps,
@@ -34,9 +35,13 @@ function run(modelCallFn: ModelCallFn, opts: { maxSteps?: number; minSteps?: num
 }
 
 // agent.py's _assert_lossless_transcript: every prior step's instruction and
-// response must appear verbatim in every later step's prompt.
+// response must appear verbatim in every later step's prompt. Excludes
+// "final", whose prompt is deliberately the compiled/distilled prompt from
+// the compile step, not another transcript dump — the one intentional break
+// from this property (see reasoningAgent.ts's compile-step comment).
 function expectLosslessTranscript(steps: StepRecord[]): void {
   for (let i = 1; i < steps.length; i++) {
+    if (steps[i].role === "final") continue;
     for (const prior of steps.slice(0, i)) {
       expect(steps[i].prompt).toContain(prior.instruction);
       expect(steps[i].prompt).toContain(prior.rawResponse);
@@ -157,6 +162,29 @@ describe("runReasoningAgent", () => {
     expect(reasoning.map((s) => s.instruction)).toEqual([...FIXED_SEQUENCE, FIXED_SEQUENCE[0]]);
   });
 
+  it("submits the compile step's output as the final call's prompt, verbatim — not another transcript dump", async () => {
+    const log = await run(
+      async (prompt) => {
+        // Order matters: once a judge step is in the transcript, its
+        // instruction text (JUDGE_INSTRUCTION) reappears verbatim inside
+        // later steps' transcript dumps, so the more specific check must
+        // run first.
+        if (prompt.includes(COMPILE_INSTRUCTION)) return "THE COMPILED PROMPT";
+        if (prompt.includes(JUDGE_INSTRUCTION)) return JSON.stringify({ status: "ready", reason: "done" });
+        return "reasoning output";
+      },
+      { maxSteps: 5, minSteps: 1 },
+    );
+
+    const steps = await loadRunSteps(log.runId, db);
+    const compile = steps.find((s) => s.role === "compile")!;
+    const final = steps.find((s) => s.role === "final")!;
+
+    expect(compile.rawResponse).toBe("THE COMPILED PROMPT");
+    expect(final.prompt).toBe("THE COMPILED PROMPT");
+    expect(compile.prompt).toContain(COMPILE_INSTRUCTION);
+  });
+
   it("persists each step as it is produced, not batched at the end", async () => {
     const seenMidRun: number[] = [];
     await run(async (prompt) => {
@@ -166,7 +194,7 @@ describe("runReasoningAgent", () => {
 
     // Step count visible in the DB grows on every model call — a crash
     // mid-loop still leaves a usable partial trace.
-    expect(seenMidRun).toEqual([0, 1, 2, 3]);
+    expect(seenMidRun).toEqual([0, 1, 2, 3, 4]);
   });
 });
 
@@ -179,8 +207,8 @@ describe("observability: load / filter / replay", () => {
     );
 
     const loaded = await loadRunSteps(log.runId, db);
-    expect(loaded.map((s) => s.stepId)).toEqual([0, 1, 2, 3]);
-    expect(loaded.map((s) => s.role)).toEqual(["reasoning", "reasoning", "judge", "final"]);
+    expect(loaded.map((s) => s.stepId)).toEqual([0, 1, 2, 3, 4]);
+    expect(loaded.map((s) => s.role)).toEqual(["reasoning", "reasoning", "judge", "compile", "final"]);
     expect(loaded.every((s) => s.runId === log.runId)).toBe(true);
 
     // filter by role

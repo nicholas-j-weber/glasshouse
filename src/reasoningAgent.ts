@@ -3,12 +3,18 @@ import type { ContextSheetDB } from "./db";
 import { db as defaultDb } from "./db";
 import type { RunLog, StepRecord, StepRole } from "./types";
 
-// Port of reasoning-agent's agent.py (spec.md "Reasoning agent"). The
-// algorithm is unchanged — fixed instruction sequence, judge-gated
-// completion with MIN/MAX_STEPS bounds, no lossy summarization between
-// steps — only the runtime (browser) and persistence (Dexie instead of
-// JSONL append) differ. Provider-agnostic by design: modelCallFn is an
-// opaque string -> string, wired to a real provider in a later milestone.
+// Port of reasoning-agent's agent.py (spec.md "Reasoning agent"), plus one
+// deliberate deviation from a 1:1 port: a "compile" step now sits between
+// the reasoning loop and the final answer, turning "compile a final prompt
+// and submit it statelessly" into a real, auditable artifact instead of
+// just the loop's last automatic iteration. Every step up through compile
+// keeps the original no-lossy-summarization property (each prompt is a
+// superset of the transcript before it); the final call is the one
+// intentional exception — it submits the compiled/distilled prompt, not
+// another transcript dump. Runtime (browser) and persistence (Dexie
+// instead of JSONL append) also differ from the Python original.
+// Provider-agnostic by design: modelCallFn is an opaque string -> string,
+// wired to a real provider in a later milestone.
 //
 // Not ported for v1 (spec.md "What does not port"): pytest_structural_check
 // (Python/subprocess-specific — structuralCheckFn stays a typed extension
@@ -30,6 +36,11 @@ export const JUDGE_INSTRUCTION =
   "a final answer. Respond with ONLY a JSON object of the form " +
   '{"status": "continue" | "ready" | "abandon", "reason": "..."} ' +
   "and nothing else.";
+
+export const COMPILE_INSTRUCTION =
+  "Given the full transcript above, synthesize everything into the exact, " +
+  "self-contained prompt that should be sent to produce the final answer. " +
+  "Respond with ONLY that prompt text, nothing else.";
 
 export type ModelCallFn = (prompt: string) => Promise<string>;
 
@@ -244,19 +255,31 @@ export async function runReasoningAgent({
   // saying "ready" means the hard ceiling capped the run.
   if (!ready) run.status = "max_steps_reached";
 
-  const finalPrompt = buildPrompt(
-    problem,
-    topLevelInstructions,
-    steps,
-    "Given the full transcript above, produce the final answer.",
-  );
-  const finalResponse = await modelCallFn(finalPrompt);
+  // Compile step: the one deliberate break from "every step's prompt is a
+  // superset of the transcript" — its job is to distill the (still fully
+  // lossless, still fully audited) transcript above into a standalone
+  // prompt. That compiled text, not another transcript dump, is what
+  // actually gets submitted as the final call.
+  const compilePrompt = buildPrompt(problem, topLevelInstructions, steps, COMPILE_INSTRUCTION);
+  const compiledPrompt = await modelCallFn(compilePrompt);
+  await persist({
+    runId: run.runId,
+    stepId: steps.length,
+    role: "compile",
+    instruction: COMPILE_INSTRUCTION,
+    prompt: compilePrompt,
+    rawResponse: compiledPrompt,
+    timestamp: new Date().toISOString(),
+    model: modelName,
+  });
+
+  const finalResponse = await modelCallFn(compiledPrompt);
   await persist({
     runId: run.runId,
     stepId: steps.length,
     role: "final",
     instruction: "Produce final answer",
-    prompt: finalPrompt,
+    prompt: compiledPrompt,
     rawResponse: finalResponse,
     timestamp: new Date().toISOString(),
     model: modelName,

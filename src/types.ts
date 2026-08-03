@@ -261,7 +261,7 @@ export interface PersistedMessage {
 // Reasoning agent (spec.md "Reasoning agent" — port of reasoning-agent's
 // agent.py). Schema only for now: StepRecord/RunLog gain behavior in a
 // later milestone.
-export type StepRole = "reasoning" | "judge" | "router" | "final";
+export type StepRole = "reasoning" | "judge" | "router" | "compile" | "final";
 
 export interface StepRecord {
   runId: string;

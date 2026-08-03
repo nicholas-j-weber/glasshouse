@@ -57,8 +57,15 @@ Port `StepRecord`/`RunLog`, `build_prompt`, the fixed-sequence loop,
 judge-gated completion (`MIN_STEPS`/`MAX_STEPS`), and `replay_step` to
 TS 1:1 — the algorithm doesn't change, only the runtime and persistence.
 
+One deliberate deviation: a `compile` step sits between the reasoning loop
+and `final`, synthesizing the (still lossless, still fully audited)
+transcript into a standalone prompt. `final` submits that compiled prompt
+directly, rather than another full transcript dump — this is what actually
+realizes "compile a final prompt and submit it statelessly," instead of the
+loop's last iteration silently standing in for it.
+
 ```ts
-type StepRole = "reasoning" | "judge" | "router" | "final";
+type StepRole = "reasoning" | "judge" | "router" | "compile" | "final";
 
 interface StepRecord {
   runId: string;
