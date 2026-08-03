@@ -2,9 +2,6 @@
 
 A browser demo of Auditable Context & Memory Methodology (ACM2), a
 legible, stateless-per-call methodology for managing AI context.
-[old-spec.md](./old-spec.md) is a previous-version reference, whose
-lettered addenda are still the fullest record of the design rationale
-behind most of what's here.
 
 ## Status
 
