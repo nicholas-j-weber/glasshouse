@@ -198,7 +198,7 @@ export async function runReasoningAgent({
   topLevelInstructions,
   modelCallFn,
   maxSteps = 10,
-  minSteps = 2,
+  minSteps = FIXED_SEQUENCE.length,
   structuralCheckFn,
   modelName = MODEL_NAME,
   db = defaultDb,

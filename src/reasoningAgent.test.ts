@@ -162,6 +162,14 @@ describe("runReasoningAgent", () => {
     expect(reasoning.map((s) => s.instruction)).toEqual([...FIXED_SEQUENCE, FIXED_SEQUENCE[0]]);
   });
 
+  it("defaults minSteps to the full fixed sequence, so the judge isn't consulted until every phase has run once", async () => {
+    const log = await run(judgeSays({ status: "ready", reason: "looks good" }), { maxSteps: 10 });
+
+    const steps = await loadRunSteps(log.runId, db);
+    expect(steps.filter((s) => s.role === "reasoning")).toHaveLength(FIXED_SEQUENCE.length);
+    expect(steps.filter((s) => s.role === "judge")).toHaveLength(1);
+  });
+
   it("submits the compile step's output as the final call's prompt, verbatim — not another transcript dump", async () => {
     const log = await run(
       async (prompt) => {
