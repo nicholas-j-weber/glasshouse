@@ -98,4 +98,30 @@ describe("buildSystemPrompt", () => {
     const result = buildSystemPrompt(sheet, "chat");
     expect(result).toContain("do not guess or invent one");
   });
+
+  it("always lists code_change's format, regardless of content mode", () => {
+    expect(buildSystemPrompt(sheet, "chat")).toContain('"type": "code_change"');
+    expect(buildSystemPrompt(sheet, "chat", "code")).toContain('"type": "code_change"');
+  });
+
+  it("omits the coding-pass addendum by default (prose)", () => {
+    expect(buildSystemPrompt(sheet, "chat")).not.toContain("This is a coding pass");
+    expect(buildSystemPrompt(sheet, "chat", "prose")).not.toContain("This is a coding pass");
+  });
+
+  it("appends the coding-pass addendum, after the mode preamble, when contentMode is code", () => {
+    for (const mode of ["chat", "sheet_editor"] as const) {
+      const result = buildSystemPrompt(sheet, mode, "code");
+      expect(result).toContain("This is a coding pass");
+      expect(result).toContain("Never write code anywhere in your conversational reply");
+    }
+  });
+
+  it("keeps the addendum after the mode preamble and before the serialized sheet", () => {
+    const result = buildSystemPrompt(sheet, "chat", "code");
+    const addendumIndex = result.indexOf("This is a coding pass");
+    const sheetIndex = result.indexOf("## Tone");
+    expect(addendumIndex).toBeGreaterThan(-1);
+    expect(addendumIndex).toBeLessThan(sheetIndex);
+  });
 });

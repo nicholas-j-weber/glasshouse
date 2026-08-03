@@ -40,3 +40,17 @@ export async function createCodeVersion(
   await db.codeHead.put({ id: sheetId, versionId: version.id });
   return version;
 }
+
+// Moves codeHead back to versionId, undoing a createCodeVersion call —
+// same "move the pointer, versions themselves are append-only" mechanic as
+// store.ts's revertToVersion. versionId === null is the one case Sheet
+// never has to handle: undoing a chain's very first CodeVersion has no
+// prior version to point at, so codeHead is removed entirely, restoring
+// "no code yet" rather than pointing at nothing.
+export async function revertCodeHead(sheetId: string, versionId: string | null, db: ContextSheetDB = defaultDb): Promise<void> {
+  if (versionId === null) {
+    await db.codeHead.delete(sheetId);
+  } else {
+    await db.codeHead.put({ id: sheetId, versionId });
+  }
+}

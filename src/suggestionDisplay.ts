@@ -17,6 +17,10 @@ export function describeSuggestion(suggestion: SheetSuggestion): string {
       return `Conversation Summary update: ${suggestion.body}`;
     case "compress_conversation":
       return `Compress ${suggestion.turnIds.length} conversation turn${suggestion.turnIds.length === 1 ? "" : "s"} into one summary: ${suggestion.body}`;
+    case "code_change": {
+      const paths = Object.keys(suggestion.files);
+      return `Code change (${paths.length} file${paths.length === 1 ? "" : "s"}): ${suggestion.summary ?? paths.join(", ")}`;
+    }
   }
 }
 
@@ -41,5 +45,11 @@ export function formatSuggestionAsSourceBlock(suggestion: SheetSuggestion): stri
       return `## Conversation Summary\n${suggestion.body}`;
     case "compress_conversation":
       return `## Conversation Summary (compressed, replacing turns: ${suggestion.turnIds.join(", ")})\n${suggestion.body}`;
+    case "code_change": {
+      const files = Object.entries(suggestion.files)
+        .map(([path, content]) => `### ${path}\n${content}`)
+        .join("\n\n");
+      return `## Code change\n${suggestion.summary ?? ""}\n\n${files}`;
+    }
   }
 }

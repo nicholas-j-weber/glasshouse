@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { createCodeVersion, getCodeHeadVersion } from "./codeStore";
+import { createCodeVersion, getCodeHeadVersion, revertCodeHead } from "./codeStore";
 import { ContextSheetDB } from "./db";
 
 let db: ContextSheetDB;
@@ -34,5 +34,24 @@ describe("createCodeVersion / getCodeHeadVersion", () => {
 
     expect(await getCodeHeadVersion("sheet-a", db)).toEqual(a);
     expect(await getCodeHeadVersion("sheet-b", db)).toEqual(b);
+  });
+});
+
+describe("revertCodeHead", () => {
+  it("moves head back to an earlier version", async () => {
+    const first = await createCodeVersion({ "a.ts": "one" }, "message-1", "sheet-1", db);
+    await createCodeVersion({ "a.ts": "two" }, "message-2", "sheet-1", db);
+
+    await revertCodeHead("sheet-1", first.id, db);
+
+    expect(await getCodeHeadVersion("sheet-1", db)).toEqual(first);
+  });
+
+  it("removes head entirely when reverting a chain's first version (parentId null)", async () => {
+    await createCodeVersion({ "a.ts": "one" }, "message-1", "sheet-1", db);
+
+    await revertCodeHead("sheet-1", null, db);
+
+    expect(await getCodeHeadVersion("sheet-1", db)).toBeUndefined();
   });
 });

@@ -46,6 +46,8 @@ export function SuggestionSessionView({
     isSending,
     routingMode,
     setRoutingMode,
+    contentMode,
+    setContentMode,
     handleSend,
     handleAccept,
     handleReject,
@@ -192,6 +194,33 @@ export function SuggestionSessionView({
           disabled={isSending}
         >
           Reasoning
+        </button>
+      </div>
+      {/* Content-mode toggle — "Code" is the sole gate on whether the model
+          is allowed to propose a code_change suggestion (systemPrompt.ts),
+          same deterministic-toggle posture as routing above. Independent of
+          it: a reasoning-routed pass can still be a coding request, the
+          reasoning trace just leads up to a code_change as its final step. */}
+      <div className="routing-toggle" role="radiogroup" aria-label="Message content">
+        <button
+          type="button"
+          role="radio"
+          aria-checked={contentMode === "prose"}
+          className={`routing-toggle-option${contentMode === "prose" ? " routing-toggle-option--active" : ""}`}
+          onClick={() => setContentMode("prose")}
+          disabled={isSending}
+        >
+          Prose
+        </button>
+        <button
+          type="button"
+          role="radio"
+          aria-checked={contentMode === "code"}
+          className={`routing-toggle-option${contentMode === "code" ? " routing-toggle-option--active" : ""}`}
+          onClick={() => setContentMode("code")}
+          disabled={isSending}
+        >
+          Code
         </button>
       </div>
       <form

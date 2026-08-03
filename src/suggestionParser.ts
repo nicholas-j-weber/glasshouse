@@ -1,5 +1,6 @@
 import { SUGGESTION_BLOCK_END, SUGGESTION_BLOCK_START } from "./suggestionDelimiter";
 import type {
+  CodeChangeSuggestion,
   CompressConversationSuggestion,
   ConversationSummaryUpdateSuggestion,
   DeactivateMemorySuggestion,
@@ -21,6 +22,10 @@ function isString(value: unknown): value is string {
 
 function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every(isString);
+}
+
+function isRecordOfStrings(value: unknown): value is Record<string, string> {
+  return typeof value === "object" && value !== null && !Array.isArray(value) && Object.values(value).every(isString);
 }
 
 function validateSuggestion(candidate: unknown): SheetSuggestion | null {
@@ -63,6 +68,11 @@ function validateSuggestion(candidate: unknown): SheetSuggestion | null {
       return isString(c.body) && isStringArray(c.turnIds)
         ? ({ type: "compress_conversation", body: c.body, turnIds: c.turnIds } satisfies CompressConversationSuggestion)
         : null;
+    case "code_change": {
+      if (!isRecordOfStrings(c.files) || Object.keys(c.files).length === 0) return null;
+      if (c.summary !== undefined && !isString(c.summary)) return null;
+      return { type: "code_change", files: c.files, summary: c.summary } satisfies CodeChangeSuggestion;
+    }
     default:
       return null;
   }
