@@ -109,7 +109,15 @@ describe("renameSheet", () => {
 describe("deleteSheet", () => {
   it("cascade-deletes versions, head, messages, usage records, and the sheet itself", async () => {
     const id = await createSheet("Doomed", db);
-    await db.messages.add({ id: "m1", sheetId: id, mode: "chat", role: "user", text: "hi", createdAt: new Date().toISOString() });
+    await db.messages.add({
+      id: "m1",
+      sheetId: id,
+      mode: "chat",
+      role: "user",
+      text: "hi",
+      routingMode: "blackbox",
+      createdAt: new Date().toISOString(),
+    });
     await recordUsage(id, { inputTokens: 10, outputTokens: 5 }, db);
 
     await deleteSheet(id, db);

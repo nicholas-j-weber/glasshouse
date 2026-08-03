@@ -206,7 +206,52 @@ export interface PersistedMessage {
   // ones are still-interactive change cards. undefined (sheet_editor
   // messages, user/error messages) means "not applicable."
   autoApplied?: boolean;
+  // Glasshouse pass routing (spec.md "The Pass" / "Routing"). routingMode
+  // is always set; reasoningRunId is set iff "reasoning", codeVersionId
+  // iff this pass touched code (independent of routingMode).
+  routingMode: "reasoning" | "blackbox";
+  reasoningRunId?: string;
+  codeVersionId?: string;
   createdAt: string; // ISO 8601
+}
+
+// Reasoning agent (spec.md "Reasoning agent" — port of reasoning-agent's
+// agent.py). Schema only for now: StepRecord/RunLog gain behavior in a
+// later milestone.
+export type StepRole = "reasoning" | "judge" | "router" | "final";
+
+export interface StepRecord {
+  runId: string;
+  stepId: number;
+  role: StepRole;
+  instruction: string;
+  prompt: string; // full exact text sent to the model
+  rawResponse: string; // unmodified model output
+  timestamp: string; // ISO 8601
+  model: string;
+  metadata?: Record<string, unknown>;
+}
+
+export interface RunLog {
+  runId: string;
+  sheetId: string;
+  chatMessageId: string;
+  originalProblem: string;
+  topLevelInstructions: string;
+  finalAnswer?: string;
+  status: "running" | "completed" | "max_steps_reached" | "error";
+}
+
+// Code-diff lane (spec.md "Code-diff lane"). Schema only for now —
+// diffCode() and the "diff, not inline code" rule land in a later
+// milestone.
+export interface CodeVersion {
+  id: string;
+  sheetId: string;
+  parentId: string | null;
+  createdAt: string; // ISO 8601
+  chatMessageId: string;
+  files: Record<string, string>; // path -> full content, snapshot not patch
 }
 
 // one record per real API call that reported usage, scoped by

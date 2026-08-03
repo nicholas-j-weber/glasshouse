@@ -1,5 +1,5 @@
 import Dexie, { type Table } from "dexie";
-import type { PersistedMessage, SheetMeta, UsageRecord, Version } from "./types";
+import type { CodeVersion, PersistedMessage, RunLog, SheetMeta, StepRecord, UsageRecord, Version } from "./types";
 
 // Sheet data, including version history, persisted in IndexedDB
 // (single local user, no accounts). Multiple independent sheets
@@ -18,6 +18,10 @@ export class ContextSheetDB extends Dexie {
   head!: Table<HeadRecord, string>;
   messages!: Table<PersistedMessage, string>;
   usage!: Table<UsageRecord, string>;
+  runs!: Table<RunLog, string>;
+  runSteps!: Table<StepRecord, string>;
+  codeVersions!: Table<CodeVersion, string>;
+  codeHead!: Table<HeadRecord, string>;
 
   constructor(name = "context-sheets") {
     super(name);
@@ -52,6 +56,20 @@ export class ContextSheetDB extends Dexie {
       head: "id",
       messages: "id, sheetId, createdAt",
       usage: "id, sheetId, createdAt",
+    });
+    // adds the Glasshouse pass tables (spec.md milestone 1):
+    // reasoning-agent runs/steps and the code-diff version chain. Purely
+    // additive, same no-migration reasoning as version 3.
+    this.version(4).stores({
+      sheets: "id, createdAt",
+      versions: "id, sheetId, parentId",
+      head: "id",
+      messages: "id, sheetId, createdAt",
+      usage: "id, sheetId, createdAt",
+      runs: "runId, sheetId, chatMessageId",
+      runSteps: "[runId+stepId], runId, role",
+      codeVersions: "id, sheetId, parentId, chatMessageId",
+      codeHead: "id",
     });
   }
 }

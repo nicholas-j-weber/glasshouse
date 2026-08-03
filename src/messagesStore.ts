@@ -19,7 +19,9 @@ export async function loadMessages(sheetId: string, mode: CallMode, db: ContextS
     .equals(sheetId)
     .and((m) => m.mode === mode)
     .sortBy("createdAt");
-  return rows.map(({ sheetId: _sheetId, ...message }) => message);
+  // routingMode stripped along with sheetId — storage-layer-only until
+  // milestone 3 threads it through SessionMessage.
+  return rows.map(({ sheetId: _sheetId, routingMode: _routingMode, ...message }) => message);
 }
 
 // Upsert: called both when a message is first added and again whenever one
@@ -30,5 +32,7 @@ export async function saveMessage(
   message: SessionMessage,
   db: ContextSheetDB = defaultDb,
 ): Promise<void> {
-  await db.messages.put({ ...message, sheetId });
+  // routingMode defaults to "blackbox" until milestone 3 wires the
+  // reasoning/blackbox toggle through SessionMessage.
+  await db.messages.put({ ...message, sheetId, routingMode: "blackbox" });
 }
