@@ -7,12 +7,14 @@ import {
   getStoredCollapseHistoryByDefault,
   getStoredCollapseSuggestionsByDefault,
   getStoredCollapseTurnsByDefault,
+  getStoredDefaultRoutingMode,
   getStoredRecommendCompression,
   setStoredApiKey,
   setStoredAutoApply,
   setStoredCollapseHistoryByDefault,
   setStoredCollapseSuggestionsByDefault,
   setStoredCollapseTurnsByDefault,
+  setStoredDefaultRoutingMode,
   setStoredRecommendCompression,
 } from "./settingsStorage";
 
@@ -30,6 +32,7 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
   const [recommendCompression, setRecommendCompression] = useState(getStoredRecommendCompression());
   const [collapseTurns, setCollapseTurns] = useState(getStoredCollapseTurnsByDefault());
   const [collapseHistory, setCollapseHistory] = useState(getStoredCollapseHistoryByDefault());
+  const [defaultRouting, setDefaultRouting] = useState(getStoredDefaultRoutingMode());
   const dialog = useDialog(onClose);
 
   return (
@@ -123,6 +126,24 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
           {collapseTurns
             ? "On: This Chat's turns and summaries start collapsed to one line — click any row to expand it."
             : "Off (default): turns and summaries show in full. Any row can still be collapsed on its own."}
+        </p>
+        <label className="modal-field modal-field--checkbox">
+          <input
+            type="checkbox"
+            aria-label="Default new chats to reasoning routing"
+            checked={defaultRouting === "reasoning"}
+            onChange={(e) => {
+              const mode = e.target.checked ? "reasoning" : "blackbox";
+              setDefaultRouting(mode);
+              setStoredDefaultRoutingMode(mode);
+            }}
+          />
+          <span>Default new chats to reasoning routing</span>
+        </label>
+        <p className="modal-field-hint">
+          {defaultRouting === "reasoning"
+            ? "On: new chats start with the Reasoning toggle selected. Any message can still switch to Blackbox."
+            : "Off (default): new chats start with Blackbox — every message can still switch to Reasoning individually."}
         </p>
         <label className="modal-field modal-field--checkbox">
           <input

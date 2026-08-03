@@ -10,7 +10,7 @@ import { loadMessages, saveMessage } from "./messagesStore";
 import { createAnthropicAdapter } from "./providers/anthropic";
 import { describeProviderError } from "./providers/errorMessage";
 import { buildRevisionMessage } from "./revise";
-import { getStoredApiKey, getStoredAutoApply, getStoredModel } from "./settingsStorage";
+import { getStoredApiKey, getStoredAutoApply, getStoredDefaultRoutingMode, getStoredModel } from "./settingsStorage";
 import { memoryExists } from "./sheetEdits";
 import { applyOverlay } from "./sheetOverlay";
 import { getOverlay, resetOverlay, setOverlay } from "./sheetOverlayStore";
@@ -20,7 +20,7 @@ import { describeSuggestionChange } from "./suggestionChangeDisplay";
 import { parseModelResponse, type ParsedModelResponse } from "./suggestionParser";
 import { buildSystemPrompt, type CallMode } from "./systemPrompt";
 import { recordUsage } from "./tokenUsageStore";
-import type { ConversationSummaryUpdateSuggestion, PersistedDisplaySuggestion, PersistedSuggestionStatus, Sheet, SheetSuggestion } from "./types";
+import type { ConversationSummaryUpdateSuggestion, PersistedDisplaySuggestion, PersistedSuggestionStatus, RoutingMode, Sheet, SheetSuggestion } from "./types";
 import { useSheetOverlay } from "./useSheetOverlay";
 
 // Shared by ChatPane (mode "chat") and SheetEditor (mode
@@ -79,6 +79,10 @@ export interface SessionMessage {
   // through unchanged here so SuggestionSessionView knows whether to render
   // this message's suggestions as a plain record or still-interactive cards.
   autoApplied?: boolean;
+  // spec.md "Routing: reasoning vs. blackbox" — set once at creation from
+  // the hook's routingMode toggle, same "captured at send time, not
+  // re-derived from a live setting" treatment as autoApplied above.
+  routingMode: RoutingMode;
 }
 
 // ephemeral (not persisted — a fresh page load starts with
@@ -167,6 +171,11 @@ export interface SuggestionSession {
   draft: string;
   setDraft: (value: string) => void;
   isSending: boolean;
+  // Per-message toggle (spec.md "Routing: reasoning vs. blackbox") — read at
+  // send time by handleSend/handleRevisionSubmit, defaulted from Settings'
+  // default-routing-mode preference each time the sheet/mode changes.
+  routingMode: RoutingMode;
+  setRoutingMode: (mode: RoutingMode) => void;
   handleSend: () => Promise<void>;
   handleAccept: (message: SessionMessage, index: number) => Promise<void>;
   handleReject: (message: SessionMessage, index: number) => void;
@@ -234,6 +243,7 @@ export function useSuggestionSession(mode: CallMode, sheetId: string): Suggestio
   const [revising, setRevising] = useState<RevisionTarget | null>(null);
   const [revisionDraft, setRevisionDraft] = useState("");
   const [toasts, setToasts] = useState<SuggestionToast[]>([]);
+  const [routingMode, setRoutingMode] = useState<RoutingMode>(getStoredDefaultRoutingMode());
 
   useEffect(() => {
     let cancelled = false;
@@ -242,6 +252,7 @@ export function useSuggestionSession(mode: CallMode, sheetId: string): Suggestio
     setRevising(null);
     setRevisionDraft("");
     setToasts([]);
+    setRoutingMode(getStoredDefaultRoutingMode());
 
     loadMessages(sheetId, mode).then((loaded) => {
       if (!cancelled) setMessages(loaded);
@@ -258,11 +269,12 @@ export function useSuggestionSession(mode: CallMode, sheetId: string): Suggestio
     void saveMessage(sheetId, message);
   }
 
-  // Wraps makeMessage with this hook's own mode, closed over once — every
-  // message this session creates is tagged with whichever surface (chat vs
-  // sheet_editor) produced it.
-  function makeSessionMessage(fields: Omit<SessionMessage, "id" | "createdAt" | "mode">): SessionMessage {
-    return makeMessage({ ...fields, mode });
+  // Wraps makeMessage with this hook's own mode and the routingMode toggle's
+  // current value — every message this session creates is tagged with
+  // whichever surface (chat vs sheet_editor) produced it, and which routing
+  // it was sent under.
+  function makeSessionMessage(fields: Omit<SessionMessage, "id" | "createdAt" | "mode" | "routingMode">): SessionMessage {
+    return makeMessage({ ...fields, mode, routingMode });
   }
 
   function updateSuggestionStatus(messageId: string, index: number, status: SuggestionStatus) {
@@ -599,6 +611,8 @@ export function useSuggestionSession(mode: CallMode, sheetId: string): Suggestio
     draft,
     setDraft,
     isSending,
+    routingMode,
+    setRoutingMode,
     handleSend,
     handleAccept,
     handleReject,

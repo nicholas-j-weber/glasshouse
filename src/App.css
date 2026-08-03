@@ -2005,6 +2005,59 @@ dialog.modal::backdrop {
   resize: vertical;
 }
 
+/* spec.md "Routing: reasoning vs. blackbox" — badge on any assistant
+   message routed direct, so the un-audited path is labeled, not hidden. */
+.routing-badge {
+  display: inline-block;
+  margin-bottom: 4px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.routing-badge--blackbox {
+  background: var(--error-bg);
+  color: var(--error);
+}
+
+/* The routing toggle itself — same two-button segmented-control language as
+   .chat-send--revising's paired buttons, just persistent rather than a
+   revise/cancel pair. Sits above the input row it governs. */
+.routing-toggle {
+  display: flex;
+  gap: 0;
+  padding: 0 16px;
+  margin-top: 8px;
+}
+
+.routing-toggle-option {
+  font: inherit;
+  font-size: 12px;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text-h);
+  opacity: 0.65;
+  cursor: pointer;
+}
+
+.routing-toggle-option:first-child {
+  border-radius: 6px 0 0 6px;
+  border-right: none;
+}
+
+.routing-toggle-option:last-child {
+  border-radius: 0 6px 6px 0;
+}
+
+.routing-toggle-option--active {
+  opacity: 1;
+  background: var(--accent-bg);
+}
+
 .chat-input-row {
   display: flex;
   padding: 16px;

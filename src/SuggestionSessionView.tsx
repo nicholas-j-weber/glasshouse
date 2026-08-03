@@ -42,6 +42,8 @@ export function SuggestionSessionView({
     draft,
     setDraft,
     isSending,
+    routingMode,
+    setRoutingMode,
     handleSend,
     handleAccept,
     handleReject,
@@ -117,6 +119,15 @@ export function SuggestionSessionView({
       <div className="chat-messages" ref={messagesRef}>
         {messages.map((message) => (
           <div key={message.id} className={`chat-message chat-message--${message.role}`}>
+            {/* spec.md "Routing: reasoning vs. blackbox" — blackbox isn't
+                hidden, it's labeled honestly as unaudited. Only assistant
+                messages are "passes" (spec.md "The Pass"); user/error
+                messages carry routingMode too but have nothing to audit. */}
+            {message.role === "assistant" && message.routingMode === "blackbox" && (
+              <span className="routing-badge routing-badge--blackbox" title="Routed direct — no reasoning-agent audit trail">
+                Blackbox
+              </span>
+            )}
             {message.role === "assistant" ? <MarkdownText text={message.text} /> : <p>{message.text}</p>}
             {message.suggestions && message.suggestions.length > 0 && (
               <div className="chat-suggestions-block">
@@ -150,6 +161,31 @@ export function SuggestionSessionView({
         ))}
       </div>
       <ToastStack toasts={toasts} onDismiss={dismissToast} onUndo={undoToast} />
+      {/* spec.md "Routing: reasoning vs. blackbox" — a per-message toggle,
+          not a heuristic. Reasoning routing doesn't run the reasoning agent
+          yet (a later milestone still wires that call); this only tags the
+          message and, once "reasoning" is selected, stops it from wearing
+          the Blackbox badge. */}
+      <div className="routing-toggle" role="radiogroup" aria-label="Message routing">
+        <button
+          type="button"
+          role="radio"
+          aria-checked={routingMode === "blackbox"}
+          className={`routing-toggle-option${routingMode === "blackbox" ? " routing-toggle-option--active" : ""}`}
+          onClick={() => setRoutingMode("blackbox")}
+        >
+          Blackbox
+        </button>
+        <button
+          type="button"
+          role="radio"
+          aria-checked={routingMode === "reasoning"}
+          className={`routing-toggle-option${routingMode === "reasoning" ? " routing-toggle-option--active" : ""}`}
+          onClick={() => setRoutingMode("reasoning")}
+        >
+          Reasoning
+        </button>
+      </div>
       <form
         className="chat-input-row"
         onSubmit={(e) => {

@@ -16,6 +16,7 @@ function makeMessage(overrides: Partial<SessionMessage> = {}): SessionMessage {
     role: "user",
     text: "hello",
     createdAt: new Date().toISOString(),
+    routingMode: "blackbox",
     ...overrides,
   };
 }

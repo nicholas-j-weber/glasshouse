@@ -165,6 +165,11 @@ export type SheetSuggestion =
 // imports it back from here to avoid a circular import).
 export type CallMode = "chat" | "sheet_editor";
 
+// spec.md "Routing: reasoning vs. blackbox" — a per-message toggle, not a
+// heuristic. Shared type so PersistedMessage/SessionMessage/settingsStorage
+// all reference the same two literals.
+export type RoutingMode = "reasoning" | "blackbox";
+
 // a persisted chat message, scoped to a sheet — the same
 // shape the chat session keeps in memory (suggestionSession.ts's
 // SessionMessage/DisplaySuggestion), plus sheetId/createdAt for storage.
@@ -209,7 +214,7 @@ export interface PersistedMessage {
   // Glasshouse pass routing (spec.md "The Pass" / "Routing"). routingMode
   // is always set; reasoningRunId is set iff "reasoning", codeVersionId
   // iff this pass touched code (independent of routingMode).
-  routingMode: "reasoning" | "blackbox";
+  routingMode: RoutingMode;
   reasoningRunId?: string;
   codeVersionId?: string;
   createdAt: string; // ISO 8601

@@ -3,10 +3,13 @@
 // sufficient here — unlike sheet/version data (IndexedDB), this is
 // a single small string with no history to keep.
 
+import type { RoutingMode } from "./types";
+
 const API_KEY_KEY = "context-sheets:anthropic-api-key";
 const MODEL_KEY = "context-sheets:anthropic-model";
 const ACTIVE_SHEET_ID_KEY = "context-sheets:active-sheet-id";
 const AUTO_APPLY_KEY = "context-sheets:auto-apply-chat-suggestions";
+const ROUTING_MODE_KEY = "context-sheets:default-routing-mode";
 const COLLAPSE_SUGGESTIONS_KEY = "context-sheets:collapse-suggestions-by-default";
 const RECOMMEND_COMPRESSION_KEY = "context-sheets:recommend-compression";
 const COLLAPSE_TURNS_KEY = "context-sheets:collapse-turns-by-default";
@@ -66,6 +69,18 @@ export function setStoredActiveSheetId(sheetId: string): void {
 // always has. Defaults to true, so
 // existing users see no change until they opt out.
 export const [getStoredAutoApply, setStoredAutoApply] = makeBoolSetting(AUTO_APPLY_KEY, true);
+
+// spec.md "Routing: reasoning vs. blackbox" — the routing toggle's starting
+// position for a fresh chat pane. Defaults to blackbox: routing to
+// "reasoning" doesn't yet run the reasoning agent (that's a later
+// milestone), so a reasoning default today would just mislabel plain calls.
+export function getStoredDefaultRoutingMode(): RoutingMode {
+  return localStorage.getItem(ROUTING_MODE_KEY) === "reasoning" ? "reasoning" : "blackbox";
+}
+
+export function setStoredDefaultRoutingMode(mode: RoutingMode): void {
+  localStorage.setItem(ROUTING_MODE_KEY, mode);
+}
 
 // the chat pane's per-message "N changes" disclosure
 // (SuggestionSessionView.tsx) starts collapsed or expanded based on this —
