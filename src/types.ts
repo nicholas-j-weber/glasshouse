@@ -1,7 +1,13 @@
 // Core data model.
 
 export interface Provenance {
-  source: "manual" | "ai_suggested";
+  // spec.md "Knowledge & Skills" — "file_upload" marks a Memory (kind:
+  // "knowledge"/"skill") created by uploading a file directly, distinct
+  // from "manual" (typed/edited by hand in the UI) and "ai_suggested"
+  // (proposed by the model, accepted or auto-applied). No chatMessageId/
+  // sheetEditorSessionId of its own — sourceExcerpt (the filename, per
+  // moduleId's own comment on Memory) is what identifies it instead.
+  source: "manual" | "ai_suggested" | "file_upload";
   chatMessageId?: string;
   sheetEditorSessionId?: string;
   // denormalized snapshot so provenance stays legible
@@ -33,7 +39,23 @@ export interface Memory {
   // reversible posture as every other deactivation in this app) is what
   // actually reduces Context size; the summary is what keeps the gist of
   // them in the model's context afterward.
-  kind?: "conversation_turn" | "summary";
+  //
+  // spec.md "Knowledge & Skills" — "knowledge" (reference text: facts,
+  // docs) and "skill" (an ordered/branching procedure) are not a new
+  // entity, just two more kind values in this same global-pool Memory,
+  // uploaded rather than chat-suggested (Provenance.source: "file_upload").
+  // v1 skills are structured prose in body (numbered steps, branch labels
+  // as convention) — not a parsed/executable schema (spec.md non-goals).
+  // Rendered in SheetPanel.tsx's own "Knowledge" tab, separate from
+  // "Memories", but included in topLevelInstructions the same wholesale-
+  // inclusion way ordinary memories already are — no separate retrieval
+  // mechanism (spec.md "Retrieval: wholesale inclusion, not RAG").
+  kind?: "conversation_turn" | "summary" | "knowledge" | "skill";
+  // Groups every Memory created from one uploaded file/module together, so
+  // the whole module can be bulk-toggled active in one action — reuses the
+  // existing per-memory `active` flag, no new mechanism. Only ever set on
+  // kind: "knowledge"/"skill" entries; absent otherwise.
+  moduleId?: string;
 }
 
 // userDetails removed — durable facts about the user are now
