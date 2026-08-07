@@ -17,6 +17,7 @@ import { useCollapsedOverrides } from "./useCollapsedOverrides";
 import { useHeadVersion } from "./useHeadVersion";
 import { useSheetOverlay } from "./useSheetOverlay";
 import { useTotalUsage } from "./useTotalUsage";
+import { VersionHistory } from "./VersionHistory";
 import type { Memory, Sheet } from "./types";
 
 // conversation turns and summaries are both local-chain
@@ -28,22 +29,21 @@ function isLocalKind(kind: Memory["kind"]): boolean {
 }
 
 // spec.md "Knowledge & Skills" — global-pool like ordinary memories (not
-// local-chain), but rendered in LibraryModal.tsx's own "Knowledge" tab
-// instead of "Memories" here, so the ordinary-memories list below must
-// exclude them too, same exclusion shape as isLocalKind above. Exported for
-// LibraryModal.tsx to reuse — one source of truth for "what counts as
-// knowledge" rather than a duplicated predicate.
-export function isKnowledgeKind(kind: Memory["kind"]): boolean {
+// local-chain), but rendered in LibraryModal.tsx's own Knowledge/Skills
+// tabs instead of "Memories" here, so the ordinary-memories list below must
+// exclude them too, same exclusion shape as isLocalKind above.
+function isKnowledgeKind(kind: Memory["kind"]): boolean {
   return kind === "knowledge" || kind === "skill";
 }
 
 // Canonical home for the details sidebar's tab type — App.tsx,
 // ContextSidebarContent.tsx, and MobileContextOverlay.tsx all thread this
 // through to here, so it lives here rather than duplicated as an inline
-// literal union in four places. Knowledge/History moved to their own
-// LibraryModal.tsx, opened from a header button next to Settings — this
-// panel is just the always-visible, per-chat pair now.
-export type SheetPanelTab = "chat" | "memories";
+// literal union in four places. Knowledge/Skills moved to their own
+// LibraryModal.tsx, opened from a header button next to Settings — History
+// stays here, per-chat like This Chat/Memories, unlike Knowledge/Skills
+// which are global/occasional concerns.
+export type SheetPanelTab = "chat" | "memories" | "history";
 
 // pre-composed instruction the Token Estimator's compression
 // banner sends to Manage with AI — pre-filled, not auto-submitted (the user
@@ -64,15 +64,16 @@ const COMPRESSION_INSTRUCTION =
 // actually targets (Tone/Conversation Summary/Freeform Notes stay local;
 // ordinary memories always go to the global chain).
 //
-// Split into "This Chat" (local content) / "Memories" (global pool) tabs —
-// activeTab is controlled from App.tsx rather than local state, since the
-// header's memories icon needs to both open this sidebar and switch its tab
-// from outside it. Both tabs' content stays mounted regardless of which is
-// active (CSS-hidden, not conditionally rendered) so switching tabs can't
-// lose an in-progress edit, the same property the sidebar collapse handles
-// already preserve. Knowledge and History used to be tabs here too — moved
-// to LibraryModal.tsx (occasional/setup-time concerns, not per-chat ones,
-// opened from its own header button rather than sharing this tab row).
+// Split into "This Chat" (local content) / "Memories" (global pool) /
+// "History" (per-chat version log) tabs — activeTab is controlled from
+// App.tsx rather than local state, since the header's memories icon needs
+// to both open this sidebar and switch its tab from outside it. Every tab's
+// content stays mounted regardless of which is active (CSS-hidden, not
+// conditionally rendered) so switching tabs can't lose an in-progress edit,
+// the same property the sidebar collapse handles already preserve.
+// Knowledge/Skills moved out to LibraryModal.tsx instead (global,
+// occasional/setup-time concerns, opened from its own header button) —
+// History stayed here since it's per-chat like the other two.
 export function SheetPanel({
   sheetId,
   activeTab,
@@ -308,6 +309,13 @@ export function SheetPanel({
         >
           Memories
         </button>
+        <button
+          type="button"
+          className={`sheet-panel-tab${activeTab === "history" ? " sheet-panel-tab--active" : ""}`}
+          onClick={() => onTabChange("history")}
+        >
+          History
+        </button>
       </div>
 
       <div className={`sheet-panel-tab-content${activeTab === "chat" ? "" : " sheet-panel-tab-content--hidden"}`}>
@@ -401,6 +409,12 @@ export function SheetPanel({
             ))}
           </ul>
           <NewMemoryForm onAdd={handleAddMemory} />
+        </section>
+      </div>
+
+      <div className={`sheet-panel-tab-content${activeTab === "history" ? "" : " sheet-panel-tab-content--hidden"}`}>
+        <section className="sheet-section">
+          <VersionHistory sheetId={sheetId} />
         </section>
       </div>
     </div>

@@ -29,9 +29,10 @@ function App() {
   const [chatsOpen, setChatsOpen] = useState(true);
   const [detailsOpen, setDetailsOpen] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  // Knowledge/History, moved out of SheetPanel.tsx's tab row — occasional/
-  // setup-time concerns, not per-chat ones, so they get their own header
-  // button next to Settings rather than sharing the always-visible tab row.
+  // Knowledge/Skills, moved out of SheetPanel.tsx's tab row — global,
+  // occasional/setup-time concerns, not per-chat ones like This Chat/
+  // Memories/History, so they get their own header button next to Settings
+  // rather than sharing the always-visible tab row.
   const [libraryOpen, setLibraryOpen] = useState(false);
   // Which tab the details sidebar shows — the Memories tab itself
   // (SheetPanel) is the only way to switch it now that the header's brain
@@ -240,7 +241,7 @@ function App() {
         <div className="app-body">Loading…</div>
       )}
       {settingsOpen && <SettingsModal onClose={() => setSettingsOpen(false)} />}
-      {libraryOpen && activeSheetId && <LibraryModal sheetId={activeSheetId} onClose={() => setLibraryOpen(false)} />}
+      {libraryOpen && <LibraryModal onClose={() => setLibraryOpen(false)} />}
       <WelcomeModal />
     </div>
   );

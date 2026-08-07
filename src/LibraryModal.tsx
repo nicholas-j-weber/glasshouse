@@ -1,6 +1,5 @@
 import { useRef, useState } from "react";
 import { GLOBAL_MEMORIES_SHEET_ID } from "./globalMemories";
-import { isKnowledgeKind } from "./SheetPanel";
 import { MemoryRow } from "./MemoryRow";
 import { orderMemoriesForDisplay } from "./serializer";
 import { addKnowledgeMemory, deleteMemory, editMemory, setPinned } from "./sheetEdits";
@@ -10,19 +9,20 @@ import { createVersion, ensureInitialized } from "./store";
 import { useDialog } from "./useDialog";
 import { useHeadVersion } from "./useHeadVersion";
 import { useSheetOverlay } from "./useSheetOverlay";
-import { VersionHistory } from "./VersionHistory";
 import type { Memory, Sheet } from "./types";
 
-type LibraryTab = "knowledge" | "history";
+type LibraryTab = "knowledge" | "skills";
 
-// Knowledge/History, moved out of SheetPanel.tsx's tab row into their own
-// modal (spec.md "Knowledge & Skills" + "History") — occasional/setup-time
-// concerns, unlike This Chat/Memories which stay in the always-visible
+// Knowledge/Skills, moved out of SheetPanel.tsx's tab row into their own
+// modal (spec.md "Knowledge & Skills") — occasional/setup-time concerns,
+// unlike This Chat/Memories/History which stay in the always-visible
 // sidebar. Knowledge/skill entries are global-pool only (never local-chain,
 // unlike ordinary memories) — mergeMemoryPools restricts local-chain
 // memories to conversation_turn/summary, so this only ever needs the global
-// head, not a merge of two chains like SheetPanel does.
-export function LibraryModal({ sheetId, onClose }: { sheetId: string; onClose: () => void }) {
+// head, not a merge of two chains like SheetPanel does. Not sheet-scoped at
+// all, unlike History (which stayed in SheetPanel since it's per-chat) —
+// so this modal takes no sheetId.
+export function LibraryModal({ onClose }: { onClose: () => void }) {
   const dialog = useDialog(onClose);
   const globalHead = useHeadVersion(GLOBAL_MEMORIES_SHEET_ID);
   const overlay = useSheetOverlay();
@@ -30,7 +30,8 @@ export function LibraryModal({ sheetId, onClose }: { sheetId: string; onClose: (
   // Knowledge/skill entries are global-pool, not sheet-scoped — the same
   // search term staying live across a sheet switch is correct here, not
   // stale state (mirrors SheetPanel's own knowledgeSearch, moved here).
-  const [knowledgeSearch, setKnowledgeSearch] = useState("");
+  // Shared across both tabs — each tab filters its own kind by this text.
+  const [librarySearch, setLibrarySearch] = useState("");
 
   if (!globalHead) {
     return (
@@ -101,20 +102,28 @@ export function LibraryModal({ sheetId, onClose }: { sheetId: string; onClose: (
     });
   }
 
-  const knowledgeQuery = knowledgeSearch.trim().toLowerCase();
-  const knowledgeEntries = orderMemoriesForDisplay(sheet.memories.filter((m) => isKnowledgeKind(m.kind))).filter(
-    (m) => knowledgeQuery.length === 0 || m.label.toLowerCase().includes(knowledgeQuery) || m.body.toLowerCase().includes(knowledgeQuery),
-  );
-  // Grouped by moduleId (spec.md "Modules") — see SheetPanel.tsx's
-  // knowledgeModules for the same reasoning, moved here verbatim.
-  const knowledgeModules = (() => {
+  // One kind per tab now (Knowledge vs. Skills), rather than one merged
+  // "Knowledge" list with a per-entry kind picker — the tab itself already
+  // says which kind you're looking at, so uploads within a tab are fixed to
+  // that kind (see UploadKnowledgeForm's kind prop below).
+  const librarySearchQuery = librarySearch.trim().toLowerCase();
+  function modulesForKind(kind: "knowledge" | "skill") {
+    const entries = orderMemoriesForDisplay(sheet.memories.filter((m) => m.kind === kind)).filter(
+      (m) =>
+        librarySearchQuery.length === 0 ||
+        m.label.toLowerCase().includes(librarySearchQuery) ||
+        m.body.toLowerCase().includes(librarySearchQuery),
+    );
+    // Grouped by moduleId (spec.md "Modules").
     const groups = new Map<string, Memory[]>();
-    for (const memory of knowledgeEntries) {
+    for (const memory of entries) {
       const key = memory.moduleId ?? memory.id;
       groups.set(key, [...(groups.get(key) ?? []), memory]);
     }
-    return [...groups.entries()].map(([moduleId, entries]) => ({ moduleId, entries }));
-  })();
+    return [...groups.entries()].map(([moduleId, moduleEntries]) => ({ moduleId, entries: moduleEntries }));
+  }
+  const knowledgeModules = modulesForKind("knowledge");
+  const skillModules = modulesForKind("skill");
 
   return (
     <dialog className="modal modal--library" ref={dialog.ref} onClose={dialog.onClose} onClick={dialog.onBackdropClick} aria-labelledby="library-modal-title">
@@ -135,10 +144,10 @@ export function LibraryModal({ sheetId, onClose }: { sheetId: string; onClose: (
         </button>
         <button
           type="button"
-          className={`sheet-panel-tab${activeTab === "history" ? " sheet-panel-tab--active" : ""}`}
-          onClick={() => setActiveTab("history")}
+          className={`sheet-panel-tab${activeTab === "skills" ? " sheet-panel-tab--active" : ""}`}
+          onClick={() => setActiveTab("skills")}
         >
-          History
+          Skills
         </button>
       </div>
 
@@ -146,17 +155,17 @@ export function LibraryModal({ sheetId, onClose }: { sheetId: string; onClose: (
         <div className={`sheet-panel-tab-content${activeTab === "knowledge" ? "" : " sheet-panel-tab-content--hidden"}`}>
           <section className="sheet-section">
             <p className="sheet-section-caption">
-              Knowledge and skills are shared across every chat, like Memories, and included in full whenever active —
-              no retrieval, no partial matches. Upload a file to add one.
+              Knowledge is shared across every chat, like Memories, and included in full whenever active — no
+              retrieval, no partial matches. Upload a file to add one.
             </p>
             <div className="inline-field">
               <input
                 type="search"
                 className="inline-field-input"
-                aria-label="Search knowledge and skills"
+                aria-label="Search knowledge"
                 placeholder="Search label or body…"
-                value={knowledgeSearch}
-                onChange={(e) => setKnowledgeSearch(e.target.value)}
+                value={librarySearch}
+                onChange={(e) => setLibrarySearch(e.target.value)}
               />
             </div>
             <ul className="memory-list">
@@ -173,13 +182,41 @@ export function LibraryModal({ sheetId, onClose }: { sheetId: string; onClose: (
                 />
               ))}
             </ul>
-            <UploadKnowledgeForm onUpload={handleUploadKnowledge} />
+            <UploadKnowledgeForm kind="knowledge" onUpload={handleUploadKnowledge} />
           </section>
         </div>
 
-        <div className={`sheet-panel-tab-content${activeTab === "history" ? "" : " sheet-panel-tab-content--hidden"}`}>
+        <div className={`sheet-panel-tab-content${activeTab === "skills" ? "" : " sheet-panel-tab-content--hidden"}`}>
           <section className="sheet-section">
-            <VersionHistory sheetId={sheetId} />
+            <p className="sheet-section-caption">
+              Skills are shared across every chat, like Memories, and included in full whenever active — no
+              retrieval, no partial matches. Upload a file to add one.
+            </p>
+            <div className="inline-field">
+              <input
+                type="search"
+                className="inline-field-input"
+                aria-label="Search skills"
+                placeholder="Search label or body…"
+                value={librarySearch}
+                onChange={(e) => setLibrarySearch(e.target.value)}
+              />
+            </div>
+            <ul className="memory-list">
+              {skillModules.map(({ moduleId, entries }) => (
+                <KnowledgeModule
+                  key={moduleId}
+                  moduleId={moduleId}
+                  entries={entries}
+                  onToggleModuleActive={() => handleToggleModuleActive(entries)}
+                  onToggleActive={(memory) => handleToggleActive(memory)}
+                  onTogglePin={(memory) => handleTogglePin(memory)}
+                  onDelete={(memory) => handleDelete(memory)}
+                  onEdit={(memory, label, body) => handleEditMemory(memory, label, body)}
+                />
+              ))}
+            </ul>
+            <UploadKnowledgeForm kind="skill" onUpload={handleUploadKnowledge} />
           </section>
         </div>
       </div>
@@ -240,16 +277,19 @@ function KnowledgeModule({
 
 // spec.md "Acceptance: file upload, not chat suggestions" — same hidden-
 // input-triggered-by-a-visible-button pattern as ExportImportControls'
-// Import Context, plus a kind picker (explicit, not inferred — same
-// "toggle, not heuristic" posture as routingMode/contentMode in the chat
-// pane). Uploading commits immediately (no pending/preview state); the
-// only local state here is the in-flight/error UI around that.
+// Import Context. Kind is fixed by which tab this form renders in (no
+// picker needed anymore — the Knowledge/Skills tabs themselves are the
+// explicit choice, same "toggle, not heuristic" posture as
+// routingMode/contentMode elsewhere). Uploading commits immediately (no
+// pending/preview state); the only local state here is the in-flight/error
+// UI around that.
 function UploadKnowledgeForm({
+  kind,
   onUpload,
 }: {
+  kind: "knowledge" | "skill";
   onUpload: (kind: "knowledge" | "skill", filename: string, content: string) => Promise<void>;
 }) {
-  const [kind, setKind] = useState<"knowledge" | "skill">("knowledge");
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -269,28 +309,6 @@ function UploadKnowledgeForm({
 
   return (
     <div className="knowledge-upload-form">
-      <div className="segmented-toggle" role="radiogroup" aria-label="Upload as">
-        <button
-          type="button"
-          role="radio"
-          aria-checked={kind === "knowledge"}
-          className={`segmented-toggle-option${kind === "knowledge" ? " segmented-toggle-option--active" : ""}`}
-          onClick={() => setKind("knowledge")}
-          disabled={uploading}
-        >
-          Knowledge
-        </button>
-        <button
-          type="button"
-          role="radio"
-          aria-checked={kind === "skill"}
-          className={`segmented-toggle-option${kind === "skill" ? " segmented-toggle-option--active" : ""}`}
-          onClick={() => setKind("skill")}
-          disabled={uploading}
-        >
-          Skill
-        </button>
-      </div>
       <button
         type="button"
         className="knowledge-upload-button"
