@@ -203,8 +203,13 @@ dialog.modal::backdrop {
   width: min(1600px, calc(100vw - 32px));
 }
 
-.pass-triage-body {
+/* .modal-body.pass-triage-body (not just .pass-triage-body) — .modal-body
+   itself sets flex-direction: column further down this file, and with
+   equal specificity the later rule wins regardless of intent, silently
+   forcing the three panes into a stack. The extra class beats that. */
+.modal-body.pass-triage-body {
   display: flex;
+  flex-direction: row;
   gap: 16px;
 }
 
@@ -2379,7 +2384,7 @@ dialog.modal::backdrop {
     align-items: center;
   }
 
-  .pass-triage-body {
+  .modal-body.pass-triage-body {
     flex-direction: column;
   }
 
