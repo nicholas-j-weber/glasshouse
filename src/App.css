@@ -195,11 +195,12 @@ dialog.modal::backdrop {
   width: 500px;
 }
 
-/* PassTriage.tsx — one pass's three lanes side by side, wide enough for a
-   readable context snapshot next to a reasoning trace and a diff without
-   forcing horizontal scroll on any single pane. */
+/* PassTriage.tsx — one pass's three lanes side by side, as wide as the
+   viewport allows so each pane gets real room (a context snapshot,
+   reasoning trace, and diff all competing for the same 1040px got cramped
+   on wide monitors) without forcing horizontal scroll on any single pane. */
 .modal--pass-triage {
-  width: min(1040px, calc(100vw - 32px));
+  width: min(1600px, calc(100vw - 32px));
 }
 
 .pass-triage-body {
