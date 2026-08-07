@@ -38,7 +38,9 @@ export function ReasoningTrace({ runId }: { runId: string }) {
                 <span className="reasoning-trace-step-role">{step.role}</span>
                 <span className="reasoning-trace-step-instruction">{step.instruction}</span>
               </div>
-              <p className="reasoning-trace-step-response">{step.rawResponse}</p>
+              <p className="reasoning-trace-step-response">
+                {step.role === "judge" ? judgeVerdictText(step) : step.rawResponse}
+              </p>
             </li>
           ))}
         </ol>
@@ -51,4 +53,16 @@ function statusSuffix(run: RunLog | null): string {
   if (run?.status === "max_steps_reached") return " (hit max steps)";
   if (run?.status === "error") return " (error)";
   return "";
+}
+
+// A judge step's rawResponse is raw model JSON (sometimes markdown-fenced) —
+// unreadable and not what actually drives the loop. The parsed verdict
+// already lives in metadata (judgeMetadata in reasoningAgent.ts); show that
+// instead. rawResponse itself is untouched in Dexie either way, so nothing
+// here costs the audit trail — filterSteps/replayStep still see the exact
+// original text.
+export function judgeVerdictText(step: StepRecord): string {
+  const status = typeof step.metadata?.status === "string" ? step.metadata.status : "unknown";
+  const reason = typeof step.metadata?.reason === "string" ? step.metadata.reason : "";
+  return reason ? `${status} — ${reason}` : status;
 }
