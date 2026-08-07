@@ -1,51 +1,59 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { db } from "./db";
 import { loadRunSteps } from "./reasoningAgent";
 import type { RunLog, StepRecord } from "./types";
 
+export type ReasoningTraceData = { run: RunLog | null; steps: StepRecord[] };
+
 // spec.md "The Pass" — a reasoning-routed message's audit trail: every
-// StepRecord the reasoning agent produced for its RunLog, rendered as an
-// expandable list. Same "N changes" disclosure language as
-// SuggestionSessionView's .chat-suggestions-toggle, but lazy — a run's
-// steps aren't loaded from Dexie until first expanded, since most messages
-// in a long chat transcript are never re-opened. Loaded once and cached in
-// local state; collapsing and re-expanding doesn't refetch.
-export function ReasoningTrace({ runId }: { runId: string }) {
-  const [expanded, setExpanded] = useState(false);
-  const [loaded, setLoaded] = useState<{ run: RunLog | null; steps: StepRecord[] } | null>(null);
+// StepRecord the reasoning agent produced for its RunLog. Fetched fresh each
+// time runId changes (and reset to null when it's undefined) — PassTriage.tsx
+// mounts this fresh per open rather than keeping it cached across opens, an
+// acceptable tradeoff for a local IndexedDB read.
+export function useReasoningTrace(runId: string | undefined): ReasoningTraceData | null {
+  const [loaded, setLoaded] = useState<ReasoningTraceData | null>(null);
 
-  async function toggle() {
-    if (!expanded && !loaded) {
-      const [run, steps] = await Promise.all([db.runs.get(runId), loadRunSteps(runId)]);
-      setLoaded({ run: run ?? null, steps });
+  useEffect(() => {
+    if (!runId) {
+      setLoaded(null);
+      return;
     }
-    setExpanded((prev) => !prev);
-  }
+    let cancelled = false;
+    void Promise.all([db.runs.get(runId), loadRunSteps(runId)]).then(([run, steps]) => {
+      if (!cancelled) setLoaded({ run: run ?? null, steps });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [runId]);
 
+  return loaded;
+}
+
+// Pure renderer — the step list plus its status-suffixed count header, same
+// markup the old standalone toggle widget used, minus the toggle itself.
+export function ReasoningTraceSteps({ loaded }: { loaded: ReasoningTraceData | null }) {
+  if (!loaded) return null;
   return (
-    <div className="reasoning-trace">
-      <button type="button" className="chat-suggestions-toggle" onClick={() => void toggle()}>
-        <span className={`chat-suggestions-caret${expanded ? " chat-suggestions-caret--flipped" : ""}`} aria-hidden="true">
-          ⌃
-        </span>
-        Reasoning trace{loaded ? ` — ${loaded.steps.length} step${loaded.steps.length === 1 ? "" : "s"}${statusSuffix(loaded.run)}` : ""}
-      </button>
-      {expanded && loaded && (
-        <ol className="reasoning-trace-steps">
-          {loaded.steps.map((step) => (
-            <li key={step.stepId} className={`reasoning-trace-step reasoning-trace-step--${step.role}`}>
-              <div className="reasoning-trace-step-header">
-                <span className="reasoning-trace-step-role">{step.role}</span>
-                <span className="reasoning-trace-step-instruction">{step.instruction}</span>
-              </div>
-              <p className="reasoning-trace-step-response">
-                {step.role === "judge" ? judgeVerdictText(step) : step.rawResponse}
-              </p>
-            </li>
-          ))}
-        </ol>
-      )}
-    </div>
+    <>
+      <p className="sheet-section-caption">
+        {loaded.steps.length} step{loaded.steps.length === 1 ? "" : "s"}
+        {statusSuffix(loaded.run)}
+      </p>
+      <ol className="reasoning-trace-steps">
+        {loaded.steps.map((step) => (
+          <li key={step.stepId} className={`reasoning-trace-step reasoning-trace-step--${step.role}`}>
+            <div className="reasoning-trace-step-header">
+              <span className="reasoning-trace-step-role">{step.role}</span>
+              <span className="reasoning-trace-step-instruction">{step.instruction}</span>
+            </div>
+            <p className="reasoning-trace-step-response">
+              {step.role === "judge" ? judgeVerdictText(step) : step.rawResponse}
+            </p>
+          </li>
+        ))}
+      </ol>
+    </>
   );
 }
 

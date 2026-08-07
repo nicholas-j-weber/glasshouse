@@ -1,8 +1,7 @@
-import { useEffect, useLayoutEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { ChangeCard } from "./ChangeCard";
-import { CodeDiffView } from "./CodeDiffView";
 import { MarkdownText } from "./MarkdownText";
-import { ReasoningTrace } from "./ReasoningTrace";
+import { PassTriage } from "./PassTriage";
 import { getStoredCollapseSuggestionsByDefault } from "./settingsStorage";
 import { ToastStack } from "./Toast";
 import { describeSuggestion } from "./suggestionDisplay";
@@ -64,6 +63,7 @@ export function SuggestionSessionView({
   } = session;
 
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const [triageMessage, setTriageMessage] = useState<SessionMessage | null>(null);
 
   // Same "jump focus the moment a card's Revise is clicked" behavior as
   // ManageWithAIPanel — typing the follow-up shouldn't need a second click.
@@ -133,8 +133,15 @@ export function SuggestionSessionView({
               </span>
             )}
             {message.role === "assistant" ? <MarkdownText text={message.text} /> : <p>{message.text}</p>}
-            {message.role === "assistant" && message.reasoningRunId && <ReasoningTrace runId={message.reasoningRunId} />}
-            {message.role === "assistant" && message.codeVersionId && <CodeDiffView versionId={message.codeVersionId} />}
+            {message.role === "assistant" && (
+              <button
+                type="button"
+                className="chat-suggestions-toggle pass-triage-trigger"
+                onClick={() => setTriageMessage(message)}
+              >
+                Inspect pass
+              </button>
+            )}
             {message.suggestions && message.suggestions.length > 0 && (
               <div className="chat-suggestions-block">
                 <button
@@ -167,13 +174,14 @@ export function SuggestionSessionView({
         ))}
       </div>
       <ToastStack toasts={toasts} onDismiss={dismissToast} onUndo={undoToast} />
+      {triageMessage && <PassTriage message={triageMessage} onClose={() => setTriageMessage(null)} />}
       {/* spec.md "Routing: reasoning vs. blackbox" — a per-message toggle,
           not a heuristic. "Reasoning" routes the send through
-          reasoningAgent.ts's fixed-sequence loop (rendered per-message as
-          an expandable ReasoningTrace below); "Blackbox" is a direct call,
-          labeled honestly via the Blackbox badge. Disabled mid-send so a
-          pass is always tagged with the routing that actually produced it,
-          not one flipped after the call already started. */}
+          reasoningAgent.ts's fixed-sequence loop (auditable per-message via
+          the "Inspect pass" trigger's PassTriage modal); "Blackbox" is a
+          direct call, labeled honestly via the Blackbox badge. Disabled
+          mid-send so a pass is always tagged with the routing that actually
+          produced it, not one flipped after the call already started. */}
       <div className="segmented-toggle" role="radiogroup" aria-label="Message routing">
         <button
           type="button"

@@ -4,6 +4,7 @@ import { ChatHeaderTitle } from "./ChatHeaderTitle";
 import { ChatPane } from "./ChatPane";
 import { ChatsSidebarContent } from "./ChatsSidebarContent";
 import { ContextSidebarContent } from "./ContextSidebarContent";
+import { LibraryModal } from "./LibraryModal";
 import { MobileChatsOverlay } from "./MobileChatsOverlay";
 import { MobileContextOverlay } from "./MobileContextOverlay";
 import { SettingsModal } from "./SettingsModal";
@@ -28,6 +29,10 @@ function App() {
   const [chatsOpen, setChatsOpen] = useState(true);
   const [detailsOpen, setDetailsOpen] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  // Knowledge/History, moved out of SheetPanel.tsx's tab row — occasional/
+  // setup-time concerns, not per-chat ones, so they get their own header
+  // button next to Settings rather than sharing the always-visible tab row.
+  const [libraryOpen, setLibraryOpen] = useState(false);
   // Which tab the details sidebar shows — the Memories tab itself
   // (SheetPanel) is the only way to switch it now that the header's brain
   // shortcut is gone, but this still needs to live here rather than as
@@ -135,6 +140,16 @@ function App() {
           <button
             type="button"
             className="icon-button"
+            onClick={() => setLibraryOpen(true)}
+            disabled={!activeSheetId}
+            aria-label="Library"
+            title="Library"
+          >
+            <span className="icon-emoji">📚</span>
+          </button>
+          <button
+            type="button"
+            className="icon-button"
             onClick={() => setSettingsOpen(true)}
             aria-label="Settings"
             title="Settings"
@@ -225,6 +240,7 @@ function App() {
         <div className="app-body">Loading…</div>
       )}
       {settingsOpen && <SettingsModal onClose={() => setSettingsOpen(false)} />}
+      {libraryOpen && activeSheetId && <LibraryModal sheetId={activeSheetId} onClose={() => setLibraryOpen(false)} />}
       <WelcomeModal />
     </div>
   );

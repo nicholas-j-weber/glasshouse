@@ -255,6 +255,14 @@ export interface PersistedMessage {
   routingMode: RoutingMode;
   reasoningRunId?: string;
   codeVersionId?: string;
+  // Pass Triage's "what actually went in" pane — serializeSheet(overlaidSheet)
+  // captured at send time (suggestionSession.ts), for both routing modes.
+  // Reasoning-routed passes technically also have this in RunLog.topLevelInstructions,
+  // but that string includes mode-preamble boilerplate on top of the sheet
+  // content; capturing it uniformly here at the one shared call-site avoids
+  // needing to parse it back out, and gives blackbox passes the same audit
+  // data reasoning-routed passes already had.
+  contextSnapshot?: string;
   createdAt: string; // ISO 8601
 }
 

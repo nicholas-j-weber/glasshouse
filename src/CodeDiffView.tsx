@@ -1,42 +1,43 @@
 import type { Change } from "diff";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { diffCode, type FileDiff } from "./codeDiff";
 import { db } from "./db";
 
-// spec.md "Code-diff lane" — a coding pass's expandable diff view. Same
-// lazy-disclosure pattern as ReasoningTrace.tsx: the version (and its
-// parent, needed to diff against) aren't loaded from Dexie, and the diff
-// itself isn't computed, until first expanded. Loaded once and cached in
-// local state.
-export function CodeDiffView({ versionId }: { versionId: string }) {
-  const [expanded, setExpanded] = useState(false);
+// spec.md "Code-diff lane" — a coding pass's diff data. Fetched fresh each
+// time versionId changes (and reset to null when undefined) — PassTriage.tsx
+// mounts this fresh per open rather than keeping it cached across opens, an
+// acceptable tradeoff for a local IndexedDB read.
+export function useCodeDiff(versionId: string | undefined): FileDiff[] | null {
   const [diffs, setDiffs] = useState<FileDiff[] | null>(null);
 
-  async function toggle() {
-    if (!expanded && !diffs) {
-      const version = await db.codeVersions.get(versionId);
-      const parent = version?.parentId ? await db.codeVersions.get(version.parentId) : undefined;
-      setDiffs(version ? diffCode(parent ?? null, version) : []);
+  useEffect(() => {
+    if (!versionId) {
+      setDiffs(null);
+      return;
     }
-    setExpanded((prev) => !prev);
-  }
+    let cancelled = false;
+    void db.codeVersions.get(versionId).then(async (version) => {
+      const parent = version?.parentId ? await db.codeVersions.get(version.parentId) : undefined;
+      if (!cancelled) setDiffs(version ? diffCode(parent ?? null, version) : []);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [versionId]);
 
+  return diffs;
+}
+
+// Pure renderer — the file-list body, same markup the old standalone toggle
+// widget used, minus the toggle itself.
+export function CodeDiffFiles({ diffs }: { diffs: FileDiff[] | null }) {
+  if (!diffs) return null;
   return (
-    <div className="code-diff-view">
-      <button type="button" className="chat-suggestions-toggle" onClick={() => void toggle()}>
-        <span className={`chat-suggestions-caret${expanded ? " chat-suggestions-caret--flipped" : ""}`} aria-hidden="true">
-          ⌃
-        </span>
-        {diffs ? `${diffs.length} file${diffs.length === 1 ? "" : "s"} changed` : "Code diff"}
-      </button>
-      {expanded && diffs && (
-        <div className="code-diff-files">
-          {diffs.length === 0 ? (
-            <p className="code-diff-empty">No file changes.</p>
-          ) : (
-            diffs.map((file) => <CodeFileDiff key={file.path} file={file} />)
-          )}
-        </div>
+    <div className="code-diff-files">
+      {diffs.length === 0 ? (
+        <p className="code-diff-empty">No file changes.</p>
+      ) : (
+        diffs.map((file) => <CodeFileDiff key={file.path} file={file} />)
       )}
     </div>
   );

@@ -12,6 +12,7 @@ import { createAnthropicAdapter } from "./providers/anthropic";
 import { describeProviderError } from "./providers/errorMessage";
 import { runReasoningAgent, type ModelCallFn } from "./reasoningAgent";
 import { buildRevisionMessage } from "./revise";
+import { serializeSheet } from "./serializer";
 import { getStoredApiKey, getStoredAutoApply, getStoredDefaultRoutingMode, getStoredModel, JUDGE_MODEL } from "./settingsStorage";
 import { memoryExists } from "./sheetEdits";
 import { applyOverlay } from "./sheetOverlay";
@@ -87,16 +88,22 @@ export interface SessionMessage {
   routingMode: RoutingMode;
   // set iff routingMode === "reasoning" and the reasoning agent actually
   // ran (spec.md "The Pass") — links to the RunLog/StepRecord trace
-  // ReasoningTrace.tsx renders as an expandable step list. A revision's
-  // follow-up call never sets this, even mid-reasoning-toggled session —
-  // see handleRevisionSubmit's comment.
+  // PassTriage.tsx's reasoning pane renders (via ReasoningTrace.tsx's
+  // useReasoningTrace/ReasoningTraceSteps). A revision's follow-up call
+  // never sets this, even mid-reasoning-toggled session — see
+  // handleRevisionSubmit's comment.
   reasoningRunId?: string;
   // set iff this pass touched code (spec.md "The Pass") — independent of
-  // routingMode. Links to the CodeVersion chain CodeDiffView.tsx renders as
-  // an expandable per-file diff. Nothing sets this yet — that's the coding-
-  // pass detection milestone 6 wires into the suggestion parser; this field
-  // and CodeDiffView are the read/render side, built ahead of it.
+  // routingMode. Links to the CodeVersion chain PassTriage.tsx's code pane
+  // renders (via CodeDiffView.tsx's useCodeDiff/CodeDiffFiles). Nothing
+  // sets this yet — that's the coding-pass detection milestone 6 wires
+  // into the suggestion parser; this field and CodeDiffView are the
+  // read/render side, built ahead of it.
   codeVersionId?: string;
+  // Mirrors types.ts's PersistedMessage.contextSnapshot — captured at send
+  // time (handleSend/handleRevisionSubmit below), for both routing modes.
+  // Rendered by PassTriage.tsx.
+  contextSnapshot?: string;
 }
 
 // ephemeral (not persisted — a fresh page load starts with
@@ -670,6 +677,7 @@ export function useSuggestionSession(mode: CallMode, sheetId: string): Suggestio
     const passRoutingMode = routingMode;
     const overlaidSheet = applyOverlay(merged, overlay);
     const systemPrompt = buildSystemPrompt(overlaidSheet, mode, contentMode);
+    const contextSnapshot = serializeSheet(overlaidSheet);
     // Generated ahead of the call so a reasoning-routed run's RunLog can
     // reference this message's id as chatMessageId before the SessionMessage
     // itself exists.
@@ -698,6 +706,7 @@ export function useSuggestionSession(mode: CallMode, sheetId: string): Suggestio
       autoApplied: autoApply,
       routingMode: passRoutingMode,
       reasoningRunId,
+      contextSnapshot,
     };
     addMessage(assistantMessage);
     setDraft("");
@@ -750,7 +759,8 @@ export function useSuggestionSession(mode: CallMode, sheetId: string): Suggestio
     // format regardless of what Content mode happens to be selected right
     // now; an ordinary suggestion's revision has no reason to switch into it.
     const revisionContentMode: ContentMode = display.suggestion.type === "code_change" ? "code" : "prose";
-    const systemPrompt = buildSystemPrompt(applyOverlay(merged, overlay), mode, revisionContentMode);
+    const overlaidSheet = applyOverlay(merged, overlay);
+    const systemPrompt = buildSystemPrompt(overlaidSheet, mode, revisionContentMode);
     const parsed = await runCall(systemPrompt, syntheticMessage);
     if (!parsed) return; // error already appended; suggestion stays pending so the user can retry
 
@@ -775,6 +785,7 @@ export function useSuggestionSession(mode: CallMode, sheetId: string): Suggestio
         suggestions,
         autoApplied: false,
         routingMode: "blackbox",
+        contextSnapshot: serializeSheet(overlaidSheet),
       }),
     );
   }

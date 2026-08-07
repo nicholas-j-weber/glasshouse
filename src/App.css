@@ -212,6 +212,50 @@ dialog.modal::backdrop {
   width: 500px;
 }
 
+/* PassTriage.tsx — one pass's three lanes side by side, wide enough for a
+   readable context snapshot next to a reasoning trace and a diff without
+   forcing horizontal scroll on any single pane. */
+.modal--pass-triage {
+  width: min(1040px, calc(100vw - 32px));
+}
+
+.pass-triage-body {
+  display: flex;
+  gap: 16px;
+}
+
+.pass-triage-pane {
+  flex: 1;
+  min-width: 0;
+}
+
+.pass-triage-snapshot {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.pass-triage-trigger {
+  margin-top: 8px;
+}
+
+/* LibraryModal.tsx — Knowledge/History, moved out of SheetPanel.tsx's tab
+   row into their own modal. Reuses .sheet-panel-tabs/.sheet-panel-tab
+   directly (same look), but that rule's negative margin was tuned for
+   .sheet-panel's own 20px inter-section gap — .modal has no such gap
+   between .modal-header/.sheet-panel-tabs/.modal-body, so the negative
+   margin there reads as too-tight/overlapping; reset to plain spacing here. */
+.modal--library {
+  width: 480px;
+}
+
+.modal--library .sheet-panel-tabs {
+  margin: 0 0 12px;
+}
+
 .modal-header {
   display: flex;
   align-items: center;
@@ -2349,6 +2393,10 @@ dialog.modal::backdrop {
   .mobile-nav-trigger {
     display: inline-flex;
     align-items: center;
+  }
+
+  .pass-triage-body {
+    flex-direction: column;
   }
 
   /* at 375px, the ~180px left for .app-header-titles wasn't
