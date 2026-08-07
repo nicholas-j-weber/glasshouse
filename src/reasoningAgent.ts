@@ -203,6 +203,15 @@ export interface RunReasoningAgentOptions {
   // the final answer carries formatting requirements the compile step isn't
   // reliably guaranteed to preserve when it synthesizes its own prompt.
   finalPromptSuffix?: string;
+  // Optional override for the judge's own model call — the judge is a
+  // bounded classification task (continue/ready/abandon + a reason), not
+  // open-ended generation, and a natural fit for a cheaper/faster model
+  // than whatever the caller uses for actual reasoning/answer steps. Falls
+  // back to modelCallFn/modelName when omitted, identical to today's
+  // behavior. Never used for the structural-check path (no model call
+  // there at all).
+  judgeModelCallFn?: ModelCallFn;
+  judgeModelName?: string;
   modelName?: string;
   db?: ContextSheetDB;
 }
@@ -217,6 +226,8 @@ export async function runReasoningAgent({
   minSteps = FIXED_SEQUENCE.length,
   structuralCheckFn,
   finalPromptSuffix,
+  judgeModelCallFn,
+  judgeModelName,
   modelName = MODEL_NAME,
   db = defaultDb,
 }: RunReasoningAgentOptions): Promise<RunLog> {
@@ -260,7 +271,15 @@ export async function runReasoningAgent({
         : null;
       const record =
         structural ??
-        (await judgeStep(run.runId, steps.length, problem, topLevelInstructions, steps, modelCallFn, modelName));
+        (await judgeStep(
+          run.runId,
+          steps.length,
+          problem,
+          topLevelInstructions,
+          steps,
+          judgeModelCallFn ?? modelCallFn,
+          judgeModelCallFn ? (judgeModelName ?? modelName) : modelName,
+        ));
       await persist(record);
       if (record.metadata?.status === "ready") {
         ready = true;

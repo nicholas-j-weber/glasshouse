@@ -24,7 +24,14 @@ beforeEach(() => {
 
 function run(
   modelCallFn: ModelCallFn,
-  opts: { maxSteps?: number; minSteps?: number; structuralCheckFn?: StructuralCheckFn; finalPromptSuffix?: string } = {},
+  opts: {
+    maxSteps?: number;
+    minSteps?: number;
+    structuralCheckFn?: StructuralCheckFn;
+    finalPromptSuffix?: string;
+    judgeModelCallFn?: ModelCallFn;
+    judgeModelName?: string;
+  } = {},
 ) {
   return runReasoningAgent({
     sheetId: "sheet-1",
@@ -224,6 +231,46 @@ describe("runReasoningAgent", () => {
     const steps = await loadRunSteps(log.runId, db);
     const final = steps.find((s) => s.role === "final")!;
     expect(final.prompt).toBe("COMPILED\n\nSUFFIX INSTRUCTIONS");
+  });
+
+  it("routes the judge call through judgeModelCallFn and records judgeModelName, leaving reasoning/compile/final on the default model", async () => {
+    const judgeCalls: string[] = [];
+    const defaultCalls: string[] = [];
+
+    const log = await run(
+      async (prompt) => {
+        defaultCalls.push(prompt);
+        return prompt.includes(COMPILE_INSTRUCTION) ? "COMPILED" : "reasoning output";
+      },
+      {
+        maxSteps: 5,
+        minSteps: 1,
+        judgeModelCallFn: async (prompt) => {
+          judgeCalls.push(prompt);
+          return JSON.stringify({ status: "ready", reason: "done" });
+        },
+        judgeModelName: "claude-haiku-4-5-20251001",
+      },
+    );
+
+    expect(judgeCalls).toHaveLength(1);
+    // reasoning (1) + compile (1) + final (1) — the judge call itself never
+    // reaches the default modelCallFn. (compile's own prompt legitimately
+    // contains JUDGE_INSTRUCTION as transcript history, so this checks call
+    // count rather than searching prompt text for it.)
+    expect(defaultCalls).toHaveLength(3);
+
+    const steps = await loadRunSteps(log.runId, db);
+    const judge = steps.find((s) => s.role === "judge")!;
+    expect(judge.model).toBe("claude-haiku-4-5-20251001");
+    expect(steps.filter((s) => s.role !== "judge").every((s) => s.model === "stub-model")).toBe(true);
+  });
+
+  it("falls back to modelCallFn/modelName for the judge when judgeModelCallFn is omitted, unchanged from before", async () => {
+    const log = await run(judgeSays({ status: "ready", reason: "done" }), { maxSteps: 5, minSteps: 1 });
+
+    const judge = (await loadRunSteps(log.runId, db)).find((s) => s.role === "judge")!;
+    expect(judge.model).toBe("stub-model");
   });
 
   it("persists each step as it is produced, not batched at the end", async () => {

@@ -28,6 +28,14 @@ const DEFAULT_MODEL = "claude-sonnet-5";
 // other.
 export const KNOWN_MODELS = ["claude-sonnet-5", "claude-opus-4-8", "claude-haiku-4-5-20251001", "claude-fable-5"];
 
+// Reasoning agent's judge step (reasoningAgent.ts) is a bounded
+// continue/ready/abandon classification, not open-ended generation, and
+// runs more often than any other step — always the cheapest/fastest known
+// model, independent of the user's chosen model for actual reasoning/answer
+// steps. Not user-configurable (v1): if this ever needs to be, it becomes
+// its own stored setting, same pattern as MODEL_KEY above.
+export const JUDGE_MODEL = KNOWN_MODELS[2];
+
 function makeStringSetting(key: string, defaultValue: string): [() => string, (value: string) => void] {
   return [() => localStorage.getItem(key) ?? defaultValue, (value: string) => localStorage.setItem(key, value)];
 }

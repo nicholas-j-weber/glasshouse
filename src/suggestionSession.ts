@@ -12,7 +12,7 @@ import { createAnthropicAdapter } from "./providers/anthropic";
 import { describeProviderError } from "./providers/errorMessage";
 import { runReasoningAgent, type ModelCallFn } from "./reasoningAgent";
 import { buildRevisionMessage } from "./revise";
-import { getStoredApiKey, getStoredAutoApply, getStoredDefaultRoutingMode, getStoredModel } from "./settingsStorage";
+import { getStoredApiKey, getStoredAutoApply, getStoredDefaultRoutingMode, getStoredModel, JUDGE_MODEL } from "./settingsStorage";
 import { memoryExists } from "./sheetEdits";
 import { applyOverlay } from "./sheetOverlay";
 import { getOverlay, resetOverlay, setOverlay } from "./sheetOverlayStore";
@@ -476,6 +476,17 @@ export function useSuggestionSession(mode: CallMode, sheetId: string): Suggestio
         if (result.usage) void recordUsage(sheetId, result.usage);
         return result.text;
       };
+      // Judge is a bounded continue/ready/abandon classification, not
+      // open-ended generation — always JUDGE_MODEL (cheapest/fastest known
+      // model), independent of the user's chosen model for actual
+      // reasoning/answer steps.
+      const judgeAdapter = createAnthropicAdapter({ apiKey, model: JUDGE_MODEL });
+      const judgeModelCallFn: ModelCallFn = async (prompt) => {
+        const result = await judgeAdapter.call("", prompt);
+        if (!result.ok) throw new Error(describeProviderError(result.error));
+        if (result.usage) void recordUsage(sheetId, result.usage);
+        return result.text;
+      };
 
       let run;
       try {
@@ -487,6 +498,8 @@ export function useSuggestionSession(mode: CallMode, sheetId: string): Suggestio
           finalPromptSuffix: SUGGESTION_INSTRUCTIONS,
           modelCallFn,
           modelName: getStoredModel(),
+          judgeModelCallFn,
+          judgeModelName: JUDGE_MODEL,
         });
       } catch (e) {
         // A step's model call failed (network/auth/rate-limit) — the run's
