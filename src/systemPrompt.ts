@@ -51,13 +51,23 @@ export type ContentMode = "prose" | "code";
 // first place, just via a different door. The last paragraph now says
 // explicitly what kind of content each type is for, not just how to format
 // one of them.
-const CHAT_PREAMBLE = `The following sections are the user's curated context for this conversation. Treat them as ground truth about the user and task. Respond to the user's message directly and conversationally.
+const CHAT_PREAMBLE_BASE = `The following sections are the user's curated context for this conversation. Treat them as ground truth about the user and task. Respond to the user's message directly and conversationally.
 
-The Conversation Summary section above, if present, lists prior exchanges in this conversation in order; the message you are responding to now is always the newest one, occurring after everything listed there.
+The Conversation Summary section above, if present, lists prior exchanges in this conversation in order; the message you are responding to now is always the newest one, occurring after everything listed there.`;
 
-After every response, without exception, propose a conversation_summary_update whose body is only the new entry's text for this exchange — no number, and do not repeat or rewrite earlier entries shown above; the new entry is appended automatically. Format: "User asked/said: <what the user asked or said>. AI replied: <what you answered>." This is required on every single response, regardless of whether the topic seems memorable on its own — proposing this update is never optional, unlike the suggestion types below.
+// This lives separately from CHAT_PREAMBLE_BASE (not just inline in
+// CHAT_PREAMBLE) because it's suggestion-mechanics, not general
+// conversational framing — buildReasoningInstructions leaves it out for the
+// same reason it leaves out SUGGESTION_INSTRUCTIONS below. Without this
+// split, reasoning-agent's intermediate steps (which still got the base
+// preamble) took "without exception" literally and tried to hand-roll a
+// conversation_summary_update on every single reasoning step, despite
+// having no suggestion-format instructions to do it correctly with.
+const CHAT_PREAMBLE_SUGGESTION_ADDENDUM = `After every response, without exception, propose a conversation_summary_update whose body is only the new entry's text for this exchange — no number, and do not repeat or rewrite earlier entries shown above; the new entry is appended automatically. Format: "User asked/said: <what the user asked or said>. AI replied: <what you answered>." This is required on every single response, regardless of whether the topic seems memorable on its own — proposing this update is never optional, unlike the suggestion types below.
 
 If the exchange also suggests a durable addition or change to this context — a fact about the user, a tone adjustment — you may separately propose that too, using new_memory, edit_memory, or tone_update; but unlike the update above, proposing these remains optional and secondary to answering the user. A new_memory must be a standalone fact that would remain true and useful in a completely different conversation — never a restatement, recap, or summary of this exchange itself; that's what the mandatory conversation_summary_update above is already for, and it stays scoped to this chat instead of a pool shared across every other one. For ordinary facts about the user, prefer creating a new, specifically-labeled memory over folding multiple unrelated facts into one broad memory; each memory should stay a single fact or closely related cluster, not a catch-all.`;
+
+const CHAT_PREAMBLE = `${CHAT_PREAMBLE_BASE}\n\n${CHAT_PREAMBLE_SUGGESTION_ADDENDUM}`;
 
 // live testing found a real failure mode the original wording
 // didn't prevent — asked to "eliminate all redundancies," the model's
@@ -112,26 +122,31 @@ code_change is only ever valid on a coding pass — propose it only when the mes
 
 compress_conversation condenses two or more *existing* Conversation Summary turns (referenced by the ids shown next to them) into a single new summary entry, in one action — turnIds must list ids actually shown above, body is the condensed replacement text, and the turns it names are removed from the model's context (not deleted — they remain visible to the user, just no longer sent) once accepted. Only propose this when specifically asked to compress, condense, or summarize older turns — never on your own initiative alongside an ordinary reply. turnIds may name a numbered turn's id or a "[Summary]:" entry's id interchangeably — an existing summary is just as foldable into a new, larger one as a plain turn is, so a second compression later in the same conversation should fold any existing summary in alongside whatever new turns have accumulated since, rather than leaving it stranded as a separate entry. When asked to condense all, every, or the oldest turns without a specific number given, turnIds must include every Conversation Summary turn id shown above — every numbered turn and every existing summary — with no exceptions; do not stop early at an arbitrary subset (e.g. only the first few, or only one topical cluster) and do not leave an existing summary out of a new one. Count them if it helps. If the instruction does name a specific number or range, follow that instead. body must keep the user's questions, statements, and positions distinguishable from your own replies, explanations, and proposals — not full "User:"/"AI:" tags on every clause (that would defeat the point of compressing), but natural attributive phrasing at each major point (e.g. "user asked about...", "user pushed back that...", "AI proposed...", "AI cautioned that..."); an undifferentiated topic recap that loses track of who said what is not an acceptable summary. Deactivating the named turns happens automatically once this suggestion is accepted — not a separate judgment call, and not something to narrate: do not describe in your reply text which turns you condensed, what they covered, or what was left alone; propose the actual compress_conversation entry with real turnIds, or propose nothing at all.`;
 
-function modePreamble(mode: CallMode, contentMode: ContentMode): string {
-  const base = mode === "chat" ? CHAT_PREAMBLE : SHEET_EDITOR_PREAMBLE;
+function modePreamble(mode: CallMode, contentMode: ContentMode, includeSuggestionAddendum: boolean): string {
+  const base =
+    mode === "chat" ? (includeSuggestionAddendum ? CHAT_PREAMBLE : CHAT_PREAMBLE_BASE) : SHEET_EDITOR_PREAMBLE;
   return contentMode === "code" ? `${base}\n\n${CODE_MODE_ADDENDUM}` : base;
 }
 
 export function buildSystemPrompt(sheet: Sheet, mode: CallMode, contentMode: ContentMode = "prose"): string {
-  return [buildReasoningInstructions(sheet, mode, contentMode), SUGGESTION_INSTRUCTIONS].join("\n\n");
+  return [modePreamble(mode, contentMode, true), serializeSheet(sheet), SUGGESTION_INSTRUCTIONS].join("\n\n");
 }
 
 // Reasoning agent's intermediate steps (restate/generate/evaluate/select/
 // sanity-check/judge/compile) never have their own output parsed for
 // suggestions — only the final call's response does (suggestionSession.ts's
-// runReasoningPass) — so they get the sheet content without the suggestion-
-// format instructions. That saves tokens and stops the model from producing
-// throwaway SHEET_SUGGESTIONS blocks mid-reasoning that nothing ever reads.
-// SUGGESTION_INSTRUCTIONS is exported separately so the final call can have
-// it reattached directly, rather than trusting the compile step to carry it
-// forward on its own.
+// runReasoningPass) — so they get the sheet content without any suggestion-
+// related instructions: neither SUGGESTION_INSTRUCTIONS' JSON format nor
+// CHAT_PREAMBLE's "propose conversation_summary_update on every response,
+// without exception" clause (leaving the latter in once caused reasoning
+// steps to hand-roll their own ad hoc summary text, having been told it was
+// mandatory but not given the format to do it correctly). That saves tokens
+// and stops the model producing throwaway suggestion content mid-reasoning
+// that nothing ever reads. SUGGESTION_INSTRUCTIONS is exported separately so
+// the final call can have it reattached directly, rather than trusting the
+// compile step to carry it forward on its own.
 export function buildReasoningInstructions(sheet: Sheet, mode: CallMode, contentMode: ContentMode = "prose"): string {
-  return [modePreamble(mode, contentMode), serializeSheet(sheet)].join("\n\n");
+  return [modePreamble(mode, contentMode, false), serializeSheet(sheet)].join("\n\n");
 }
 
 export { SUGGESTION_INSTRUCTIONS };

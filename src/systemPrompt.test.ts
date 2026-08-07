@@ -146,14 +146,20 @@ describe("buildSystemPrompt", () => {
     }
   });
 
-  it("buildReasoningInstructions omits the suggestion instructions that buildSystemPrompt includes, keeping the sheet content identical", () => {
+  it("buildReasoningInstructions omits suggestion mechanics (format block and the mandatory-update clause) that buildSystemPrompt includes, keeping everything else", () => {
     const full = buildSystemPrompt(sheet, "chat");
     const reasoningOnly = buildReasoningInstructions(sheet, "chat");
 
     expect(full).toContain("SHEET_SUGGESTIONS");
     expect(reasoningOnly).not.toContain("SHEET_SUGGESTIONS");
+    // the "propose conversation_summary_update, without exception" clause
+    // lives in CHAT_PREAMBLE, not SUGGESTION_INSTRUCTIONS — must be excluded
+    // too, or reasoning steps take "without exception" literally and
+    // hand-roll their own ad hoc summary text every step.
+    expect(full).toContain("without exception");
+    expect(reasoningOnly).not.toContain("without exception");
     expect(reasoningOnly).toContain("## Tone");
-    expect(full).toBe(`${reasoningOnly}\n\n` + full.slice(full.indexOf("## Suggesting Sheet Changes")));
+    expect(reasoningOnly).toContain("the message you are responding to now is always the newest one");
   });
 
   it("excludes an inactive knowledge/skill entry the same way it excludes any inactive memory", () => {
