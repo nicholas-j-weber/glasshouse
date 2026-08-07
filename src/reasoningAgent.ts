@@ -10,9 +10,11 @@ import type { RunLog, StepRecord, StepRole } from "./types";
 // just the loop's last automatic iteration. Every step up through compile
 // keeps the original no-lossy-summarization property (each prompt is a
 // superset of the transcript before it); the final call is the one
-// intentional exception — it submits the compiled/distilled prompt, not
-// another transcript dump. Runtime (browser) and persistence (Dexie
-// instead of JSONL append) also differ from the Python original.
+// intentional exception — it submits the compiled/distilled prompt (plus an
+// optional caller-supplied finalPromptSuffix, e.g. output-format
+// instructions the compile step isn't reliably guaranteed to preserve on
+// its own), not another transcript dump. Runtime (browser) and persistence
+// (Dexie instead of JSONL append) also differ from the Python original.
 // Provider-agnostic by design: modelCallFn is an opaque string -> string,
 // wired to a real provider in a later milestone.
 //
@@ -195,6 +197,12 @@ export interface RunReasoningAgentOptions {
   maxSteps?: number;
   minSteps?: number;
   structuralCheckFn?: StructuralCheckFn;
+  // Appended directly to the compiled prompt before the final call —
+  // domain-agnostic on this side (just a string tacked on), but lets a
+  // caller (e.g. suggestionSession.ts's SUGGESTION_INSTRUCTIONS) guarantee
+  // the final answer carries formatting requirements the compile step isn't
+  // reliably guaranteed to preserve when it synthesizes its own prompt.
+  finalPromptSuffix?: string;
   modelName?: string;
   db?: ContextSheetDB;
 }
@@ -208,6 +216,7 @@ export async function runReasoningAgent({
   maxSteps = 10,
   minSteps = FIXED_SEQUENCE.length,
   structuralCheckFn,
+  finalPromptSuffix,
   modelName = MODEL_NAME,
   db = defaultDb,
 }: RunReasoningAgentOptions): Promise<RunLog> {
@@ -281,13 +290,14 @@ export async function runReasoningAgent({
     model: modelName,
   });
 
-  const finalResponse = await modelCallFn(compiledPrompt);
+  const finalPrompt = finalPromptSuffix ? `${compiledPrompt}\n\n${finalPromptSuffix}` : compiledPrompt;
+  const finalResponse = await modelCallFn(finalPrompt);
   await persist({
     runId: run.runId,
     stepId: steps.length,
     role: "final",
     instruction: "Produce final answer",
-    prompt: compiledPrompt,
+    prompt: finalPrompt,
     rawResponse: finalResponse,
     timestamp: new Date().toISOString(),
     model: modelName,

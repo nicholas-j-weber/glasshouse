@@ -22,7 +22,10 @@ beforeEach(() => {
   db = new ContextSheetDB(`test-${crypto.randomUUID()}`);
 });
 
-function run(modelCallFn: ModelCallFn, opts: { maxSteps?: number; minSteps?: number; structuralCheckFn?: StructuralCheckFn } = {}) {
+function run(
+  modelCallFn: ModelCallFn,
+  opts: { maxSteps?: number; minSteps?: number; structuralCheckFn?: StructuralCheckFn; finalPromptSuffix?: string } = {},
+) {
   return runReasoningAgent({
     sheetId: "sheet-1",
     chatMessageId: "message-1",
@@ -206,6 +209,21 @@ describe("runReasoningAgent", () => {
     expect(compile.rawResponse).toBe("THE COMPILED PROMPT");
     expect(final.prompt).toBe("THE COMPILED PROMPT");
     expect(compile.prompt).toContain(COMPILE_INSTRUCTION);
+  });
+
+  it("appends finalPromptSuffix to the compiled prompt for the final call, and persists that combined prompt", async () => {
+    const log = await run(
+      async (prompt) => {
+        if (prompt.includes(COMPILE_INSTRUCTION)) return "COMPILED";
+        if (prompt.includes(JUDGE_INSTRUCTION)) return JSON.stringify({ status: "ready", reason: "done" });
+        return "reasoning output";
+      },
+      { maxSteps: 5, minSteps: 1, finalPromptSuffix: "SUFFIX INSTRUCTIONS" },
+    );
+
+    const steps = await loadRunSteps(log.runId, db);
+    const final = steps.find((s) => s.role === "final")!;
+    expect(final.prompt).toBe("COMPILED\n\nSUFFIX INSTRUCTIONS");
   });
 
   it("persists each step as it is produced, not batched at the end", async () => {

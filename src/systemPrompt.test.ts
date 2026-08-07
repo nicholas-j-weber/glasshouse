@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildSystemPrompt } from "./systemPrompt";
+import { buildReasoningInstructions, buildSystemPrompt } from "./systemPrompt";
 import { serializeSheet } from "./serializer";
 import type { Memory, Sheet } from "./types";
 
@@ -144,6 +144,16 @@ describe("buildSystemPrompt", () => {
         expect(result).toContain("## Memory: onboarding.md (id: k1)\nStep one. Step two.");
       }
     }
+  });
+
+  it("buildReasoningInstructions omits the suggestion instructions that buildSystemPrompt includes, keeping the sheet content identical", () => {
+    const full = buildSystemPrompt(sheet, "chat");
+    const reasoningOnly = buildReasoningInstructions(sheet, "chat");
+
+    expect(full).toContain("SHEET_SUGGESTIONS");
+    expect(reasoningOnly).not.toContain("SHEET_SUGGESTIONS");
+    expect(reasoningOnly).toContain("## Tone");
+    expect(full).toBe(`${reasoningOnly}\n\n` + full.slice(full.indexOf("## Suggesting Sheet Changes")));
   });
 
   it("excludes an inactive knowledge/skill entry the same way it excludes any inactive memory", () => {

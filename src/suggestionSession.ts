@@ -20,7 +20,7 @@ import { createVersion, ensureInitialized, revertToVersion } from "./store";
 import { resolveAttribution, resolveContentChange } from "./suggestionAcceptance";
 import { describeSuggestionChange } from "./suggestionChangeDisplay";
 import { parseModelResponse, type ParsedModelResponse } from "./suggestionParser";
-import { buildSystemPrompt, type CallMode, type ContentMode } from "./systemPrompt";
+import { buildReasoningInstructions, buildSystemPrompt, SUGGESTION_INSTRUCTIONS, type CallMode, type ContentMode } from "./systemPrompt";
 import { recordUsage } from "./tokenUsageStore";
 import type { ConversationSummaryUpdateSuggestion, PersistedDisplaySuggestion, PersistedSuggestionStatus, RoutingMode, Sheet, SheetSuggestion } from "./types";
 import { useSheetOverlay } from "./useSheetOverlay";
@@ -439,20 +439,25 @@ export function useSuggestionSession(mode: CallMode, sheetId: string): Suggestio
   }
 
   // Reasoning-routed counterpart to runCall (spec.md "Reasoning agent" +
-  // "The Pass"). systemPrompt becomes topLevelInstructions — the same
-  // "sheet's memories are one source of truth" value runCall would've sent
-  // as the system prompt — so every step (including the final one) carries
-  // the same suggestion-format instructions a direct call gets; the run's
-  // finalAnswer is parsed exactly like runCall's result.text. Each step's
-  // own model call already logs its full prompt/response in runSteps, so
-  // there's no separate system/user split here — modelCallFn just forwards
-  // the agent's one flat prompt string as the user message.
+  // "The Pass"). reasoningInstructions (mode preamble + serialized sheet,
+  // no suggestion-format section) becomes topLevelInstructions — the
+  // intermediate reasoning/judge/compile steps have no use for the
+  // suggestion-format instructions (their output is never parsed for
+  // suggestions), so leaving those out saves tokens and stops the model
+  // from producing throwaway SHEET_SUGGESTIONS blocks nothing ever reads.
+  // SUGGESTION_INSTRUCTIONS is instead passed as finalPromptSuffix,
+  // guaranteeing the one call that *is* parsed (run.finalAnswer, exactly
+  // like runCall's result.text) always carries it, rather than trusting
+  // the compile step to preserve it on its own. Each step's own model call
+  // already logs its full prompt/response in runSteps, so there's no
+  // separate system/user split here — modelCallFn just forwards the
+  // agent's one flat prompt string as the user message.
   //
   // chatMessageId is threaded in from the caller (generated before the
   // assistant SessionMessage itself exists) so RunLog.chatMessageId can
   // link back to it once that message is created.
   async function runReasoningPass(
-    systemPrompt: string,
+    reasoningInstructions: string,
     problem: string,
     chatMessageId: string,
   ): Promise<{ parsed: ParsedModelResponse; reasoningRunId: string } | { parsed: null; reasoningRunId?: never }> {
@@ -478,7 +483,8 @@ export function useSuggestionSession(mode: CallMode, sheetId: string): Suggestio
           sheetId,
           chatMessageId,
           problem,
-          topLevelInstructions: systemPrompt,
+          topLevelInstructions: reasoningInstructions,
+          finalPromptSuffix: SUGGESTION_INSTRUCTIONS,
           modelCallFn,
           modelName: getStoredModel(),
         });
@@ -649,14 +655,15 @@ export function useSuggestionSession(mode: CallMode, sheetId: string): Suggestio
     // but a pass must be built from whichever mode actually produced it, not
     // whatever the toggles happen to read afterward.
     const passRoutingMode = routingMode;
-    const systemPrompt = buildSystemPrompt(applyOverlay(merged, overlay), mode, contentMode);
+    const overlaidSheet = applyOverlay(merged, overlay);
+    const systemPrompt = buildSystemPrompt(overlaidSheet, mode, contentMode);
     // Generated ahead of the call so a reasoning-routed run's RunLog can
     // reference this message's id as chatMessageId before the SessionMessage
     // itself exists.
     const assistantMessageId = crypto.randomUUID();
     const { parsed, reasoningRunId } =
       passRoutingMode === "reasoning"
-        ? await runReasoningPass(systemPrompt, messageText, assistantMessageId)
+        ? await runReasoningPass(buildReasoningInstructions(overlaidSheet, mode, contentMode), messageText, assistantMessageId)
         : { parsed: await runCall(systemPrompt, messageText), reasoningRunId: undefined };
     if (!parsed) return; // error already appended; draft preserved, no "sent" turn added
 

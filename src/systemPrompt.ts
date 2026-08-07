@@ -118,5 +118,20 @@ function modePreamble(mode: CallMode, contentMode: ContentMode): string {
 }
 
 export function buildSystemPrompt(sheet: Sheet, mode: CallMode, contentMode: ContentMode = "prose"): string {
-  return [modePreamble(mode, contentMode), serializeSheet(sheet), SUGGESTION_INSTRUCTIONS].join("\n\n");
+  return [buildReasoningInstructions(sheet, mode, contentMode), SUGGESTION_INSTRUCTIONS].join("\n\n");
 }
+
+// Reasoning agent's intermediate steps (restate/generate/evaluate/select/
+// sanity-check/judge/compile) never have their own output parsed for
+// suggestions — only the final call's response does (suggestionSession.ts's
+// runReasoningPass) — so they get the sheet content without the suggestion-
+// format instructions. That saves tokens and stops the model from producing
+// throwaway SHEET_SUGGESTIONS blocks mid-reasoning that nothing ever reads.
+// SUGGESTION_INSTRUCTIONS is exported separately so the final call can have
+// it reattached directly, rather than trusting the compile step to carry it
+// forward on its own.
+export function buildReasoningInstructions(sheet: Sheet, mode: CallMode, contentMode: ContentMode = "prose"): string {
+  return [modePreamble(mode, contentMode), serializeSheet(sheet)].join("\n\n");
+}
+
+export { SUGGESTION_INSTRUCTIONS };
