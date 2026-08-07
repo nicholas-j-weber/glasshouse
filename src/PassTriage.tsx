@@ -3,12 +3,16 @@ import { ReasoningTraceSteps, useReasoningTrace } from "./ReasoningTrace";
 import type { SessionMessage } from "./suggestionSession";
 import { useDialog } from "./useDialog";
 
-// spec.md "The Pass" — one assistant reply's three lanes (context sent,
+// spec.md "The Pass" — one assistant reply's lanes (context sent,
 // reasoning trace, code diff), side by side, replacing the old separate
 // per-message ReasoningTrace/CodeDiffView toggles. Every assistant message
 // gets this trigger, even a plain blackbox text reply with nothing in the
-// other two panes — the context-sent pane is always meaningful, and an
-// empty state for the other two is more honest than hiding the affordance.
+// reasoning-trace pane — that pane still gets an honest empty state rather
+// than being hidden. The code diff pane is the exception: it's absent on
+// most passes (code_change is only ever legal in "code" contentMode, per
+// systemPrompt.ts), so a message with no codeVersionId drops the pane
+// entirely instead of showing a near-permanent "No code changes" — the
+// other two panes get the freed-up width instead.
 export function PassTriage({ message, onClose }: { message: SessionMessage; onClose: () => void }) {
   const dialog = useDialog(onClose);
   const reasoning = useReasoningTrace(message.routingMode === "reasoning" ? message.reasoningRunId : undefined);
@@ -45,10 +49,12 @@ export function PassTriage({ message, onClose }: { message: SessionMessage; onCl
             <ReasoningTraceSteps loaded={reasoning} />
           )}
         </section>
-        <section className="sheet-section pass-triage-pane">
-          <h2>Code diff</h2>
-          {message.codeVersionId ? <CodeDiffFiles diffs={diffs} /> : <p className="sheet-section-caption">No code changes.</p>}
-        </section>
+        {message.codeVersionId && (
+          <section className="sheet-section pass-triage-pane">
+            <h2>Code diff</h2>
+            <CodeDiffFiles diffs={diffs} />
+          </section>
+        )}
       </div>
     </dialog>
   );
