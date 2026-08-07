@@ -125,7 +125,6 @@ function App() {
             <h1>
               Glasshouse<span className="app-header-title-full">: Browser Demo</span>
             </h1>
-            <p className="app-header-subtitle">Auditable Context & Memory Methodology</p>
           </div>
         </div>
         <div className="header-icon-buttons">

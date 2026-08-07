@@ -41,23 +41,6 @@
   line-height: 1.2;
 }
 
-/* Smaller than the previous 12px, but legible despite that — same recipe
-   as .sheet-section h2/.inline-field-label: uppercase + slight
-   letter-spacing (both proven to help small text read cleanly), and
-   dimmed via opacity from the *bright* --text-h rather than the already-
-   muted --text — the previous version compounded two dimming steps
-   (muted color, then opacity on top of it), which is why it was already
-   close to illegible before shrinking it further. */
-.app-header-subtitle {
-  margin: 0;
-  font-size: 10px;
-  line-height: 1.2;
-  color: var(--text-h);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  opacity: 0.7;
-}
-
 .header-icon-buttons {
   display: flex;
   gap: 8px;
@@ -2399,16 +2382,13 @@ dialog.modal::backdrop {
     flex-direction: column;
   }
 
-  /* at 375px, the ~180px left for .app-header-titles wasn't
-     enough for "Glasshouse: Browser Demo" plus the subtitle without both
-     wrapping to 2 lines each — measured live at 99px tall, on a 700px-tall
-     viewport that's not a small line item. The subtitle is purely
-     decorative (the Welcome modal already explains what Glasshouse is) and
-     the ": Browser Demo" suffix is dropped from the title itself, leaving
-     just "Glasshouse" — full name still lives in the document title and the
-     Welcome modal, just not repeated in the persistent nav bar on mobile. */
-  .app-header-title-full,
-  .app-header-subtitle {
+  /* at 375px, the ~180px left for .app-header-titles wasn't enough for
+     "Glasshouse: Browser Demo" without wrapping to 2 lines — measured live
+     at 99px tall, on a 700px-tall viewport that's not a small line item.
+     The ": Browser Demo" suffix is dropped, leaving just "Glasshouse" —
+     full name still lives in the document title and the Welcome modal,
+     just not repeated in the persistent nav bar on mobile. */
+  .app-header-title-full {
     display: none;
   }
 
