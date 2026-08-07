@@ -2400,12 +2400,12 @@ dialog.modal::backdrop {
   }
 
   /* at 375px, the ~180px left for .app-header-titles wasn't
-     enough for "ACM2: Browser Demo" plus the subtitle without both
+     enough for "Glasshouse: Browser Demo" plus the subtitle without both
      wrapping to 2 lines each — measured live at 99px tall, on a 700px-tall
      viewport that's not a small line item. The subtitle is purely
-     decorative (the Welcome modal already explains what ACM2 is) and the
-     ": Browser Demo" suffix is dropped from the title itself, leaving
-     just "ACM2" — full name still lives in the document title and the
+     decorative (the Welcome modal already explains what Glasshouse is) and
+     the ": Browser Demo" suffix is dropped from the title itself, leaving
+     just "Glasshouse" — full name still lives in the document title and the
      Welcome modal, just not repeated in the persistent nav bar on mobile. */
   .app-header-title-full,
   .app-header-subtitle {

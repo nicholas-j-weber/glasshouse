@@ -123,7 +123,7 @@ function App() {
           </button>
           <div className="app-header-titles">
             <h1>
-              ACM2<span className="app-header-title-full">: Browser Demo</span>
+              Glasshouse<span className="app-header-title-full">: Browser Demo</span>
             </h1>
             <p className="app-header-subtitle">Auditable Context & Memory Methodology</p>
           </div>

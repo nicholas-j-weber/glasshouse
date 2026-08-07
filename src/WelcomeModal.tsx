@@ -84,7 +84,7 @@ export function WelcomeModal() {
       aria-labelledby="welcome-modal-title"
     >
       <div className="modal-header">
-        <h2 id="welcome-modal-title">Welcome to ACM2</h2>
+        <h2 id="welcome-modal-title">Welcome to Glasshouse</h2>
         <button type="button" className="modal-close" onClick={dialog.close} aria-label="Close welcome message">
           ×
         </button>
