@@ -116,6 +116,21 @@ describe("runReasoningAgent", () => {
     expect(judges[0].metadata?.reason).toContain("unparseable");
   });
 
+  it("parses a judge verdict wrapped in a markdown code fence instead of treating it as unparseable", async () => {
+    const log = await run(
+      async (prompt) =>
+        prompt.includes(JUDGE_INSTRUCTION)
+          ? '```json\n{"status": "ready", "reason": "looks good"}\n```'
+          : "reasoning output",
+      { maxSteps: 10, minSteps: 1 },
+    );
+
+    expect(log.status).toBe("completed");
+    const judges = await filterSteps(log.runId, { role: "judge" }, db);
+    expect(judges).toHaveLength(1);
+    expect(judges[0].metadata?.status).toBe("ready");
+  });
+
   it("records abandon as treated_as continue and keeps going", async () => {
     const log = await run(judgeSays({ status: "abandon", reason: "not converging" }), { maxSteps: 2, minSteps: 1 });
 

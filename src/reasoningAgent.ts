@@ -138,6 +138,14 @@ function structuralCheckStep(
   };
 }
 
+// Real models routinely wrap "respond with ONLY JSON" output in a markdown
+// code fence anyway (```json ... ```) — strip one before parsing so that
+// habit doesn't silently downgrade every verdict to "continue".
+function stripCodeFence(text: string): string {
+  const match = text.trim().match(/^```(?:json)?\s*([\s\S]*?)\s*```$/);
+  return match ? match[1] : text.trim();
+}
+
 async function judgeStep(
   runId: string,
   stepId: number,
@@ -153,7 +161,7 @@ async function judgeStep(
   let status: JudgeStatus = "continue";
   let reason = "";
   try {
-    const parsed: unknown = JSON.parse(rawResponse.trim());
+    const parsed: unknown = JSON.parse(stripCodeFence(rawResponse));
     if (typeof parsed !== "object" || parsed === null) throw new Error("not a JSON object");
     const verdict = parsed as Partial<JudgeVerdict>;
     status = verdict.status ?? "continue";
