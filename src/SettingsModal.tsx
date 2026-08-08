@@ -3,7 +3,6 @@ import { ModelField } from "./ModelField";
 import { useDialog } from "./useDialog";
 import {
   getStoredApiKey,
-  getStoredAutoApply,
   getStoredAutoRunCompression,
   getStoredCollapseHistoryByDefault,
   getStoredCollapseSuggestionsByDefault,
@@ -11,7 +10,6 @@ import {
   getStoredDefaultRoutingMode,
   getStoredRecommendCompression,
   setStoredApiKey,
-  setStoredAutoApply,
   setStoredAutoRunCompression,
   setStoredCollapseHistoryByDefault,
   setStoredCollapseSuggestionsByDefault,
@@ -24,12 +22,11 @@ import {
 // modal — "set once, rarely revisit" config, unlike the chat/context panels
 // which are used constantly (a deliberately different treatment from the
 // chats/details sidebars, which stay visible-by-default). This is also
-// where later settings land — the auto-apply toggle, the
-// collapse-by-default toggle, the compression-recommendation
-// toggle, and the This Chat/History collapse-by-default toggles.
+// where later settings land — the collapse-by-default toggle, the
+// compression-recommendation toggle, and the This Chat/History
+// collapse-by-default toggles.
 export function SettingsModal({ onClose }: { onClose: () => void }) {
   const [apiKey, setApiKey] = useState(getStoredApiKey());
-  const [autoApply, setAutoApply] = useState(getStoredAutoApply());
   const [collapseSuggestions, setCollapseSuggestions] = useState(getStoredCollapseSuggestionsByDefault());
   const [recommendCompression, setRecommendCompression] = useState(getStoredRecommendCompression());
   const [autoRunCompression, setAutoRunCompression] = useState(getStoredAutoRunCompression());
@@ -62,23 +59,6 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
           </label>
           <ModelField />
         </div>
-        <label className="modal-field modal-field--checkbox">
-          <input
-            type="checkbox"
-            aria-label="Auto-apply context updates while chatting"
-            checked={autoApply}
-            onChange={(e) => {
-              setAutoApply(e.target.checked);
-              setStoredAutoApply(e.target.checked);
-            }}
-          />
-          <span>Auto-apply context updates while chatting</span>
-        </label>
-        <p className="modal-field-hint">
-          {autoApply
-            ? "On (default): context updates apply immediately as you chat."
-            : "Off: context updates wait for manual Accept/Reject/Revise"}
-        </p>
         <label className="modal-field modal-field--checkbox">
           <input
             type="checkbox"

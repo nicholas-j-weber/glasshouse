@@ -44,7 +44,7 @@ interface PersistedMessage {
 
 Per-message **toggle**, not a heuristic — deterministic and visible,
 consistent with "minimize opacity surface." Default state configurable
-in Settings like the existing auto-apply toggle.
+in Settings, same pattern as this app's other Settings toggles.
 
 `blackbox` isn't a euphemism — it's the literal fallback label for "no
 internal tooling applied," per the original design goal, and must render

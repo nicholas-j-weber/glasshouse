@@ -240,14 +240,16 @@ export interface PersistedMessage {
   text: string;
   sourceText?: string;
   suggestions?: PersistedDisplaySuggestion[];
-  // whether this message's suggestions were auto-applied
-  // or left for manual review, per the auto-apply setting at
-  // the moment this message was created — set once, never changed
-  // retroactively if the setting is toggled later. Determines how
-  // suggestionSession.ts's rendering treats each suggestion's status:
-  // true means the plain historical record; false means pending/failed
-  // ones are still-interactive change cards. undefined (sheet_editor
-  // messages, user/error messages) means "not applicable."
+  // whether this message's suggestions were auto-applied or left for
+  // manual review. Chat mode always auto-applies now (true, unconditionally,
+  // for every new chat message) — false only ever appears on a message
+  // saved back when chat mode's now-removed auto-apply toggle was off, kept
+  // so that history still renders correctly rather than reinterpreting it.
+  // Determines how suggestionSession.ts's rendering treats each
+  // suggestion's status: true means the plain historical record; false
+  // means pending/failed ones are still-interactive change cards.
+  // undefined (sheet_editor messages, user/error messages) means "not
+  // applicable."
   autoApplied?: boolean;
   // Glasshouse pass routing (spec.md "The Pass" / "Routing"). routingMode
   // is always set; reasoningRunId is set iff "reasoning", codeVersionId

@@ -8,7 +8,6 @@ import type { RoutingMode } from "./types";
 const API_KEY_KEY = "context-sheets:anthropic-api-key";
 const MODEL_KEY = "context-sheets:anthropic-model";
 const ACTIVE_SHEET_ID_KEY = "context-sheets:active-sheet-id";
-const AUTO_APPLY_KEY = "context-sheets:auto-apply-chat-suggestions";
 const ROUTING_MODE_KEY = "context-sheets:default-routing-mode";
 const COLLAPSE_SUGGESTIONS_KEY = "context-sheets:collapse-suggestions-by-default";
 const RECOMMEND_COMPRESSION_KEY = "context-sheets:recommend-compression";
@@ -71,13 +70,6 @@ export function getStoredActiveSheetId(): string | null {
 export function setStoredActiveSheetId(sheetId: string): void {
   localStorage.setItem(ACTIVE_SHEET_ID_KEY, sheetId);
 }
-
-// whether chat mode only (sheet_editor/Manage with AI
-// always reviews manually) auto-applies suggestions or leaves
-// them pending for manual Accept/Reject/Revise, same as Manage with AI
-// always has. Defaults to true, so
-// existing users see no change until they opt out.
-export const [getStoredAutoApply, setStoredAutoApply] = makeBoolSetting(AUTO_APPLY_KEY, true);
 
 // spec.md "Routing: reasoning vs. blackbox" — the routing toggle's starting
 // position for a fresh chat pane. Defaults to blackbox: routing to

@@ -13,7 +13,7 @@ import { describeProviderError } from "./providers/errorMessage";
 import { runReasoningAgent, type ModelCallFn } from "./reasoningAgent";
 import { buildRevisionMessage } from "./revise";
 import { serializeSheet } from "./serializer";
-import { getStoredApiKey, getStoredAutoApply, getStoredDefaultRoutingMode, getStoredModel, JUDGE_MODEL } from "./settingsStorage";
+import { getStoredApiKey, getStoredDefaultRoutingMode, getStoredModel, JUDGE_MODEL } from "./settingsStorage";
 import { memoryExists } from "./sheetEdits";
 import { applyOverlay } from "./sheetOverlay";
 import { getOverlay, resetOverlay, setOverlay } from "./sheetOverlayStore";
@@ -28,27 +28,26 @@ import { useSheetOverlay } from "./useSheetOverlay";
 
 // Shared by ChatPane (mode "chat") and SheetEditor (mode
 // "sheet_editor") — accepting/rejecting/revising a suggestion works
-// identically regardless of which surface produced it ("used
-// identically by both the chat pane and the dedicated sheet-editor"). Only
-// the mode passed to buildSystemPrompt and the framing text around the
-// input differ between the two call sites.
+// identically regardless of which surface produced it, still needed here
+// for sheet_editor's mandatory review (handleAccept/handleReject/
+// handleRevisionSubmit are how ManageWithAIPanel applies everything) and
+// for correctly rendering a chat message saved back when auto-apply was a
+// toggle. Only the mode passed to buildSystemPrompt and the framing text
+// around the input differ between the two call sites.
 //
-// For chat mode specifically, suggestions there now
-// auto-apply the instant they're received (no manual Accept), surfaced as a
-// toast with an Undo window instead of a pending review card. sheet_editor
-// mode (Manage with AI) is unchanged — handleAccept/handleReject/
-// handleRevisionSubmit still work exactly as before and are how that
-// surface applies everything, since batch/restructuring operations are
-// exactly the case where a review step still earns its keep.
-//
-// chat mode's auto-apply is a setting (settingsStorage.ts's
-// getStoredAutoApply, default on), not a permanent architectural choice —
-// when off, chat suggestions behave exactly like sheet_editor's always have
-// (pending cards, handleAccept/handleReject/handleRevisionSubmit), just
-// rendered inline in the transcript (SuggestionSessionView) instead of
-// ManageWithAIPanel's one-shot card list. Each message remembers which mode
-// produced it (SessionMessage.autoApplied) so a toggle mid-conversation
-// doesn't retroactively change how past messages render.
+// Chat mode always auto-applies now — suggestions apply the instant
+// they're received, surfaced as a toast with an Undo window instead of a
+// pending review card. This used to be a Settings toggle (auto-apply on
+// was already the default); removed rather than left off-by-default,
+// since Accept/Reject/Revise on an ordinary chat turn was inherited ACM2
+// chrome that saw little real use once auto-apply became the norm.
+// sheet_editor mode (Manage with AI) is unchanged and still always
+// reviews manually — batch/restructuring operations are exactly the case
+// where a review-before-apply step still earns its keep, unlike a single
+// ordinary chat turn. Each message remembers which mode produced it
+// (SessionMessage.autoApplied) so old messages saved under the
+// now-removed toggle still render as pending cards rather than silently
+// reinterpreting their history.
 
 // "failed" covers an edit_memory/deactivate_memory
 // suggestion whose memoryId doesn't match any memory in the current sheet —
@@ -754,10 +753,9 @@ export function useSuggestionSession(mode: CallMode, sheetId: string): Suggestio
     if (!parsed) return; // error already appended; draft preserved, no "sent" turn added
 
     const suggestions = await resolveSuggestions(parsed, mode, messageText, attemptSummaryFollowup);
-    // sheet_editor mode never auto-applies regardless of the
-    // setting — Manage with AI's review-every-batch model is unaffected by
-    // a toggle that's specifically about chat mode.
-    const autoApply = mode === "chat" && getStoredAutoApply();
+    // sheet_editor mode never auto-applies — Manage with AI's
+    // review-every-batch model; chat mode always does now.
+    const autoApply = mode === "chat";
 
     addMessage({ id: crypto.randomUUID(), createdAt: new Date().toISOString(), mode, role: "user", text: messageText, routingMode: passRoutingMode });
     const assistantMessage: SessionMessage = {

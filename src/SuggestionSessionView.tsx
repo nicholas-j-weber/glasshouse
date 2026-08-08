@@ -14,15 +14,18 @@ import type { Sheet } from "./types";
 // underlying useSuggestionSession hook but its own one-shot, non-chat
 // rendering instead of this component.
 //
-// chat mode auto-applies every suggestion the instant it's
-// received (surfaced via the toast stack below, with a short Undo window)
-// rather than showing a pending review card. That's a
-// setting rather than the only option: with it off, a message's
-// suggestions stay pending until manually accepted/rejected/revised —
-// exactly ManageWithAIPanel's ChangeCard, reused here rather than rebuilt.
-// SessionMessage.autoApplied (set once, at creation) is what each message
-// remembers about which mode produced it — a mid-conversation toggle only
-// affects messages sent after it, not ones already in the transcript.
+// Chat mode auto-applies every suggestion the instant it's received
+// (surfaced via the toast stack below, with a short Undo window) rather
+// than showing a pending review card — unconditionally now, not a
+// setting (Accept/Reject/Revise on an ordinary chat turn used to be
+// optional, off by default's opposite; removed as inherited-but-unused
+// ACM2 chrome once auto-apply was already how everyone used chat).
+// MessageSuggestions below still renders a message's pending
+// ChangeCard — exactly ManageWithAIPanel's, reused rather than rebuilt —
+// but purely as a fallback for a message saved back when that toggle
+// existed (SessionMessage.autoApplied, set once at creation, is how each
+// message remembers which mode produced it); no new chat message ever
+// reaches that branch anymore.
 //
 // every message's suggestions block sits behind a "N changes"
 // disclosure toggle — conversation/memory updates otherwise made the chat
@@ -301,9 +304,10 @@ function MessageSuggestions({
 
   // Every suggestion here already resolved (auto-applied) before this
   // ever rendered, so it's always a plain, non-interactive record — what
-  // got applied, or failed to. Also the fallback for an older message
-  // saved before the autoApplied field existed (it's undefined there) or
-  // one from a mode this view never handles interactively.
+  // got applied, or failed to. This is every chat message now (auto-apply
+  // is unconditional) — also the fallback for an older message saved
+  // before the autoApplied field existed (it's undefined there) or one
+  // from a mode this view never handles interactively.
   if (message.autoApplied !== false) {
     return (
       <ul className="chat-applied-list">
@@ -316,7 +320,8 @@ function MessageSuggestions({
     );
   }
 
-  // auto-apply off: same split ManageWithAIPanel's
+  // Legacy path — a message saved before chat mode's auto-apply toggle
+  // was removed (autoApplied === false). Same split ManageWithAIPanel's
   // ResponseBlock already does — undecided (pending/failed) suggestions
   // are still-interactive ChangeCards, everything else (accepted/
   // rejected/revised) is a plain historical line, same as the auto-apply
