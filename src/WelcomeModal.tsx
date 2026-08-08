@@ -36,25 +36,10 @@ import { useDialog } from "./useDialog";
 // ModelField.tsx (a <select> with an "Other…" escape hatch), replacing a
 // <datalist>-backed input that turned out to be broken on inspection.
 //
-// mentions the compression prompt (CompressionPrompt.tsx), now that
-// getStoredRecommendCompression defaults to true (settingsStorage.ts) — a
-// deliberate break from every other recommend/collapse-by-default toggle
-// in this app, made specifically so this is worth surfacing here. Before
-// that default flip, this sentence was deliberately left out: an
-// off-by-default, opt-in feature didn't belong in an explanation of the
-// app's default behavior.
-//
-// that sentence originally stood alone as a fourth
-// paragraph; folded into the end of the second paragraph instead (both
-// are about the same Context panel/context-size relationship, so
-// splitting it out read as more separate than it actually was) and
-// "Context sheet" reworded to "Context panel" — the running app never
-// once says "sheet" anywhere a user can see (checked: only the panel
-// title "Context" and code comments used it), so naming a term here a
-// first-time viewer would never encounter again was its own small
-// inconsistency, independent of the paragraph merge. The modal's width
-// (.modal--welcome) was re-measured from scratch for the merged
-// version, not assumed unchanged — see its own comment in App.css.
+// The explanation paragraphs that used to sit above the API key/model
+// fields (what Glasshouse is, how the Context panel works, compression)
+// are removed for now — API key/model setup is what actually blocks a
+// first-time viewer from doing anything, so that's what's left here.
 export function WelcomeModal() {
   const [closed, setClosed] = useState(false);
   const [dismissedPermanently, setDismissedPermanently] = useState(getStoredWelcomeDismissed());
@@ -90,22 +75,6 @@ export function WelcomeModal() {
         </button>
       </div>
       <div className="modal-body">
-        <div className="welcome-text">
-          <p>
-            This is a live demo of Auditable Context & Memory Methodology — a versioned, inspectable alternative to
-            opaque chat history.
-          </p>
-          <p>
-            Everything the AI knows lives in the Context panel, where you can see, edit, and revert it —
-            no hidden memory or chat history you can't inspect. AI-suggested changes are shown before they're applied, and nothing is ever
-            silently deleted: deactivated content stays visible for audit in History. When your context exceeds
-            roughly 3000 tokens, you'll be prompted to compress it.
-          </p>
-          <p>
-            The Context panel has three tabs — This Chat, Memories, and History — or try Manage with AI to ask
-            for changes directly.
-          </p>
-        </div>
         <div className="modal-field-row">
           <label className="modal-field">
             <span>Anthropic API key</span>

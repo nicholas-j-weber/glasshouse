@@ -361,22 +361,6 @@ dialog.modal::backdrop {
   color: var(--text-h);
 }
 
-/* paragraphs inside their own wrapper (not .modal-body's
-   direct flex children) so .modal-body's gap: 12px — shared with
-   SettingsModal, where that spacing is still wanted between field rows —
-   doesn't apply here. margin: 0 on the paragraphs themselves clears their
-   own default UA spacing; the + p rule below adds back a smaller, single
-   8px gap between paragraphs only (not above the first or below the
-   last), replacing an earlier zero-gap version, which read as too
-   dense once actually seen. */
-.welcome-text p {
-  margin: 0;
-}
-
-.welcome-text p + p {
-  margin-top: 8px;
-}
-
 /* two dismiss/action buttons side by side — the primary action
    (WelcomeModal's "Got it", CompressionPrompt's "Compress") stays the
    accent-filled primary, the secondary one ("Don't show again"/"Not now")
