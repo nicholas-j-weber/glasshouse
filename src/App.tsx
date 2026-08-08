@@ -190,7 +190,7 @@ function App() {
                 onAutoEditHandled={() => setJustCreatedSheetId(null)}
               />
             </div>
-            <ChatPane sheetId={activeSheetId} />
+            <ChatPane sheetId={activeSheetId} onOpenManageWithAI={openManageWithAI} />
           </main>
           <button
             type="button"
@@ -207,7 +207,6 @@ function App() {
                 sheetId={activeSheetId}
                 detailsTab={detailsTab}
                 onTabChange={setDetailsTab}
-                onOpenManageWithAI={openManageWithAI}
                 manageAIOpen={manageAIOpen}
                 onToggleManageAI={toggleManageAI}
               />
@@ -229,7 +228,6 @@ function App() {
               sheetId={activeSheetId}
               detailsTab={detailsTab}
               onTabChange={setDetailsTab}
-              onOpenManageWithAI={openManageWithAI}
               manageAIOpen={manageAIOpen}
               onToggleManageAI={toggleManageAIFromMobileContext}
               onClose={() => setMobileContextOpen(false)}

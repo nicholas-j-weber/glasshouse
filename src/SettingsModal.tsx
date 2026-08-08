@@ -4,6 +4,7 @@ import { useDialog } from "./useDialog";
 import {
   getStoredApiKey,
   getStoredAutoApply,
+  getStoredAutoRunCompression,
   getStoredCollapseHistoryByDefault,
   getStoredCollapseSuggestionsByDefault,
   getStoredCollapseTurnsByDefault,
@@ -11,6 +12,7 @@ import {
   getStoredRecommendCompression,
   setStoredApiKey,
   setStoredAutoApply,
+  setStoredAutoRunCompression,
   setStoredCollapseHistoryByDefault,
   setStoredCollapseSuggestionsByDefault,
   setStoredCollapseTurnsByDefault,
@@ -30,6 +32,7 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
   const [autoApply, setAutoApply] = useState(getStoredAutoApply());
   const [collapseSuggestions, setCollapseSuggestions] = useState(getStoredCollapseSuggestionsByDefault());
   const [recommendCompression, setRecommendCompression] = useState(getStoredRecommendCompression());
+  const [autoRunCompression, setAutoRunCompression] = useState(getStoredAutoRunCompression());
   const [collapseTurns, setCollapseTurns] = useState(getStoredCollapseTurnsByDefault());
   const [collapseHistory, setCollapseHistory] = useState(getStoredCollapseHistoryByDefault());
   const [defaultRouting, setDefaultRouting] = useState(getStoredDefaultRoutingMode());
@@ -107,8 +110,25 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
         </label>
         <p className="modal-field-hint">
           {recommendCompression
-            ? "On (default): a banner appears next to Context size once it grows large, offering to compress older turns and prune stale memories."
-            : "Off: no banner — nothing changes on its own."}
+            ? "On (default): a dismissible prompt appears once context grows large, offering to compress older turns and prune stale memories — and again at each further interval if dismissed."
+            : "Off: no prompt — nothing changes on its own."}
+        </p>
+        <label className="modal-field modal-field--checkbox">
+          <input
+            type="checkbox"
+            aria-label="Run compression immediately without review"
+            checked={autoRunCompression}
+            onChange={(e) => {
+              setAutoRunCompression(e.target.checked);
+              setStoredAutoRunCompression(e.target.checked);
+            }}
+          />
+          <span>Run compression immediately without review</span>
+        </label>
+        <p className="modal-field-hint">
+          {autoRunCompression
+            ? "On (default): accepting the compression prompt runs it right away — still a one-click revert away in History if you don't like the result."
+            : "Off: accepting the compression prompt opens Manage with AI prefilled instead, so you can review it before it applies."}
         </p>
         <label className="modal-field modal-field--checkbox">
           <input

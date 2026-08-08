@@ -1,24 +1,23 @@
 import { useEffect, useState } from "react";
 
 // Shared "subscribe to a store + async refresh" pattern used by
-// useHeadVersion, useActiveLineage, useTotalUsage, and useSheets. Each
+// useHeadVersion, useActiveLineage, and useSheets. Each
 // independently reads from IndexedDB, then re-reads whenever the
-// relevant store notifies a change (headSubscription/usageSubscription/
-// sheetsSubscription) — and each independently needed a guard against two
-// overlapping fetches resolving out of order: useSheets.ts originally
-// found this the hard way (a real, e2e-reproduced race — an auto-rename's
-// fire-and-forget refresh immediately followed by a "+ New Chat" click's
-// refresh, not guaranteed to resolve in the order they started), fixed
-// there with a `latestRequestId` counter, but never ported to the other
-// three. Folding all four into this one hook applies that same guard
-// everywhere uniformly, not just where the race happened to get noticed.
+// relevant store notifies a change (headSubscription/sheetsSubscription) —
+// and each independently needed a guard against two overlapping fetches
+// resolving out of order: useSheets.ts originally found this the hard way
+// (a real, e2e-reproduced race — an auto-rename's fire-and-forget refresh
+// immediately followed by a "+ New Chat" click's refresh, not guaranteed to
+// resolve in the order they started), fixed there with a `latestRequestId`
+// counter, but never ported to the others. Folding them all into this one
+// hook applies that same guard everywhere uniformly, not just where the
+// race happened to get noticed.
 //
 // resetOnDepsChange controls whether the value snaps back to
 // initialValue the instant deps change (before the new fetch resolves) —
 // useHeadVersion/useActiveLineage want this, so a stale previous sheet's
-// data is never shown under a new sheetId; useTotalUsage/useSheets don't
-// (either the number briefly being one sheet behind is harmless, or, for
-// useSheets, deps never changes at all).
+// data is never shown under a new sheetId; useSheets doesn't (deps never
+// changes at all there).
 export function useSubscribedResource<T>(
   fetchValue: () => Promise<T>,
   subscribe: (onChange: () => void) => () => void,

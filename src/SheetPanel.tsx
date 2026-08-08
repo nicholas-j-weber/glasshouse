@@ -2,21 +2,15 @@ import { useId, useState } from "react";
 import { ExportImportControls } from "./ExportImportControls";
 import { GLOBAL_MEMORIES_SHEET_ID, mergeMemoryPools } from "./globalMemories";
 import { MemoryRow } from "./MemoryRow";
-import { orderConversationTurns, orderMemoriesForDisplay, orderSummaries, serializeSheet } from "./serializer";
+import { orderConversationTurns, orderMemoriesForDisplay, orderSummaries } from "./serializer";
 import { addConversationTurn, addMemory, deleteMemory, editFreeformNotes, editMemory, editTone, setPinned } from "./sheetEdits";
 import { applyOverlay } from "./sheetOverlay";
 import { setOverlay as setSharedOverlay, resetOverlay } from "./sheetOverlayStore";
-import {
-  COMPRESSION_RECOMMENDATION_THRESHOLD,
-  getStoredCollapseTurnsByDefault,
-  getStoredRecommendCompression,
-} from "./settingsStorage";
+import { getStoredCollapseTurnsByDefault } from "./settingsStorage";
 import { createVersion, ensureInitialized } from "./store";
-import { estimateTokenCount } from "./tokenEstimate";
 import { useCollapsedOverrides } from "./useCollapsedOverrides";
 import { useHeadVersion } from "./useHeadVersion";
 import { useSheetOverlay } from "./useSheetOverlay";
-import { useTotalUsage } from "./useTotalUsage";
 import { VersionHistory } from "./VersionHistory";
 import type { Memory, Sheet } from "./types";
 
@@ -45,13 +39,6 @@ function isKnowledgeKind(kind: Memory["kind"]): boolean {
 // which are global/occasional concerns.
 export type SheetPanelTab = "chat" | "memories" | "history";
 
-// pre-composed instruction the Token Estimator's compression
-// banner sends to Manage with AI — pre-filled, not auto-submitted (the user
-// reviews/edits it like any other instruction, same "show before sending"
-// posture as Revise with AI's re-aimed field).
-const COMPRESSION_INSTRUCTION =
-  "Condense every existing conversation turn — and any existing summary — into one summary, all of them, not a subset. Separately, remove any memory that's clearly redundant or stale, if any.";
-
 // The Context Sheet, rendered live. Unlike the chat pane's
 // suggestion list, this shows *everything* — including inactive memories
 // (excluded from calls, not from the sheet view) — and lets the user
@@ -78,27 +65,14 @@ export function SheetPanel({
   sheetId,
   activeTab,
   onTabChange,
-  onOpenManageWithAI,
 }: {
   sheetId: string;
   activeTab: SheetPanelTab;
   onTabChange: (tab: SheetPanelTab) => void;
-  // opens Manage with AI pre-filled with (not auto-submitting)
-  // an instruction — currently only the compression banner uses this, but
-  // it's a plain string so anything else that wants to route into Manage
-  // with AI with a starting instruction could reuse it too.
-  onOpenManageWithAI: (prefill: string) => void;
 }) {
   const localHead = useHeadVersion(sheetId);
   const globalHead = useHeadVersion(GLOBAL_MEMORIES_SHEET_ID);
   const overlay = useSheetOverlay();
-  // real, provider-reported running total — independent of
-  // localHead/globalHead, so it's read before the loading early return too
-  // (rules of hooks: every hook must run unconditionally).
-  const totalUsage = useTotalUsage(sheetId);
-  // The Token Estimator drawer: collapsible like the side menus, but
-  // vertically — defaults open since it mirrors the sidebars' default state.
-  const [tokenEstimatorOpen, setTokenEstimatorOpen] = useState(true);
   // per-row override for This Chat's turn/summary collapse —
   // memoryId -> explicit collapsed state, set only once a user manually
   // toggles that row, falling back to a live global default. Shared by
@@ -214,86 +188,9 @@ export function SheetPanel({
   const orderedMemories = orderMemoriesForDisplay(
     sheet.memories.filter((m) => !isLocalKind(m.kind) && !isKnowledgeKind(m.kind)),
   );
-  // Reflects serializeSheet's output only (the
-  // sheet-content part of the prompt) — not the fixed preamble/suggestion-
-  // instructions overhead, and not inactive memories, since they're
-  // excluded from serialization the same way they're excluded from calls.
-  const tokenCount = estimateTokenCount(serializeSheet(sheet));
-  // a plain function call, re-evaluated every render — not a
-  // hook/subscription, same "good enough" reactivity other
-  // collapse-by-default settings already rely on elsewhere in this app.
-  const showCompressionBanner = getStoredRecommendCompression() && tokenCount >= COMPRESSION_RECOMMENDATION_THRESHOLD;
 
   return (
     <div className="sheet-panel">
-      <div className="token-estimator-wrap">
-        <fieldset className={`token-estimator${tokenEstimatorOpen ? "" : " token-estimator--collapsed"}`}>
-          <legend className="token-estimator-legend">
-            <span className="token-estimator-title">
-              <span className="token-estimator-coin" aria-hidden="true">
-                🪙
-              </span>{" "}
-              Token Estimator
-            </span>
-          </legend>
-          <div className="token-estimator-content">
-            <span
-              className="token-stat"
-              title="What gets sent with every message — this sheet's full current context, resent fresh each call (nothing is cached or accumulated)."
-            >
-              Context size: ~{tokenCount} tokens
-            </span>
-            <span
-              className="token-stat"
-              title="Real tokens billed across every call made for this chat, from the API's own usage data — not an estimate."
-            >
-              Tokens consumed: {totalUsage.inputTokens + totalUsage.outputTokens}
-            </span>
-            {/* lives beside Context size on purpose — it's the
-                exact stat this recommendation keys off, and this whole area
-                is already tab-agnostic (rendered once, regardless of which
-                of the three tabs below is active), unlike the compression
-                it's recommending, which spans both This Chat (conversation
-                turns) and Memories (stale/redundant pruning) — no single
-                tab is really "where this belongs." */}
-            {showCompressionBanner && (
-              <div className="compression-banner">
-                <span className="compression-banner-text">Context is getting large.</span>
-                <button
-                  type="button"
-                  className="compression-banner-button"
-                  onClick={() => onOpenManageWithAI(COMPRESSION_INSTRUCTION)}
-                >
-                  Review compression suggestions
-                </button>
-              </div>
-            )}
-          </div>
-        </fieldset>
-        {/* Same expansion/contraction mechanism as the chats/details
-            sidebars (App.tsx) — a sibling handle outside the collapsible
-            element itself, always reachable, toggling via a CSS class
-            rather than unmounting. Vertical instead of horizontal: a
-            full-width strip below the box instead of a full-height strip
-            beside it. */}
-        <button
-          type="button"
-          className="token-estimator-handle"
-          onClick={() => setTokenEstimatorOpen((open) => !open)}
-          aria-label={tokenEstimatorOpen ? "Hide Token Estimator" : "Show Token Estimator"}
-          title={tokenEstimatorOpen ? "Hide Token Estimator" : "Show Token Estimator"}
-        >
-          {/* One glyph, rotated via CSS rather than a second Unicode
-              character — guarantees the re-expand caret is pixel-identical
-              to the contract caret (just flipped), instead of relying on
-              two different code points that are only conceptually mirrors
-              and may not render as a matched pair in every font. */}
-          <span className={`token-estimator-caret${tokenEstimatorOpen ? "" : " token-estimator-caret--flipped"}`} aria-hidden="true">
-            ⌃
-          </span>
-        </button>
-      </div>
-
       <div className="sheet-panel-tabs">
         <button
           type="button"

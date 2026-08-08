@@ -13,7 +13,6 @@ export function MobileContextOverlay({
   sheetId,
   detailsTab,
   onTabChange,
-  onOpenManageWithAI,
   manageAIOpen,
   onToggleManageAI,
   onClose,
@@ -21,7 +20,6 @@ export function MobileContextOverlay({
   sheetId: string;
   detailsTab: SheetPanelTab;
   onTabChange: (tab: SheetPanelTab) => void;
-  onOpenManageWithAI: (prefill?: string) => void;
   manageAIOpen: boolean;
   onToggleManageAI: () => void;
   onClose: () => void;
@@ -43,7 +41,6 @@ export function MobileContextOverlay({
           sheetId={sheetId}
           detailsTab={detailsTab}
           onTabChange={onTabChange}
-          onOpenManageWithAI={onOpenManageWithAI}
           manageAIOpen={manageAIOpen}
           onToggleManageAI={onToggleManageAI}
           onClose={onClose}

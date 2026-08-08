@@ -36,7 +36,7 @@ import { useDialog } from "./useDialog";
 // ModelField.tsx (a <select> with an "Other…" escape hatch), replacing a
 // <datalist>-backed input that turned out to be broken on inspection.
 //
-// mentions the compression banner, now that
+// mentions the compression prompt (CompressionPrompt.tsx), now that
 // getStoredRecommendCompression defaults to true (settingsStorage.ts) — a
 // deliberate break from every other recommend/collapse-by-default toggle
 // in this app, made specifically so this is worth surfacing here. Before
@@ -46,7 +46,7 @@ import { useDialog } from "./useDialog";
 //
 // that sentence originally stood alone as a fourth
 // paragraph; folded into the end of the second paragraph instead (both
-// are about the same Context panel/Token Estimator relationship, so
+// are about the same Context panel/context-size relationship, so
 // splitting it out read as more separate than it actually was) and
 // "Context sheet" reworded to "Context panel" — the running app never
 // once says "sheet" anywhere a user can see (checked: only the panel
@@ -99,7 +99,7 @@ export function WelcomeModal() {
             Everything the AI knows lives in the Context panel, where you can see, edit, and revert it —
             no hidden memory or chat history you can't inspect. AI-suggested changes are shown before they're applied, and nothing is ever
             silently deleted: deactivated content stays visible for audit in History. When your context exceeds
-            roughly 3000 tokens, you'll be prompted to compress it in the Token Estimator.
+            roughly 3000 tokens, you'll be prompted to compress it.
           </p>
           <p>
             The Context panel has three tabs — This Chat, Memories, and History — or try Manage with AI to ask
@@ -123,11 +123,11 @@ export function WelcomeModal() {
         </div>
         <p className="modal-field-hint">Needed to chat — stored locally, sent only to Anthropic. Both are optional here; set or change them later in Settings too.</p>
       </div>
-      <div className="welcome-actions">
-        <button type="button" className="welcome-dismiss" onClick={dialog.close}>
+      <div className="modal-actions">
+        <button type="button" className="modal-action-button" onClick={dialog.close}>
           Got it
         </button>
-        <button type="button" className="welcome-dismiss welcome-dismiss--secondary" onClick={dismissPermanently}>
+        <button type="button" className="modal-action-button modal-action-button--secondary" onClick={dismissPermanently}>
           Don't show again
         </button>
       </div>

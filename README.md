@@ -10,9 +10,9 @@ history with revert, export/import, and AI-assisted restructuring
 ("Manage with AI") all work end-to-end. Context updates apply
 automatically as you chat by default, with a manual accept/reject/revise
 mode available per suggestion or globally in Settings. Once a chat's
-context grows large, a banner offers AI-assisted compression — folding
-older turns into a summary, pruning stale memories — before you hit any
-hard limit. The layout is responsive, working on both desktop and mobile
+context grows large, a dismissible prompt offers AI-assisted compression —
+folding older turns into a summary, pruning stale memories — before you
+hit any hard limit. The layout is responsive, working on both desktop and mobile
 (down to ~375px wide, via a full-screen overlay for Chats/Context
 navigation below ~1024px), and has had a pass for keyboard navigation,
 modal focus management, and color contrast.

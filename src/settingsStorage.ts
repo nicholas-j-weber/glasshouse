@@ -12,6 +12,7 @@ const AUTO_APPLY_KEY = "context-sheets:auto-apply-chat-suggestions";
 const ROUTING_MODE_KEY = "context-sheets:default-routing-mode";
 const COLLAPSE_SUGGESTIONS_KEY = "context-sheets:collapse-suggestions-by-default";
 const RECOMMEND_COMPRESSION_KEY = "context-sheets:recommend-compression";
+const AUTO_RUN_COMPRESSION_KEY = "context-sheets:auto-run-compression";
 const COLLAPSE_TURNS_KEY = "context-sheets:collapse-turns-by-default";
 const COLLAPSE_HISTORY_KEY = "context-sheets:collapse-history-by-default";
 const WELCOME_DISMISSED_KEY = "context-sheets:welcome-dismissed";
@@ -117,11 +118,26 @@ export const [getStoredRecommendCompression, setStoredRecommendCompression] = ma
   true,
 );
 
-// Context size (tokens) past which the compression-
-// recommendation banner appears, when the setting above is on. A plain
-// constant, not itself user-configurable — tuned by editing this number
-// directly, not a second setting.
+// Context size (tokens) past which the compression-recommendation prompt
+// (ChatPane's CompressionPrompt.tsx) appears, when the setting above is
+// on — and each further multiple of this same threshold past that, if the
+// prior offer was dismissed rather than accepted. A plain constant, not
+// itself user-configurable — tuned by editing this number directly, not a
+// second setting.
 export const COMPRESSION_RECOMMENDATION_THRESHOLD = 3000;
+
+// Whether accepting the compression prompt runs compression immediately
+// or opens Manage with AI prefilled for review first, like every other
+// AI-directed action in this app defaults to. Defaults to true (the
+// exception): version history already makes any AI edit — this one
+// included — a one-click revert from the History tab, so the low-friction
+// path is a safe default here, and the whole point of this prompt is to
+// act as a lightweight backstop against runaway context growth without
+// adding a review step in the way.
+export const [getStoredAutoRunCompression, setStoredAutoRunCompression] = makeBoolSetting(
+  AUTO_RUN_COMPRESSION_KEY,
+  true,
+);
 
 // two separate collapse-by-default toggles, deliberately not
 // one shared with the collapse-suggestions setting — This Chat's

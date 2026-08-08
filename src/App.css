@@ -353,19 +353,21 @@ dialog.modal::backdrop {
   margin-top: 8px;
 }
 
-/* two dismiss actions side by side — "Got it" (closes for
-   this load only) stays the accent-filled primary, "Don't show again"
-   (permanent) is visually secondary, same bordered-not-filled treatment
-   .modal-field input already uses, so it doesn't compete with the
-   primary action for attention. Sits below .modal-body as .modal's third
-   flex child, staying pinned the same way .modal-header already does. */
-.welcome-actions {
+/* two dismiss/action buttons side by side — the primary action
+   (WelcomeModal's "Got it", CompressionPrompt's "Compress") stays the
+   accent-filled primary, the secondary one ("Don't show again"/"Not now")
+   is visually secondary, same bordered-not-filled treatment .modal-field
+   input already uses, so it doesn't compete with the primary action for
+   attention. Sits below .modal-body as .modal's third flex child, staying
+   pinned the same way .modal-header already does. Shared by both modals
+   rather than duplicated — same two-button shape either way. */
+.modal-actions {
   display: flex;
   gap: 8px;
   margin-top: 12px;
 }
 
-.welcome-dismiss {
+.modal-action-button {
   flex: 1;
   font: inherit;
   font-size: 13px;
@@ -377,7 +379,7 @@ dialog.modal::backdrop {
   cursor: pointer;
 }
 
-.welcome-dismiss--secondary {
+.modal-action-button--secondary {
   background: none;
   border: 1px solid var(--border);
   color: var(--text-h);
@@ -851,11 +853,7 @@ dialog.modal::backdrop {
   min-width: 0;
   contain: layout;
   overflow-y: auto;
-  /* No top padding — the Token Estimator (the panel's first child) supplies
-     its own top margin instead, so it can match its bottom margin exactly
-     (see .token-estimator-wrap) rather than being tied to whatever this
-     panel's padding happens to be. */
-  padding: 0 16px 16px;
+  padding: 16px;
   display: flex;
   flex-direction: column;
   gap: 20px;
@@ -980,7 +978,7 @@ dialog.modal::backdrop {
   bottom: 0;
   right: 0;
   font: inherit;
-  /* Visual consistency audit: matches .welcome-dismiss/.sheet-switcher-new
+  /* Visual consistency audit: matches .modal-action-button/.sheet-switcher-new
      now (13px) — same tier of button (solid --accent-strong fill, white
      text, 6px-family radius), no reason this one read a size smaller just
      for living inside a field. */
@@ -1280,182 +1278,6 @@ dialog.modal::backdrop {
   }
 }
 
-/* A visually distinct "drawer" — set apart from the rest of the Context
-   panel with its own gold border, since these two statistics (Context size, the live estimate, and Tokens consumed, the real running
-   total) are informational rather than editable content like the sections
-   below. Uses real <fieldset>/<legend> rather than a faked "label
-   overlapping a background-colored patch" — the browser natively cuts a
-   gap in the border around the legend's content, so the title sits right
-   on the border line with no manual positioning/masking needed.
-   .token-estimator-wrap (not the fieldset itself) is still the flex:none
-   item that holds the fieldset and its flush-against-it handle together as
-   one unit (mirroring how .chats-sidebar and its handle are separate flex
-   siblings with no gap between them), but it owns no margin of its own now
-   — spacing before the tabs below comes entirely from .sheet-panel's own
-   gap plus .sheet-panel-tabs' negative margin. The *top* margin (spacing
-   above the box) lives on the fieldset itself — the Estimator's own box,
-   not the wrap. That has a real consequence when collapsed: the fieldset
-   (and its margin) disappears entirely via display:none, so the handle
-   ends up hugging the panel's true top edge with zero gap, rather than
-   sitting at a fixed offset regardless of state. */
-.token-estimator-wrap {
-  display: flex;
-  flex-direction: column;
-  flex: none;
-}
-
-.token-estimator {
-  border: 2.5px solid var(--gold);
-  border-radius: 8px;
-  margin: 12px 0;
-  padding: 0 10px 8px;
-  min-width: 0;
-}
-
-.token-estimator--collapsed {
-  display: none;
-}
-
-.token-estimator-legend {
-  padding: 0 4px;
-  margin-left: 4px;
-}
-
-/* Same typographic treatment as .sheet-section h2 (Conversation Summary,
-   Memories, etc.) — uppercase + slight letter-spacing — just kept at full
-   gold intensity (no opacity dimming) rather than that rule's 0.7, since
-   this element's whole point is to stand out as its own accented drawer,
-   not blend in as a subdued section label. */
-.token-estimator-title {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 13px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--gold);
-}
-
-/* 🪙 is a color emoji glyph, not a font-path outline — CSS `color` has no
-   effect on it, so unlike the rest of the gold text here, it needs an
-   actual pixel tint. grayscale(1) sepia(1) strips the glyph's own colors
-   down to a warm monochrome base (largely independent of its original
-   art), then saturate/hue-rotate/brightness re-tint that base to match
-   --gold as closely as a filter chain can. Values picked by rendering the
-   glyph to a canvas, averaging its opaque pixels, and minimizing color
-   distance to --gold's actual hex, not eyeballed — lands within ~15 RGB
-   units of #e0b34c. Dark-only (index.css no longer defines a light
-   variant), so there's just the one recipe now. */
-.token-estimator-coin {
-  filter: grayscale(1) sepia(1) saturate(3) hue-rotate(-2deg) brightness(1.15);
-}
-
-.token-estimator-content {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 2px;
-  padding-top: 4px;
-}
-
-.token-stat {
-  font-size: 12px;
-  color: var(--gold);
-}
-
-/* sits below the two stats, inside the same box — not its own
-   accent-colored callout, since this is a suggestion the user opted into
-   seeing (the Settings toggle), not an error or an urgent state the gold
-   Token Estimator styling is otherwise reserved for. */
-.compression-banner {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 4px;
-  margin-top: 6px;
-  padding-top: 6px;
-  border-top: 1px solid var(--border);
-}
-
-.compression-banner-text {
-  font-size: 12px;
-  color: var(--text-dim);
-}
-
-/* Visual consistency audit: matches .manage-ai-trigger/.mobile-nav-trigger
-   now — same bordered-secondary-button language (border + --bg fill +
-   --text-h text), no functional reason this one ran a visibly denser
-   scale than its siblings. */
-.compression-banner-button {
-  font: inherit;
-  font-size: 13px;
-  padding: 4px 10px;
-  border-radius: 6px;
-  border: 1px solid var(--border);
-  background: var(--bg);
-  color: var(--text-h);
-  cursor: pointer;
-}
-
-.compression-banner-button:hover {
-  background: var(--border);
-}
-
-/* Vertical mirror of .sidebar-handle: same "thin strip, sibling of the
-   collapsible element, widens/brightens on hover" mechanism, just rotated
-   — height instead of width, top/bottom border instead of left/right. */
-/* Bleeds past .sheet-panel's 16px padding on both sides so the handle
-   spans the full width of the Context panel edge-to-edge — the same
-   "ignores the padding everything else respects" quality the sidebar
-   handles get for free by living outside their padded aside entirely.
-   The fieldset above it stays within the padding on purpose (it should
-   look like the rest of the panel's boxed sections); only the handle
-   bleeds. */
-.token-estimator-handle {
-  flex: none;
-  width: calc(100% + 32px);
-  margin: 0 -16px;
-  height: 14px;
-  min-width: 0;
-  padding: 0;
-  border: none;
-  /* Same color as the dividers on either side of the chat column
-     (.chats-sidebar's border-right, .controls-sidebar's border-left),
-     just thicker on top so the handle reads clearly as its own element. */
-  border-top: 2px solid var(--border);
-  border-bottom: 1px solid var(--border);
-  background: var(--bg);
-  color: var(--text-h);
-  opacity: 0.5;
-  font-size: 12px;
-  cursor: pointer;
-  /* Without this, the caret sits wherever default inline/baseline text flow
-     puts it — fine for most glyphs, but "⌃" (U+2303) isn't centered on its
-     own baseline the way ordinary punctuation is, so in this very short
-     (14px) button it visibly reads as off-center (confirmed by comparing
-     screenshots with/without this). Explicit flex centering (same
-     technique .icon-button already uses) fixes it regardless of the
-     glyph's own font metrics. */
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.token-estimator-handle:hover {
-  opacity: 1;
-  height: 18px;
-  background: var(--border);
-}
-
-.token-estimator-caret {
-  display: inline-block;
-}
-
-.token-estimator-caret--flipped {
-  transform: rotate(180deg);
-}
-
 .visually-hidden {
   position: absolute;
   width: 1px;
@@ -1725,9 +1547,8 @@ dialog.modal::backdrop {
   margin-top: 8px;
 }
 
-/* Same rotating-caret disclosure language as .token-estimator-handle's
-   caret, just an inline text button here instead of a full-width edge
-   handle — this toggles one message's block, not a whole panel. */
+/* Same rotating-caret disclosure language as .memory-row-collapse-caret,
+   just an inline text button here instead of a row-level toggle. */
 .chat-suggestions-toggle {
   display: flex;
   align-items: center;

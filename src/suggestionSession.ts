@@ -119,6 +119,14 @@ export interface SuggestionToast {
 
 const TOAST_LIFETIME_MS = 6000;
 
+// pre-composed instruction sent when compression is requested — either
+// immediately by runCompressionNow below, or via ChatPane's CompressionPrompt
+// handing off to Manage with AI's prefill (review-first path) when the
+// auto-run setting is off. One shared string so both paths ask for exactly
+// the same thing.
+export const COMPRESSION_INSTRUCTION =
+  "Condense every existing conversation turn — and any existing summary — into one summary, all of them, not a subset. Separately, remove any memory that's clearly redundant or stale, if any.";
+
 function truncateExcerpt(text: string): string {
   return text.length > 200 ? `${text.slice(0, 200)}…` : text;
 }
@@ -209,6 +217,10 @@ export interface SuggestionSession {
   contentMode: ContentMode;
   setContentMode: (mode: ContentMode) => void;
   handleSend: () => Promise<void>;
+  // ChatPane's CompressionPrompt "Compress now" path (auto-run setting on)
+  // — see runCompressionNow's own comment for why this bypasses the
+  // general chat auto-apply setting rather than reusing handleSend.
+  runCompressionNow: () => Promise<void>;
   handleAccept: (message: SessionMessage, index: number) => Promise<void>;
   handleReject: (message: SessionMessage, index: number) => void;
   revising: RevisionTarget | null;
@@ -660,6 +672,59 @@ export function useSuggestionSession(mode: CallMode, sheetId: string): Suggestio
     }
   }
 
+  // Fired when ChatPane's CompressionPrompt is accepted with the auto-run
+  // setting on (settingsStorage.ts's getStoredAutoRunCompression) — same
+  // call shape as handleSend, but for the fixed COMPRESSION_INSTRUCTION
+  // rather than the draft, always routingMode "blackbox" (an automated
+  // background action has no business going through the reasoning agent,
+  // same reasoning as handleRevisionSubmit forcing blackbox), and autoApply
+  // is always true rather than read from the general chat auto-apply
+  // setting — a user might want their own messages reviewed manually while
+  // still wanting this specific backstop to just run.
+  async function runCompressionNow(): Promise<void> {
+    if (isSending) return;
+
+    const [localHead, globalHead] = await Promise.all([
+      ensureInitialized(sheetId),
+      ensureInitialized(GLOBAL_MEMORIES_SHEET_ID),
+    ]);
+    const merged = mergeMemoryPools(localHead.sheet, globalHead.sheet);
+    const overlaidSheet = applyOverlay(merged, overlay);
+    const systemPrompt = buildSystemPrompt(overlaidSheet, mode, "prose");
+    const contextSnapshot = serializeSheet(overlaidSheet);
+
+    const parsed = await runCall(systemPrompt, COMPRESSION_INSTRUCTION);
+    if (!parsed) return; // error already appended
+
+    const suggestions = await resolveSuggestions(parsed, mode, COMPRESSION_INSTRUCTION, attemptSummaryFollowup);
+
+    addMessage({
+      id: crypto.randomUUID(),
+      createdAt: new Date().toISOString(),
+      mode,
+      role: "user",
+      text: COMPRESSION_INSTRUCTION,
+      routingMode: "blackbox",
+    });
+    const assistantMessage: SessionMessage = {
+      id: crypto.randomUUID(),
+      createdAt: new Date().toISOString(),
+      mode,
+      role: "assistant",
+      text: parsed.conversationalText,
+      sourceText: COMPRESSION_INSTRUCTION,
+      suggestions,
+      autoApplied: true,
+      routingMode: "blackbox",
+      contextSnapshot,
+    };
+    addMessage(assistantMessage);
+
+    if (suggestions && suggestions.length > 0) {
+      await autoApplyAll(assistantMessage, suggestions);
+    }
+  }
+
   async function handleSend() {
     const messageText = draft.trim();
     if (!messageText || isSending) return;
@@ -800,6 +865,7 @@ export function useSuggestionSession(mode: CallMode, sheetId: string): Suggestio
     contentMode,
     setContentMode,
     handleSend,
+    runCompressionNow,
     handleAccept,
     handleReject,
     revising,

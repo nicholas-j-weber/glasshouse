@@ -13,7 +13,6 @@ export function ContextSidebarContent({
   sheetId,
   detailsTab,
   onTabChange,
-  onOpenManageWithAI,
   manageAIOpen,
   onToggleManageAI,
   onClose,
@@ -21,7 +20,6 @@ export function ContextSidebarContent({
   sheetId: string;
   detailsTab: SheetPanelTab;
   onTabChange: (tab: SheetPanelTab) => void;
-  onOpenManageWithAI: (prefill?: string) => void;
   manageAIOpen: boolean;
   onToggleManageAI: () => void;
   onClose?: () => void;
@@ -46,7 +44,7 @@ export function ContextSidebarContent({
           )}
         </span>
       </h2>
-      <SheetPanel sheetId={sheetId} activeTab={detailsTab} onTabChange={onTabChange} onOpenManageWithAI={onOpenManageWithAI} />
+      <SheetPanel sheetId={sheetId} activeTab={detailsTab} onTabChange={onTabChange} />
     </>
   );
 }
