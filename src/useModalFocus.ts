@@ -4,7 +4,7 @@ const FOCUSABLE_SELECTOR =
   'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 // Shared by every modal-like surface (SettingsModal, WelcomeModal,
-// MobileChatsOverlay, MobileContextOverlay) — confirmed live via Playwright
+// MobileChatsOverlay, ContextOverlay) — confirmed live via Playwright
 // that none of them moved focus on open, trapped it while open, or restored
 // it on close before this hook existed: opening Settings left focus sitting
 // on the gear button, Tab escaped into the dimmed chat behind it within a

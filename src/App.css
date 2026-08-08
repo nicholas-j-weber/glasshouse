@@ -46,13 +46,13 @@
   gap: 8px;
 }
 
-/* the "Chats"/"Context" header triggers that open the
-   narrow-viewport overlays below. Hidden by default (desktop keeps its
-   always-visible sidebars) — display: inline-flex is turned back on only
-   inside the @media block at the bottom of this file, the single place
-   every narrow-viewport rule lives. Reuses .manage-ai-trigger's visual
-   language (border + text, accent-highlighted while its panel is open)
-   rather than inventing a new button style. */
+/* the "Chats" header trigger that opens the narrow-viewport
+   Chats overlay below. Hidden by default (desktop keeps its always-visible
+   Chats sidebar) — display: inline-flex is turned back on only inside the
+   @media block at the bottom of this file, the single place every narrow-
+   viewport rule lives. Reuses .manage-ai-trigger's visual language (border
+   + text, accent-highlighted while its panel is open) rather than
+   inventing a new button style. */
 .mobile-nav-trigger {
   display: none;
   font: inherit;
@@ -66,6 +66,29 @@
 }
 
 .mobile-nav-trigger[aria-pressed="true"] {
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* Context's header trigger — same bordered-text visual language as
+   .mobile-nav-trigger above (this used to just be the mobile-only variant
+   of it), but always visible now: Context has no persistent-sidebar
+   fallback anymore, it's a button/overlay at every viewport width, same
+   posture as Library/History/Settings beside it. No emoji — nothing
+   reads unambiguously as "context" the way 📚/🕐/⚙️ do for their buttons. */
+.context-trigger {
+  font: inherit;
+  font-size: 13px;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text-h);
+  cursor: pointer;
+}
+
+.context-trigger[aria-pressed="true"] {
   border-color: var(--accent);
   color: var(--accent);
   font-weight: 600;
@@ -255,7 +278,7 @@ dialog.modal::backdrop {
   background: var(--accent);
 }
 
-/* LibraryModal.tsx — Knowledge/History, moved out of SheetPanel.tsx's tab
+/* LibraryModal.tsx — Knowledge/Skills, moved out of SheetPanel.tsx's tab
    row into their own modal. Reuses .sheet-panel-tabs/.sheet-panel-tab
    directly (same look), but that rule's negative margin was tuned for
    .sheet-panel's own 20px inter-section gap — .modal has no such gap
@@ -267,6 +290,14 @@ dialog.modal::backdrop {
 
 .modal--library .sheet-panel-tabs {
   margin: 0 0 12px;
+}
+
+/* HistoryModal.tsx — History's own button/modal now too (a different kind
+   of thing than Context's "what's currently active": this is what
+   happened to the sheet over time), same width as Library for visual
+   consistency between the header's small utility modals. */
+.modal--history {
+  width: 480px;
 }
 
 .modal-header {
@@ -423,10 +454,10 @@ dialog.modal::backdrop {
 /* Chats sidebar (left) — the sheet switcher, presented as a vertical list
    like a familiar chatbot's conversation history. */
 /* Same fixed-header/internally-scrolling-content pattern as
-   .controls-sidebar/.sheet-panel — matters more now that this column can
-   also show ManageWithAIPanel, whose change-card list can grow long
-   enough to scroll; without this, scrolling would carry the "Manage with
-   AI"/Back header out of view along with it. */
+   .sheet-panel (inside the Context overlay) — matters more now that this
+   column can also show ManageWithAIPanel, whose change-card list can grow
+   long enough to scroll; without this, scrolling would carry the "Manage
+   with AI"/Back header out of view along with it. */
 .chats-sidebar {
   width: 250px;
   flex: none;
@@ -570,10 +601,18 @@ dialog.modal::backdrop {
   cursor: pointer;
 }
 
+/* position: relative anchors .context-overlay below (position: absolute;
+   inset: 0), so it covers .app-body — chat/chats-sidebar included — but
+   never the header above it. Previously scoped to the narrow-viewport
+   media query only (back when Context's overlay was mobile-only); now
+   unconditional since Context is an overlay at every width. Harmless for
+   .mobile-overlay (Chats' still-mobile-only overlay, see its own rule
+   below) — it only ever mounts under that same breakpoint regardless. */
 .app-body {
   display: flex;
   flex: 1;
   min-height: 0;
+  position: relative;
 }
 
 /* IDE-style edge handle (e.g. VS Code's sidebar collapse arrow) — a
@@ -820,27 +859,12 @@ dialog.modal::backdrop {
   opacity: 1;
 }
 
-/* The Context Sheet's controls, in a sidebar on the right. */
-.controls-sidebar {
-  width: 380px;
-  flex: none;
-  min-height: 0;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  border-left: 1px solid var(--border);
-}
-
-.controls-sidebar--collapsed {
-  display: none;
-}
-
 /* contain: layout is load-bearing, not boilerplate — found by direct
    testing (bisecting which element's removal fixed a real bug: as
    Conversation Summary entries accumulated in "This Chat", an invisible,
    ever-growing scrollable gap appeared at the bottom of the *whole page*,
    scrollable via window scroll even though every individual container in
-   the chain — .controls-sidebar, .sheet-panel itself, its tab-content
+   the chain — .mobile-panel, .sheet-panel itself, its tab-content
    child — reported perfectly normal, bounded clientHeight/scrollHeight
    when queried directly). The actual mechanism: .sheet-panel-tab-content
    is a plain (non-overflow) flex-column child of this overflow-y: auto
@@ -2214,18 +2238,29 @@ dialog.modal::backdrop {
   color: var(--text-h);
 }
 
+/* Context's overlay (unlike Chats') isn't gated to this breakpoint at
+   all anymore — it's a button/overlay at every viewport width — so this
+   positioning rule lives here, unconditional, right beside its
+   still-mobile-only .mobile-overlay counterpart below for comparison. */
+.modal-overlay.context-overlay {
+  position: absolute;
+  inset: 0;
+}
+
 /* the app's first responsive rules — everything narrow-
    viewport-specific lives in this one consolidated block so the 1024px
    breakpoint appears exactly once and stays trivially greppable (CSS
    custom properties can't be used inside @media feature values, so a
    literal number is otherwise unavoidable). 1024px is derived from the
-   fixed chrome math: .chats-sidebar (250px) + .controls-sidebar (380px) +
-   two 14px .sidebar-handles (28px) = 658px fixed chrome; at 1024px that
-   still leaves 366px for .chat-column, versus an already-confirmed-broken
-   110px at 768px. Below this width the sidebars are replaced by the
-   full-screen Chats/Context overlays (.mobile-panel) triggered from
-   .mobile-nav-trigger above; the edge .sidebar-handles are hidden too
-   since the header triggers replace them rather than coexisting. */
+   fixed chrome math: .chats-sidebar (250px) + one 14px .sidebar-handle =
+   264px fixed chrome (.controls-sidebar is gone now — Context has no
+   persistent-sidebar variant left to contribute to this math — so there's
+   more headroom than there used to be at this same width, not less; the
+   number itself just wasn't revisited downward). Below this width
+   .chats-sidebar is replaced by the full-screen Chats overlay
+   (.mobile-panel) triggered from .mobile-nav-trigger above; the edge
+   .sidebar-handle is hidden too since the header trigger replaces it
+   rather than coexisting. */
 @media (max-width: 1023px) {
   .mobile-nav-trigger {
     display: inline-flex;
@@ -2250,8 +2285,7 @@ dialog.modal::backdrop {
     display: none;
   }
 
-  .chats-sidebar,
-  .controls-sidebar {
+  .chats-sidebar {
     display: none;
   }
 
@@ -2271,16 +2305,15 @@ dialog.modal::backdrop {
      container's own start corner, i.e. right back at the very top,
      reproducing the same bug from the opposite direction.
      What actually works: mount the overlay *inside* .app-body (a sibling
-     of the desktop asides/chat-column, guarded above by mobileChatsOpen/
-     mobileContextOpen the same way they are) rather than as a top-level
-     sibling of the header. .app-body already starts right after the
-     header via ordinary document flow — position: absolute; inset: 0 here
-     is fully explicit (no static-position fallback involved at all), so
-     it can only ever cover .app-body's own box, never the header's. */
-  .app-body {
-    position: relative;
-  }
-
+     of the desktop aside/chat-column, guarded above by mobileChatsOpen the
+     same way it is) rather than as a top-level sibling of the header.
+     .app-body already starts right after the header via ordinary document
+     flow — position: absolute; inset: 0 here is fully explicit (no
+     static-position fallback involved at all), so it can only ever cover
+     .app-body's own box, never the header's. .app-body's own position:
+     relative anchor lives unconditionally now (see its base rule) since
+     .context-overlay above needs the exact same anchor at every width,
+     not just this one. */
   .modal-overlay.mobile-overlay {
     position: absolute;
     inset: 0;

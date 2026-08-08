@@ -11,7 +11,6 @@ import { createVersion, ensureInitialized } from "./store";
 import { useCollapsedOverrides } from "./useCollapsedOverrides";
 import { useHeadVersion } from "./useHeadVersion";
 import { useSheetOverlay } from "./useSheetOverlay";
-import { VersionHistory } from "./VersionHistory";
 import type { Memory, Sheet } from "./types";
 
 // conversation turns and summaries are both local-chain
@@ -30,14 +29,14 @@ function isKnowledgeKind(kind: Memory["kind"]): boolean {
   return kind === "knowledge" || kind === "skill";
 }
 
-// Canonical home for the details sidebar's tab type — App.tsx,
-// ContextSidebarContent.tsx, and MobileContextOverlay.tsx all thread this
-// through to here, so it lives here rather than duplicated as an inline
-// literal union in four places. Knowledge/Skills moved to their own
-// LibraryModal.tsx, opened from a header button next to Settings — History
-// stays here, per-chat like This Chat/Memories, unlike Knowledge/Skills
-// which are global/occasional concerns.
-export type SheetPanelTab = "chat" | "memories" | "history";
+// Canonical home for the Context overlay's tab type — App.tsx and
+// ContextOverlay.tsx both thread this through to here, so it lives here
+// rather than duplicated as an inline literal union in two places.
+// Knowledge/Skills and History both moved out to their own header
+// buttons/modals (LibraryModal.tsx, HistoryModal.tsx) — global/occasional
+// or over-time concerns, unlike This Chat/Memories, which are Context's
+// "what's currently active" core and stay the only two tabs here.
+export type SheetPanelTab = "chat" | "memories";
 
 // The Context Sheet, rendered live. Unlike the chat pane's
 // suggestion list, this shows *everything* — including inactive memories
@@ -51,16 +50,12 @@ export type SheetPanelTab = "chat" | "memories" | "history";
 // actually targets (Tone/Conversation Summary/Freeform Notes stay local;
 // ordinary memories always go to the global chain).
 //
-// Split into "This Chat" (local content) / "Memories" (global pool) /
-// "History" (per-chat version log) tabs — activeTab is controlled from
-// App.tsx rather than local state, since the header's memories icon needs
-// to both open this sidebar and switch its tab from outside it. Every tab's
-// content stays mounted regardless of which is active (CSS-hidden, not
-// conditionally rendered) so switching tabs can't lose an in-progress edit,
-// the same property the sidebar collapse handles already preserve.
-// Knowledge/Skills moved out to LibraryModal.tsx instead (global,
-// occasional/setup-time concerns, opened from its own header button) —
-// History stayed here since it's per-chat like the other two.
+// Split into "This Chat" (local content) / "Memories" (global pool) tabs —
+// activeTab is controlled from App.tsx rather than local state, since a
+// tab selection made inside the Context overlay should persist across the
+// overlay's own close/reopen. Both tabs' content stays mounted regardless
+// of which is active (CSS-hidden, not conditionally rendered) so switching
+// tabs can't lose an in-progress edit.
 export function SheetPanel({
   sheetId,
   activeTab,
@@ -206,13 +201,6 @@ export function SheetPanel({
         >
           Memories
         </button>
-        <button
-          type="button"
-          className={`sheet-panel-tab${activeTab === "history" ? " sheet-panel-tab--active" : ""}`}
-          onClick={() => onTabChange("history")}
-        >
-          History
-        </button>
       </div>
 
       <div className={`sheet-panel-tab-content${activeTab === "chat" ? "" : " sheet-panel-tab-content--hidden"}`}>
@@ -306,12 +294,6 @@ export function SheetPanel({
             ))}
           </ul>
           <NewMemoryForm onAdd={handleAddMemory} />
-        </section>
-      </div>
-
-      <div className={`sheet-panel-tab-content${activeTab === "history" ? "" : " sheet-panel-tab-content--hidden"}`}>
-        <section className="sheet-section">
-          <VersionHistory sheetId={sheetId} />
         </section>
       </div>
     </div>

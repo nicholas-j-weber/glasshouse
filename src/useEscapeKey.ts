@@ -2,7 +2,7 @@ import { useEffect } from "react";
 
 // Sibling to useModalFocus.ts's shared focus-trap hook — the other
 // per-modal concern (SettingsModal, ManageWithAIPanel, MobileChatsOverlay,
-// MobileContextOverlay) that was independently hand-rolled four times
+// ContextOverlay) that was independently hand-rolled four times
 // before this existed. `active` defaults to true; MobileChatsOverlay
 // passes `!manageAIOpen` so its own listener stays silent while
 // ManageWithAIPanel's nested Escape listener (stepping back to the Chats

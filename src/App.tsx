@@ -3,42 +3,51 @@ import "./App.css";
 import { ChatHeaderTitle } from "./ChatHeaderTitle";
 import { ChatPane } from "./ChatPane";
 import { ChatsSidebarContent } from "./ChatsSidebarContent";
-import { ContextSidebarContent } from "./ContextSidebarContent";
+import { ContextOverlay } from "./ContextOverlay";
+import { HistoryModal } from "./HistoryModal";
 import { LibraryModal } from "./LibraryModal";
 import { MobileChatsOverlay } from "./MobileChatsOverlay";
-import { MobileContextOverlay } from "./MobileContextOverlay";
 import { SettingsModal } from "./SettingsModal";
 import type { SheetPanelTab } from "./SheetPanel";
 import { useSheets } from "./useSheets";
 import { WelcomeModal } from "./WelcomeModal";
 
+const NARROW_VIEWPORT_QUERY = "(max-width: 1023px)";
+
 function App() {
   // multiple sheets can coexist locally; activeSheetId is
   // undefined only during the brief window before the first sheet exists.
   const { sheets, activeSheetId } = useSheets();
-  // Chat-list and details (Tone/Memories/History/etc.) sidebars: both open
-  // by default per direct instruction — session-only state, not persisted,
-  // so every fresh load starts fully expanded rather than remembering a
-  // collapsed state from last time. Toggled via an edge-anchored handle
-  // (IDE-style, e.g. VS Code's sidebar collapse arrow) rather than a
-  // top-bar button — the handle itself is a sibling of the collapsible
-  // aside, not nested inside it, so it stays reachable even when its
-  // sidebar is hidden. Collapsed via a CSS class (not conditional
-  // rendering) so the panels stay mounted and don't lose any in-progress
-  // edits or refetch when toggled back open.
+  // Chats sidebar: open by default per direct instruction — session-only
+  // state, not persisted, so every fresh load starts fully expanded rather
+  // than remembering a collapsed state from last time. Toggled via an
+  // edge-anchored handle (IDE-style, e.g. VS Code's sidebar collapse
+  // arrow) rather than a top-bar button — the handle itself is a sibling
+  // of the collapsible aside, not nested inside it, so it stays reachable
+  // even when its sidebar is hidden. Collapsed via a CSS class (not
+  // conditional rendering) so the panel stays mounted and doesn't lose any
+  // in-progress edits or refetch when toggled back open. Context used to
+  // have the same treatment (detailsOpen/controls-sidebar) — it's a
+  // button/overlay now instead (contextOpen below), same posture as
+  // Library/History/Settings, so there's nothing left to collapse there.
   const [chatsOpen, setChatsOpen] = useState(true);
-  const [detailsOpen, setDetailsOpen] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(false);
   // Knowledge/Skills, moved out of SheetPanel.tsx's tab row — global,
   // occasional/setup-time concerns, not per-chat ones like This Chat/
-  // Memories/History, so they get their own header button next to Settings
-  // rather than sharing the always-visible tab row.
+  // Memories, so they get their own header button rather than sharing
+  // Context's tab row.
   const [libraryOpen, setLibraryOpen] = useState(false);
-  // Which tab the details sidebar shows — the Memories tab itself
-  // (SheetPanel) is the only way to switch it now that the header's brain
-  // shortcut is gone, but this still needs to live here rather than as
-  // local SheetPanel state, since App.tsx also needs to know it to
-  // preserve tab selection across the sidebar's own hide/show toggle.
+  // History — what happened to the sheet over time, a different kind of
+  // thing from Context's "what's currently active" — gets its own header
+  // button/modal too, rather than living inside Context's tab row.
+  const [historyOpen, setHistoryOpen] = useState(false);
+  // Context's own overlay, open at every viewport width now (previously
+  // mobile-only — see mobileContextOpen's old comment in git history).
+  const [contextOpen, setContextOpen] = useState(false);
+  // Which tab the Context overlay shows — SheetPanel itself is the only
+  // way to switch it once open, but this still needs to live here rather
+  // than as local SheetPanel state, since it should persist across the
+  // overlay's own close/reopen.
   const [detailsTab, setDetailsTab] = useState<SheetPanelTab>("chat");
   // Which sheet was just created via "+ New chat" — drives ChatHeaderTitle's
   // one-time auto-edit (drop straight into renaming a brand-new chat rather
@@ -46,64 +55,66 @@ function App() {
   // it consumes this, via onAutoEditHandled, so it doesn't retrigger.
   const [justCreatedSheetId, setJustCreatedSheetId] = useState<string | null>(null);
   // The AI-collaboration surface, a one-shot review panel (see
-  // ManageWithAIPanel) triggered from the Context panel header. Rather than
-  // a blocking modal, it temporarily occupies the Chats sidebar column in
-  // place of SheetSwitcher, so the chat pane and Context panel stay visible
-  // and interactive the whole time — Back restores the normal chat list.
+  // ManageWithAIPanel) triggered from the Context overlay. Rather than a
+  // blocking modal, it temporarily occupies the Chats sidebar column in
+  // place of SheetSwitcher, so the chat pane stays visible and interactive
+  // the whole time — Back restores the normal chat list.
   const [manageAIOpen, setManageAIOpen] = useState(false);
   // set alongside manageAIOpen when something (currently only
-  // the Token Estimator's compression banner) wants Manage with AI to open
-  // pre-filled with a starting instruction, rather than the field's normal
-  // empty default — still just a pre-fill, not auto-submitted, same "show
-  // before sending" posture as Revise with AI's re-aimed field.
+  // the compression prompt) wants Manage with AI to open pre-filled with a
+  // starting instruction, rather than the field's normal empty default —
+  // still just a pre-fill, not auto-submitted, same "show before sending"
+  // posture as Revise with AI's re-aimed field.
   const [manageAIPrefill, setManageAIPrefill] = useState<string | undefined>(undefined);
-  // narrow-viewport (< 1024px, App.css) presentation of Chats
-  // and Context as full-screen overlays rather than always-visible
-  // sidebars. Default false (unlike chatsOpen/detailsOpen above) so a
-  // fresh mobile load shows the chat pane, not an overlay covering it.
-  // Mutually exclusive — toggleMobileChats/toggleMobileContext below each
-  // close the other before opening themselves.
+  // narrow-viewport (< 1024px, App.css) presentation of Chats as a
+  // full-screen overlay rather than an always-visible sidebar. Default
+  // false so a fresh mobile load shows the chat pane, not an overlay
+  // covering it.
   const [mobileChatsOpen, setMobileChatsOpen] = useState(false);
-  const [mobileContextOpen, setMobileContextOpen] = useState(false);
 
   function openManageWithAI(prefill?: string) {
     setManageAIPrefill(prefill);
     setManageAIOpen(true);
   }
 
-  function toggleManageAI() {
-    if (manageAIOpen) {
-      setManageAIOpen(false);
-    } else {
-      openManageWithAI();
-    }
-  }
-
+  // Mutually exclusive with Context on a narrow viewport — both render as
+  // a full-screen .modal-overlay there (App.css's 1024px breakpoint), and
+  // Context is reachable at every width now (unlike before, when it was
+  // gated to the same breakpoint and this exclusion came for free), so it
+  // needs an explicit close here rather than staying implicitly safe.
   function toggleMobileChats() {
     if (mobileChatsOpen) {
       setMobileChatsOpen(false);
     } else {
-      setMobileContextOpen(false);
+      setContextOpen(false);
       setMobileChatsOpen(true);
     }
   }
 
-  function toggleMobileContext() {
-    if (mobileContextOpen) {
-      setMobileContextOpen(false);
+  function toggleContext() {
+    if (contextOpen) {
+      setContextOpen(false);
     } else {
       setMobileChatsOpen(false);
-      setMobileContextOpen(true);
+      setContextOpen(true);
     }
   }
 
-  // "Manage with AI" tapped from inside the mobile Context
-  // overlay hands off to the Chats overlay rather than rendering inline —
-  // ManageWithAIPanel only ever mounts inside ChatsSidebarContent (desktop
-  // parity), so this avoids a second mount path for it.
-  function toggleManageAIFromMobileContext() {
-    setMobileContextOpen(false);
-    setMobileChatsOpen(true);
+  // Manage with AI only ever mounts inside ChatsSidebarContent (desktop
+  // parity) — reachable from the Context overlay by closing Context and,
+  // on a narrow viewport where the persistent Chats sidebar is itself
+  // CSS-hidden (App.css's 1024px breakpoint), also opening the Chats
+  // overlay so there's actually somewhere for it to render. A plain
+  // matchMedia check here (not app-wide state) since this is a one-off
+  // decision at click time, not something the UI needs to react to
+  // continuously — Context's trigger is reachable at every width now
+  // (unlike before, when this whole handoff was only ever reachable from
+  // inside the already-mobile-only Context overlay to begin with).
+  function openManageWithAIFromContext() {
+    setContextOpen(false);
+    if (window.matchMedia(NARROW_VIEWPORT_QUERY).matches) {
+      setMobileChatsOpen(true);
+    }
     openManageWithAI();
   }
 
@@ -130,12 +141,23 @@ function App() {
         <div className="header-icon-buttons">
           <button
             type="button"
-            className="mobile-nav-trigger"
-            onClick={toggleMobileContext}
-            aria-pressed={mobileContextOpen}
-            aria-label={mobileContextOpen ? "Close context" : "Open context"}
+            className="context-trigger"
+            onClick={toggleContext}
+            disabled={!activeSheetId}
+            aria-pressed={contextOpen}
+            aria-label={contextOpen ? "Close context" : "Open context"}
           >
             Context
+          </button>
+          <button
+            type="button"
+            className="icon-button"
+            onClick={() => setHistoryOpen(true)}
+            disabled={!activeSheetId}
+            aria-label="History"
+            title="History"
+          >
+            <span className="icon-emoji">🕐</span>
           </button>
           <button
             type="button"
@@ -192,26 +214,6 @@ function App() {
             </div>
             <ChatPane sheetId={activeSheetId} onOpenManageWithAI={openManageWithAI} />
           </main>
-          <button
-            type="button"
-            className="sidebar-handle controls-sidebar-handle"
-            onClick={() => setDetailsOpen((open) => !open)}
-            aria-label={detailsOpen ? "Hide details sidebar" : "Show details sidebar"}
-            title={detailsOpen ? "Hide details" : "Show details"}
-          >
-            {detailsOpen ? "›" : "‹"}
-          </button>
-          <aside aria-label="Context" className={`controls-sidebar${detailsOpen ? "" : " controls-sidebar--collapsed"}`}>
-            {!mobileContextOpen && (
-              <ContextSidebarContent
-                sheetId={activeSheetId}
-                detailsTab={detailsTab}
-                onTabChange={setDetailsTab}
-                manageAIOpen={manageAIOpen}
-                onToggleManageAI={toggleManageAI}
-              />
-            )}
-          </aside>
           {mobileChatsOpen && (
             <MobileChatsOverlay
               manageAIOpen={manageAIOpen}
@@ -223,14 +225,14 @@ function App() {
               onClose={() => setMobileChatsOpen(false)}
             />
           )}
-          {mobileContextOpen && (
-            <MobileContextOverlay
+          {contextOpen && (
+            <ContextOverlay
               sheetId={activeSheetId}
               detailsTab={detailsTab}
               onTabChange={setDetailsTab}
               manageAIOpen={manageAIOpen}
-              onToggleManageAI={toggleManageAIFromMobileContext}
-              onClose={() => setMobileContextOpen(false)}
+              onToggleManageAI={openManageWithAIFromContext}
+              onClose={() => setContextOpen(false)}
             />
           )}
         </div>
@@ -238,6 +240,7 @@ function App() {
         <div className="app-body">Loading…</div>
       )}
       {settingsOpen && <SettingsModal onClose={() => setSettingsOpen(false)} />}
+      {historyOpen && activeSheetId && <HistoryModal sheetId={activeSheetId} onClose={() => setHistoryOpen(false)} />}
       {libraryOpen && <LibraryModal onClose={() => setLibraryOpen(false)} />}
       <WelcomeModal />
     </div>
