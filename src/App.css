@@ -2124,6 +2124,25 @@ dialog.modal::backdrop {
   margin-top: 8px;
 }
 
+/* SuggestionSessionView.tsx's content/routing toggles, side by side
+   instead of stacked — this row now owns the padding/margin-top that
+   .segmented-toggle normally carries on its own, so its two children don't
+   double up on spacing (each stays a plain flex row for its own buttons). */
+.chat-toggles-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 0 16px;
+  margin-top: 8px;
+}
+
+.chat-toggles-row .segmented-toggle {
+  padding: 0;
+  margin-top: 0;
+}
+
 .segmented-toggle-option {
   font: inherit;
   font-size: 12px;
