@@ -94,7 +94,7 @@ export function WelcomeModal() {
       </div>
       <div className="modal-actions">
         <button type="button" className="modal-action-button" onClick={dialog.close}>
-          Got it
+          Dismiss
         </button>
         <button type="button" className="modal-action-button modal-action-button--secondary" onClick={dismissPermanently}>
           Don't show again
