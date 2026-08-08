@@ -155,8 +155,10 @@ export function LibraryModal({ onClose }: { onClose: () => void }) {
         <div className={`sheet-panel-tab-content${activeTab === "knowledge" ? "" : " sheet-panel-tab-content--hidden"}`}>
           <section className="sheet-section">
             <p className="sheet-section-caption">
-              Knowledge is shared across every chat, like Memories, and included in full whenever active — no
-              retrieval, no partial matches. Upload a file to add one.
+              Reference material — facts and documentation the AI should be able to draw on, not step-by-step
+              instructions (see Skills). Import by uploading a .txt/.md file, one file per entry, landing
+              immediately with no review step; exported together with everything else via This Chat's Export
+              Context.
             </p>
             <div className="inline-field">
               <input
@@ -189,8 +191,9 @@ export function LibraryModal({ onClose }: { onClose: () => void }) {
         <div className={`sheet-panel-tab-content${activeTab === "skills" ? "" : " sheet-panel-tab-content--hidden"}`}>
           <section className="sheet-section">
             <p className="sheet-section-caption">
-              Skills are shared across every chat, like Memories, and included in full whenever active — no
-              retrieval, no partial matches. Upload a file to add one.
+              Step-by-step procedures — ordered or branching instructions for how to do something, not reference
+              facts (see Knowledge). Import by uploading a .txt/.md file, one file per entry, landing immediately
+              with no review step; exported together with everything else via This Chat's Export Context.
             </p>
             <div className="inline-field">
               <input
