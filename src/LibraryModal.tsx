@@ -156,9 +156,9 @@ export function LibraryModal({ onClose }: { onClose: () => void }) {
           <section className="sheet-section">
             <p className="sheet-section-caption">
               Reference material — facts and documentation the AI should be able to draw on, not step-by-step
-              instructions (see Skills). Import by uploading a .txt/.md file, one file per entry, landing
-              immediately with no review step; exported together with everything else via This Chat's Export
-              Context.
+              instructions (see Skills). Import by uploading a .txt/.md file: its content becomes plain,
+              inspectable text right in the entry — not an opaque index or embedding — landing immediately, no
+              review step.
             </p>
             <div className="inline-field">
               <input
@@ -192,8 +192,8 @@ export function LibraryModal({ onClose }: { onClose: () => void }) {
           <section className="sheet-section">
             <p className="sheet-section-caption">
               Step-by-step procedures — ordered or branching instructions for how to do something, not reference
-              facts (see Knowledge). Import by uploading a .txt/.md file, one file per entry, landing immediately
-              with no review step; exported together with everything else via This Chat's Export Context.
+              facts (see Knowledge). Import by uploading a .txt/.md file: its content becomes plain, inspectable
+              text right in the entry — not an opaque index or embedding — landing immediately, no review step.
             </p>
             <div className="inline-field">
               <input
