@@ -227,8 +227,32 @@ dialog.modal::backdrop {
   color: var(--text-dim);
 }
 
+/* Deliberately not .chat-suggestions-toggle's subdued, borderless,
+   opacity-0.65 treatment (that's for a disclosure that's already obvious
+   it's there — "N changes" sitting right below a message everyone reads
+   anyway). Inspect pass is the one path into the whole audit trail (spec.md
+   "The Pass") for every single assistant reply, so it gets the app's
+   strongest, most attention-grabbing button language instead — same solid
+   --accent-strong fill as .modal-action-button's primary actions, not a
+   new color, so it stays on theme rather than reading as a one-off. */
 .pass-triage-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   margin-top: 8px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 12px;
+  border: none;
+  border-radius: 999px;
+  background: var(--accent-strong);
+  color: var(--on-accent);
+  cursor: pointer;
+}
+
+.pass-triage-trigger:hover {
+  background: var(--accent);
 }
 
 /* LibraryModal.tsx — Knowledge/History, moved out of SheetPanel.tsx's tab

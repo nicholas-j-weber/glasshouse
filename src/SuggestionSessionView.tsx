@@ -134,12 +134,8 @@ export function SuggestionSessionView({
             )}
             {message.role === "assistant" ? <MarkdownText text={message.text} /> : <p>{message.text}</p>}
             {message.role === "assistant" && (
-              <button
-                type="button"
-                className="chat-suggestions-toggle pass-triage-trigger"
-                onClick={() => setTriageMessage(message)}
-              >
-                Inspect pass
+              <button type="button" className="pass-triage-trigger" onClick={() => setTriageMessage(message)}>
+                <span aria-hidden="true">🔍</span> Inspect pass
               </button>
             )}
             {message.suggestions && message.suggestions.length > 0 && (
