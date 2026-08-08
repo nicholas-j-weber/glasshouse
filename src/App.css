@@ -2134,7 +2134,7 @@ dialog.modal::backdrop {
   justify-content: space-between;
   align-items: center;
   gap: 8px;
-  padding: 0 16px;
+  padding: 0 16px 8px;
   margin-top: 8px;
 }
 
