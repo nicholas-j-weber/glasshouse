@@ -9,7 +9,6 @@ const API_KEY_KEY = "context-sheets:anthropic-api-key";
 const MODEL_KEY = "context-sheets:anthropic-model";
 const ACTIVE_SHEET_ID_KEY = "context-sheets:active-sheet-id";
 const ROUTING_MODE_KEY = "context-sheets:default-routing-mode";
-const COLLAPSE_SUGGESTIONS_KEY = "context-sheets:collapse-suggestions-by-default";
 const RECOMMEND_COMPRESSION_KEY = "context-sheets:recommend-compression";
 const AUTO_RUN_COMPRESSION_KEY = "context-sheets:auto-run-compression";
 const COLLAPSE_TURNS_KEY = "context-sheets:collapse-turns-by-default";
@@ -83,19 +82,6 @@ export function setStoredDefaultRoutingMode(mode: RoutingMode): void {
   localStorage.setItem(ROUTING_MODE_KEY, mode);
 }
 
-// the chat pane's per-message "N changes" disclosure
-// (SuggestionSessionView.tsx) starts collapsed or expanded based on this —
-// a pure display preference, not tied to any suggestion's own state, so
-// unlike a message's own autoApplied field, it's read live at render time rather
-// than captured once per message: flipping this setting is meant to
-// visibly re-collapse/re-expand everything already on screen, not just
-// change what happens to future messages. Defaults to false (expanded) —
-// existing behavior — so nothing changes until a user opts in.
-export const [getStoredCollapseSuggestionsByDefault, setStoredCollapseSuggestionsByDefault] = makeBoolSetting(
-  COLLAPSE_SUGGESTIONS_KEY,
-  false,
-);
-
 // whether the Token Estimator shows a compression-
 // recommendation banner once Context size crosses
 // COMPRESSION_RECOMMENDATION_THRESHOLD below. Originally defaulted to
@@ -131,16 +117,14 @@ export const [getStoredAutoRunCompression, setStoredAutoRunCompression] = makeBo
   true,
 );
 
-// two separate collapse-by-default toggles, deliberately not
-// one shared with the collapse-suggestions setting — This Chat's
+// two separate collapse-by-default toggles — This Chat's
 // turn/summary rows and History's per-version diff lists are different
 // surfaces with different content shapes, and a user collapsing one has no
 // particular reason to want the other collapsed too. Both default to false
 // (expanded), same reasoning as every other collapse-by-default toggle here:
 // a new display preference, off preserves current behavior. Both are read
-// live at render time, not captured once, for the same reason as the
-// collapse-suggestions setting — flipping this should visibly affect rows already on
-// screen, not just future ones.
+// live at render time, not captured once — flipping either should visibly
+// affect rows already on screen, not just future ones.
 export const [getStoredCollapseTurnsByDefault, setStoredCollapseTurnsByDefault] = makeBoolSetting(
   COLLAPSE_TURNS_KEY,
   false,

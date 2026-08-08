@@ -1,13 +1,9 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { ChangeCard } from "./ChangeCard";
 import { MarkdownText } from "./MarkdownText";
 import { PassTriage } from "./PassTriage";
-import { getStoredCollapseSuggestionsByDefault } from "./settingsStorage";
 import { ToastStack } from "./Toast";
-import { describeSuggestion } from "./suggestionDisplay";
-import type { DisplaySuggestion, SessionMessage, SuggestionSession } from "./suggestionSession";
+import type { SessionMessage, SuggestionSession } from "./suggestionSession";
 import { getRevisingContext } from "./suggestionSession";
-import { useCollapsedOverrides } from "./useCollapsedOverrides";
 import type { Sheet } from "./types";
 
 // The chat pane's rendering. ManageWithAIPanel uses the same
@@ -15,23 +11,15 @@ import type { Sheet } from "./types";
 // rendering instead of this component.
 //
 // Chat mode auto-applies every suggestion the instant it's received
-// (surfaced via the toast stack below, with a short Undo window) rather
-// than showing a pending review card — unconditionally now, not a
-// setting (Accept/Reject/Revise on an ordinary chat turn used to be
-// optional, off by default's opposite; removed as inherited-but-unused
-// ACM2 chrome once auto-apply was already how everyone used chat).
-// MessageSuggestions below still renders a message's pending
-// ChangeCard — exactly ManageWithAIPanel's, reused rather than rebuilt —
-// but purely as a fallback for a message saved back when that toggle
-// existed (SessionMessage.autoApplied, set once at creation, is how each
-// message remembers which mode produced it); no new chat message ever
-// reaches that branch anymore.
-//
-// every message's suggestions block sits behind a "N changes"
-// disclosure toggle — conversation/memory updates otherwise made the chat
-// quite tall as a conversation grew. Starts expanded by default (unless
-// Settings' collapse-by-default toggle is on); any message can still be
-// collapsed/expanded individually regardless of that default.
+// (surfaced via the toast stack below, with a short Undo window). Used to
+// also render an inline "N changes" record of what got applied under
+// every reply — removed: with the mandatory conversation_summary_update
+// firing on every turn, that record was never actually optional (always
+// at least 1), and everything in it is already visible in Context and
+// each pass's own snapshot in Pass Triage, so it was pure repetition, not
+// a real signal. Nothing about applying/undoing changed — toasts (with
+// their own Undo window) are still how an applied change announces
+// itself, and Context/History still hold the real, permanent record.
 export function SuggestionSessionView({
   session,
   sheet,
@@ -51,15 +39,11 @@ export function SuggestionSessionView({
     contentMode,
     setContentMode,
     handleSend,
-    handleAccept,
-    handleReject,
     revising,
     revisionDraft,
     setRevisionDraft,
-    startRevision,
     cancelRevision,
     handleRevisionSubmit,
-    editSuggestionBody,
     toasts,
     dismissToast,
     undoToast,
@@ -102,23 +86,6 @@ export function SuggestionSessionView({
     prevMessageCountRef.current = messages.length;
   }, [messages]);
 
-  // per-message override for the "N changes" disclosure below,
-  // falling back to the live global default — flipping the setting should
-  // visibly affect messages already on screen, not just future ones (see
-  // settingsStorage.ts's comment on why that's different from
-  // autoApplied).
-  const { isCollapsed: isMessageOverrideCollapsed, toggle: toggleSuggestionsCollapsed } = useCollapsedOverrides<SessionMessage>(
-    getStoredCollapseSuggestionsByDefault,
-  );
-
-  function isSuggestionsCollapsed(message: SessionMessage): boolean {
-    // Never hide the one message whose card is actively being revised —
-    // collapsing it mid-revision would strand the "Revising — answer
-    // above" hint with nothing visible to attach it to.
-    if (revising?.messageId === message.id) return false;
-    return isMessageOverrideCollapsed(message);
-  }
-
   const { revisingMessage, revisingTitle } = getRevisingContext(messages, revising, sheet);
 
   return (
@@ -140,34 +107,6 @@ export function SuggestionSessionView({
               <button type="button" className="pass-triage-trigger" onClick={() => setTriageMessage(message)}>
                 <span aria-hidden="true">🔍</span> Inspect pass
               </button>
-            )}
-            {message.suggestions && message.suggestions.length > 0 && (
-              <div className="chat-suggestions-block">
-                <button
-                  type="button"
-                  className="chat-suggestions-toggle"
-                  onClick={() => toggleSuggestionsCollapsed(message)}
-                >
-                  <span
-                    className={`chat-suggestions-caret${isSuggestionsCollapsed(message) ? "" : " chat-suggestions-caret--flipped"}`}
-                    aria-hidden="true"
-                  >
-                    ⌃
-                  </span>
-                  {message.suggestions.length} change{message.suggestions.length === 1 ? "" : "s"}
-                </button>
-                {!isSuggestionsCollapsed(message) && (
-                  <MessageSuggestions
-                    message={message}
-                    sheet={sheet}
-                    revisingIndex={revising?.messageId === message.id ? revising.index : null}
-                    onAccept={(index) => handleAccept(message, index)}
-                    onReject={(index) => handleReject(message, index)}
-                    onStartRevision={(index) => startRevision(message.id, index)}
-                    onEditBody={(index, body) => editSuggestionBody(message, index, body)}
-                  />
-                )}
-              </div>
             )}
           </div>
         ))}
@@ -280,98 +219,5 @@ export function SuggestionSessionView({
         )}
       </form>
     </div>
-  );
-}
-
-function MessageSuggestions({
-  message,
-  sheet,
-  revisingIndex,
-  onAccept,
-  onReject,
-  onStartRevision,
-  onEditBody,
-}: {
-  message: SessionMessage;
-  sheet: Sheet | null;
-  revisingIndex: number | null;
-  onAccept: (index: number) => void;
-  onReject: (index: number) => void;
-  onStartRevision: (index: number) => void;
-  onEditBody: (index: number, body: string) => void;
-}) {
-  const suggestions = message.suggestions ?? [];
-
-  // Every suggestion here already resolved (auto-applied) before this
-  // ever rendered, so it's always a plain, non-interactive record — what
-  // got applied, or failed to. This is every chat message now (auto-apply
-  // is unconditional) — also the fallback for an older message saved
-  // before the autoApplied field existed (it's undefined there) or one
-  // from a mode this view never handles interactively.
-  if (message.autoApplied !== false) {
-    return (
-      <ul className="chat-applied-list">
-        {suggestions.map((display, index) => (
-          <li key={`${display.suggestion.type}-${index}`} className={display.status === "failed" ? "chat-applied-item--failed" : undefined}>
-            <ResolvedSuggestionLine display={display} />
-          </li>
-        ))}
-      </ul>
-    );
-  }
-
-  // Legacy path — a message saved before chat mode's auto-apply toggle
-  // was removed (autoApplied === false). Same split ManageWithAIPanel's
-  // ResponseBlock already does — undecided (pending/failed) suggestions
-  // are still-interactive ChangeCards, everything else (accepted/
-  // rejected/revised) is a plain historical line, same as the auto-apply
-  // list above. Unlike ManageWithAIPanel, resolved ones stay visible here
-  // rather than disappearing — this is a real transcript, not a one-shot
-  // review panel.
-  const undecided = suggestions.map((display, index) => ({ display, index })).filter(({ display }) => display.status === "pending" || display.status === "failed");
-  const resolved = suggestions.map((display, index) => ({ display, index })).filter(({ display }) => display.status !== "pending" && display.status !== "failed");
-
-  return (
-    <>
-      {sheet && undecided.length > 0 && (
-        <div className="chat-pending-cards">
-          {undecided.map(({ display, index }) => (
-            <ChangeCard
-              key={`${message.id}-${index}`}
-              display={display}
-              sheet={sheet}
-              onAccept={() => onAccept(index)}
-              onReject={() => onReject(index)}
-              onStartRevision={() => onStartRevision(index)}
-              onEditBody={(body) => onEditBody(index, body)}
-              revising={revisingIndex === index}
-            />
-          ))}
-        </div>
-      )}
-      {resolved.length > 0 && (
-        <ul className="chat-applied-list">
-          {resolved.map(({ display }, i) => (
-            <li key={`${display.suggestion.type}-${i}`} className={display.status === "failed" ? "chat-applied-item--failed" : undefined}>
-              <ResolvedSuggestionLine display={display} />
-            </li>
-          ))}
-        </ul>
-      )}
-    </>
-  );
-}
-
-function ResolvedSuggestionLine({ display }: { display: DisplaySuggestion }) {
-  if (display.status === "failed") {
-    return <>Couldn't apply a suggested change — its target may have been deleted since it was proposed.</>;
-  }
-  const description = describeSuggestion(display.suggestion);
-  return (
-    <>
-      {display.status === "rejected" ? `Rejected: ${description}` : display.status === "revised" ? `Revised: ${description}` : description}
-      {display.isFallback && <span className="suggestion-fallback-marker"> (auto-generated — model didn't propose one)</span>}
-      {display.isFollowUp && <span className="suggestion-followup-marker"> (requested via a follow-up call)</span>}
-    </>
   );
 }

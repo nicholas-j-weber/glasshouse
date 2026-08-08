@@ -250,12 +250,9 @@ dialog.modal::backdrop {
   color: var(--text-dim);
 }
 
-/* Deliberately not .chat-suggestions-toggle's subdued, borderless,
-   opacity-0.65 treatment (that's for a disclosure that's already obvious
-   it's there — "N changes" sitting right below a message everyone reads
-   anyway). Inspect pass is the one path into the whole audit trail (spec.md
-   "The Pass") for every single assistant reply, so it gets the app's
-   strongest, most attention-grabbing button language instead — same solid
+/* Inspect pass is the one path into the whole audit trail (spec.md "The
+   Pass") for every single assistant reply, so it gets the app's
+   strongest, most attention-grabbing button language — same solid
    --accent-strong fill as .modal-action-button's primary actions, not a
    new color, so it stays on theme rather than reading as a one-off. */
 .pass-triage-trigger {
@@ -1153,9 +1150,9 @@ dialog.modal::backdrop {
   gap: 4px;
 }
 
-/* Same minimal transparent-button treatment as .chat-suggestions-toggle —
-   this is a disclosure control, not a primary action, so it shouldn't
-   compete visually with Edit/Delete/Pin. */
+/* Minimal transparent-button treatment — this is a disclosure control,
+   not a primary action, so it shouldn't compete visually with
+   Edit/Delete/Pin. */
 .memory-row-collapse-toggle {
   display: flex;
   align-items: center;
@@ -1369,11 +1366,10 @@ dialog.modal::backdrop {
   font-weight: 600;
 }
 
-/* same rotating-caret disclosure language as
-   .chat-suggestions-toggle — this collapses one version entry's diff-line
-   list, not a whole panel, so it's an inline text button rather than a
-   full-width edge handle. margin-top separates it from .version-row-meta
-   above, mirroring .chat-suggestions-block's spacing. */
+/* same rotating-caret disclosure language as .memory-row-collapse-caret —
+   this collapses one version entry's diff-line list, not a whole panel,
+   so it's an inline text button rather than a full-width edge handle.
+   margin-top separates it from .version-row-meta above. */
 .version-diff-toggle {
   display: flex;
   align-items: center;
@@ -1570,49 +1566,8 @@ dialog.modal::backdrop {
   font-weight: 600;
 }
 
-/* the "N changes" disclosure wrapping every message's
-   suggestions block — conversation/memory updates otherwise made the chat
-   quite tall as it grew. margin-top separates it from the message text
-   above; the toggle button and whatever's inside it (.chat-applied-list/
-   .chat-pending-cards) carry their own spacing below that. */
-.chat-suggestions-block {
-  margin-top: 8px;
-}
-
-/* Same rotating-caret disclosure language as .memory-row-collapse-caret,
-   just an inline text button here instead of a row-level toggle. */
-.chat-suggestions-toggle {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font: inherit;
-  font-size: 12px;
-  padding: 0;
-  border: none;
-  background: none;
-  color: var(--text-h);
-  opacity: 0.65;
-  cursor: pointer;
-}
-
-.chat-suggestions-toggle:hover {
-  opacity: 1;
-}
-
-.chat-suggestions-caret {
-  display: inline-block;
-  font-size: 10px;
-}
-
-.chat-suggestions-caret--flipped {
-  transform: rotate(180deg);
-}
-
-/* spec.md "The Pass" — a reasoning-routed message's expandable step trace
-   (ReasoningTrace.tsx). Same disclosure toggle language as
-   .chat-suggestions-toggle above it; the step list itself borrows
-   .chat-applied-list's dimmed/compact treatment since this is also a
-   read-only historical record. */
+/* spec.md "The Pass" — a reasoning-routed message's step trace
+   (ReasoningTrace.tsx), a read-only historical record. */
 .reasoning-trace {
   margin-top: 8px;
 }
@@ -1659,11 +1614,10 @@ dialog.modal::backdrop {
   color: var(--text-dim);
 }
 
-/* spec.md "Code-diff lane" — a coding pass's expandable per-file diff
-   (CodeDiffView.tsx). Same disclosure toggle language as
-   .chat-suggestions-toggle/.reasoning-trace; the "diff, not inline code"
-   rule (milestone 6) makes this the only place a coding pass's actual
-   content is meant to be readable. */
+/* spec.md "Code-diff lane" — a coding pass's per-file diff
+   (CodeDiffView.tsx). The "diff, not inline code" rule (milestone 6)
+   makes this the only place a coding pass's actual content is meant to
+   be readable. */
 .code-diff-view {
   margin-top: 8px;
 }
@@ -1738,47 +1692,8 @@ dialog.modal::backdrop {
   background: var(--diff-removed-bg);
 }
 
-/* replaces the old .chat-suggestions review list — a plain
-   historical record (what got applied, or failed to) for suggestions that
-   already resolved, not an interactive list with actions. Also used for resolved (accepted/rejected/revised/failed) suggestions
-   when auto-apply is off — only still-pending ones get a .chat-pending-
-   cards ChangeCard instead. */
-.chat-applied-list {
-  margin: 8px 0 0;
-  padding-left: 18px;
-  font-size: 13px;
-  color: var(--text-dim);
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  overflow-wrap: break-word;
-}
-
-/* Accessibility audit fix: this used to be `opacity: 1` trying to cancel
-   .chat-applied-list's opacity: 0.75 for failed items — a no-op, since
-   opacity compounds through the render tree regardless of a child's own
-   value (a child can never be more opaque than its parent's stacking
-   context allows). Moving the dimming above to a real `color` fixes that
-   along with the contrast failure: .chat-applied-item--failed's --error
-   red now actually renders at full strength like it was always meant to. */
-.chat-applied-item--failed {
-  color: var(--error);
-}
-
-/* still-pending suggestions in the chat pane, shown only when
-   the auto-apply setting is off — same spacing role as .manage-ai-changes/
-   .manage-ai-response, sitting inline in a chat-message instead of its own
-   panel. */
-.chat-pending-cards {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-top: 8px;
-}
-
 /* Wraps rather than shrinks — "Revise with AI" doesn't reliably fit
-   alongside Accept/Reject in Manage with AI's narrower ~226px cards.
-   Shared with the chat pane too whenever auto-apply is off. */
+   alongside Accept/Reject in Manage with AI's narrower ~226px cards. */
 .suggestion-actions {
   display: flex;
   flex-wrap: wrap;
@@ -1855,27 +1770,17 @@ dialog.modal::backdrop {
 
 /* Only "failed" is ever reached — ManageWithAIPanel's ResponseBlock only
    ever renders pending/failed cards at all (accepted/rejected ones
-   disappear rather than showing a badge there), and the chat pane's
-   ChangeCard follows the same pending/failed-only rule. */
+   disappear rather than showing a badge there). */
 .suggestion-status--failed {
   color: var(--error);
 }
 
-.suggestion-fallback-marker,
-.suggestion-followup-marker {
-  font-size: 12px;
-  font-style: italic;
-  color: var(--text-dim);
-}
-
-/* ManageWithAIPanel: a one-shot instruction in, change cards out — no
-   message transcript, so this reuses .suggestion-actions/.suggestion-
-   status/.change-card (also shared with the chat pane's own ChangeCards)
-   but its own input row and card layout instead of
-   .chat-message/.chat-applied-list/.chat-pending-cards. Temporarily
-   occupies .chats-sidebar in place of .sheet-switcher, so it fills that
-   column exactly the way .sheet-switcher does — fixed .sidebar-title
-   header up top, its own internally-scrolling body below. */
+/* ManageWithAIPanel: a one-shot instruction in, change cards out — its
+   own input row and card layout, reusing .suggestion-actions/.suggestion-
+   status/.change-card. Temporarily occupies .chats-sidebar in place of
+   .sheet-switcher, so it fills that column exactly the way .sheet-switcher
+   does — fixed .sidebar-title header up top, its own internally-scrolling
+   body below. */
 .manage-ai-panel {
   flex: 1;
   min-height: 0;

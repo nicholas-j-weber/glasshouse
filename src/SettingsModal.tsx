@@ -5,14 +5,12 @@ import {
   getStoredApiKey,
   getStoredAutoRunCompression,
   getStoredCollapseHistoryByDefault,
-  getStoredCollapseSuggestionsByDefault,
   getStoredCollapseTurnsByDefault,
   getStoredDefaultRoutingMode,
   getStoredRecommendCompression,
   setStoredApiKey,
   setStoredAutoRunCompression,
   setStoredCollapseHistoryByDefault,
-  setStoredCollapseSuggestionsByDefault,
   setStoredCollapseTurnsByDefault,
   setStoredDefaultRoutingMode,
   setStoredRecommendCompression,
@@ -22,12 +20,10 @@ import {
 // modal — "set once, rarely revisit" config, unlike the chat/context panels
 // which are used constantly (a deliberately different treatment from the
 // chats/details sidebars, which stay visible-by-default). This is also
-// where later settings land — the collapse-by-default toggle, the
-// compression-recommendation toggle, and the This Chat/History
-// collapse-by-default toggles.
+// where later settings land — the compression-recommendation toggle and
+// the This Chat/History collapse-by-default toggles.
 export function SettingsModal({ onClose }: { onClose: () => void }) {
   const [apiKey, setApiKey] = useState(getStoredApiKey());
-  const [collapseSuggestions, setCollapseSuggestions] = useState(getStoredCollapseSuggestionsByDefault());
   const [recommendCompression, setRecommendCompression] = useState(getStoredRecommendCompression());
   const [autoRunCompression, setAutoRunCompression] = useState(getStoredAutoRunCompression());
   const [collapseTurns, setCollapseTurns] = useState(getStoredCollapseTurnsByDefault());
@@ -59,23 +55,6 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
           </label>
           <ModelField />
         </div>
-        <label className="modal-field modal-field--checkbox">
-          <input
-            type="checkbox"
-            aria-label="Collapse suggestion details by default"
-            checked={collapseSuggestions}
-            onChange={(e) => {
-              setCollapseSuggestions(e.target.checked);
-              setStoredCollapseSuggestionsByDefault(e.target.checked);
-            }}
-          />
-          <span>Collapse suggestion details by default</span>
-        </label>
-        <p className="modal-field-hint">
-          {collapseSuggestions
-            ? "On: each message's conversation/memory changes start collapsed to a summary — click to expand."
-            : "Off (default): changes show in full. Any message can still be collapsed on its own."}
-        </p>
         <label className="modal-field modal-field--checkbox">
           <input
             type="checkbox"
