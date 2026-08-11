@@ -48,7 +48,7 @@ export async function run(browser, baseUrl) {
 
       ok = (await test("choosing a known model in the welcome modal persists to the same storage Settings reads", async () => {
         await page.locator('select[aria-label="Model"]').selectOption("claude-opus-4-8");
-        await page.locator(".welcome-dismiss", { hasText: "Got it" }).click();
+        await page.locator(".modal-action-button", { hasText: "Dismiss" }).click();
         await page.waitForSelector(".sheet-switcher");
 
         await page.click('button[aria-label="Settings"]');
@@ -78,7 +78,7 @@ export async function run(browser, baseUrl) {
       })) && ok;
 
       ok = (await test("a custom model persists across modals the same way a known one does", async () => {
-        await page.locator(".welcome-dismiss", { hasText: "Got it" }).click();
+        await page.locator(".modal-action-button", { hasText: "Dismiss" }).click();
         await page.waitForSelector(".sheet-switcher");
 
         await page.click('button[aria-label="Settings"]');

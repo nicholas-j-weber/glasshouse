@@ -1,4 +1,4 @@
-import { assert, createChat, mockApi, setApiKey, showSheetPanelTab, test, withFreshPage } from "./support.mjs";
+import { assert, closeContext, createChat, mockApi, openContext, setApiKey, showSheetPanelTab, test, withFreshPage } from "./support.mjs";
 
 // Bootstrap, create/switch, per-sheet chat log
 // isolation, persistence across a real page reload, rename, and — the
@@ -25,7 +25,7 @@ export async function run(browser, baseUrl) {
       await page.fill(".chat-input-row textarea", "SHEET1_MESSAGE_UNIQUE_TOKEN");
       await page.click('.chat-pane .chat-input-row button[type="submit"]');
       await page.waitForTimeout(500);
-      const count = await page.locator(".chat-pane:not(.chat-pane--embedded) .chat-message").count();
+      const count = await page.locator(".chat-pane .chat-message").count();
       assert(count === 2, `expected 2 messages (user+assistant), got ${count}`);
     })) && ok;
 
@@ -33,14 +33,14 @@ export async function run(browser, baseUrl) {
       await createChat(page, "Chat Two");
       await page.waitForTimeout(400);
       assert((await page.locator(".sheet-switcher-item").count()) === 2, "expected two sheets after creating one");
-      const count = await page.locator(".chat-pane:not(.chat-pane--embedded) .chat-message").count();
+      const count = await page.locator(".chat-pane .chat-message").count();
       assert(count === 0, `expected Chat Two's chat log to start empty, got ${count} messages`);
     })) && ok;
 
     ok = (await test("switching back to Chat 1 restores its own persisted messages only", async () => {
       await page.locator(".sheet-switcher-name", { hasText: "Chat 1" }).click();
       await page.waitForTimeout(400);
-      const texts = await page.locator(".chat-pane:not(.chat-pane--embedded) .chat-message").allTextContents();
+      const texts = await page.locator(".chat-pane .chat-message").allTextContents();
       assert(texts.some((t) => t.includes("SHEET1_MESSAGE_UNIQUE_TOKEN")), "Chat 1's own message should be restored");
     })) && ok;
 
@@ -50,7 +50,7 @@ export async function run(browser, baseUrl) {
       await page.waitForTimeout(300);
       const activeName = await page.locator(".sheet-switcher-item--active .sheet-switcher-name").textContent();
       assert(activeName?.includes("Chat 1"), `expected Chat 1 to still be active after reload, got "${activeName}"`);
-      const texts = await page.locator(".chat-pane:not(.chat-pane--embedded) .chat-message").allTextContents();
+      const texts = await page.locator(".chat-pane .chat-message").allTextContents();
       assert(texts.some((t) => t.includes("SHEET1_MESSAGE_UNIQUE_TOKEN")), "message should survive a real reload");
     })) && ok;
 
@@ -129,20 +129,28 @@ export async function run(browser, baseUrl) {
       // that its full, unclipped layout size leaked into the *document's*
       // own scrollable-overflow computation — an invisible, ever-taller
       // gap you could scroll into at the bottom of the whole page, even
-      // though .controls-sidebar/.sheet-panel themselves reported
-      // perfectly normal, bounded heights the whole time. Confirmed via
-      // direct DOM measurement (window.scrollTo actually moved the page)
-      // before finding the fix: contain: layout on .sheet-panel (App.css).
+      // though .sheet-panel itself reported perfectly normal, bounded
+      // heights the whole time. Confirmed via direct DOM measurement
+      // (window.scrollTo actually moved the page) before finding the fix:
+      // contain: layout on .sheet-panel (App.css).
       //
-      // conversation_summary_update auto-applies now — no
-      // accept click needed to grow the Conversation Summary, sending the
-      // message is enough on its own.
+      // conversation_summary_update auto-applies now — no accept click
+      // needed to grow the Conversation Summary, sending the message is
+      // enough on its own. Context (a full app-body takeover overlay at
+      // every width now, not a sidebar) has to be closed to reach the chat
+      // input at all, so the 15 turns accumulate with Context closed —
+      // then Context opens once, mounting SheetPanel with all of them
+      // already there at once, which is the harder version of the original
+      // bug anyway (a large Conversation Summary present at mount time,
+      // not grown incrementally while already mounted).
       for (let i = 0; i < 15; i++) {
         await page.fill(".chat-input-row textarea", `summary source ${i}`);
         await page.click('.chat-pane .chat-input-row button[type="submit"]');
         await page.waitForTimeout(150);
       }
       await page.waitForTimeout(300);
+      await showSheetPanelTab(page, "chat");
+      await page.waitForTimeout(200);
 
       const before = await page.evaluate(() => ({ scrollHeight: document.documentElement.scrollHeight, innerHeight: window.innerHeight }));
       assert(
@@ -164,9 +172,15 @@ export async function run(browser, baseUrl) {
     await page.goto(baseUrl);
     await page.waitForSelector(".sheet-switcher");
 
-    ok = (await test("both sidebars are open by default", async () => {
+    ok = (await test("the chats sidebar is open by default; Context starts closed", async () => {
       assert(await page.locator(".chats-sidebar").isVisible(), "chats sidebar should be visible on first load");
-      assert(await page.locator(".controls-sidebar").isVisible(), "details sidebar should be visible on first load");
+      assert((await page.locator(".context-overlay").count()) === 0, "Context should not be open until its header button is clicked");
+      await openContext(page);
+      assert(await page.locator(".context-overlay").isVisible(), "Context should open on demand");
+      // Context is a full app-body takeover at every width now, not a
+      // sidebar — close it so the next test's chats-sidebar-handle click
+      // isn't intercepted by the overlay sitting on top of it.
+      await closeContext(page);
     })) && ok;
 
     ok = (await test("hiding/showing the chats sidebar via its edge handle toggles visibility without unmounting it", async () => {
@@ -179,15 +193,21 @@ export async function run(browser, baseUrl) {
       assert(await page.locator(".chats-sidebar").isVisible(), "chats sidebar should be visible again after toggling back");
     })) && ok;
 
-    ok = (await test("hiding/showing the details sidebar via its edge handle preserves in-progress state", async () => {
+    // Unlike the chats sidebar (CSS-hidden, stays mounted while collapsed),
+    // Context is conditionally rendered ({contextOpen && <ContextOverlay/>}
+    // in App.tsx) — closing it unmounts SheetPanel entirely, so an
+    // in-progress, unsaved draft does not survive a close/reopen cycle.
+    ok = (await test("closing and reopening Context does not preserve an in-progress, unsaved draft", async () => {
+      await openContext(page);
       const toneTextarea = page.locator(".inline-field", { hasText: "Tone" }).first().locator("textarea");
       await toneTextarea.fill("UNSAVED_DRAFT_TEXT");
 
-      await page.click(".controls-sidebar-handle");
-      assert(!(await page.locator(".controls-sidebar").isVisible()), "details sidebar should be hidden after toggling");
+      await page.click(".context-trigger");
+      assert((await page.locator(".context-overlay").count()) === 0, "Context should close");
 
-      await page.click(".controls-sidebar-handle");
-      assert(await toneTextarea.inputValue() === "UNSAVED_DRAFT_TEXT", "an unsaved draft must survive a hide/show cycle (component stays mounted)");
+      await openContext(page);
+      const reopenedTextarea = page.locator(".inline-field", { hasText: "Tone" }).first().locator("textarea");
+      assert((await reopenedTextarea.inputValue()) !== "UNSAVED_DRAFT_TEXT", "SheetPanel remounts from scratch on reopen, so the unsaved draft is gone");
     })) && ok;
   });
 
@@ -210,6 +230,7 @@ export async function run(browser, baseUrl) {
     })) && ok;
 
     ok = (await test("Export/Import live at the bottom of the This Chat tab, not the chat header", async () => {
+      await showSheetPanelTab(page, "chat");
       assert(
         await page.locator(".sheet-panel-footer .export-import-buttons button:has-text('Export')").isVisible(),
         "Export button should be visible at the bottom of the This Chat tab",
@@ -220,9 +241,14 @@ export async function run(browser, baseUrl) {
       );
       assert((await page.locator(".chat-header .export-import-buttons").count()) === 0, "Export/Import should no longer be in the chat header");
 
-      // Unrelated column — collapsing the chats sidebar shouldn't affect it.
+      // Unrelated column — collapsing the chats sidebar shouldn't affect
+      // it. Context must close first: it's a full app-body takeover now,
+      // so the chats-sidebar-handle sits underneath it while Context is open.
+      await closeContext(page);
       await page.click(".chats-sidebar-handle");
+      await showSheetPanelTab(page, "chat");
       assert(await page.locator(".sheet-panel-footer .export-import-buttons button:has-text('Export')").isVisible(), "Export/Import should stay reachable with the chats sidebar collapsed");
+      await closeContext(page);
       await page.click(".chats-sidebar-handle"); // reopen
 
       // But now that Export/Import live inside the Context panel's own tab
@@ -232,11 +258,11 @@ export async function run(browser, baseUrl) {
       assert(!(await page.locator(".sheet-panel-footer").isVisible()), "Export/Import should be hidden while a different tab (Memories) is active");
       await showSheetPanelTab(page, "chat");
 
-      // ...and hidden when the Context panel itself is collapsed, unlike
-      // before when they lived in the always-visible chat header.
-      await page.click(".controls-sidebar-handle");
-      assert(!(await page.locator(".sheet-panel-footer").isVisible()), "Export/Import should be hidden when the Context panel itself is collapsed, since they now live inside it");
-      await page.click(".controls-sidebar-handle"); // reopen for hygiene
+      // ...and gone entirely once Context itself is closed — unlike before,
+      // when they lived in the always-visible chat header, Context is now
+      // conditionally rendered, so closing it unmounts SheetPanel outright.
+      await closeContext(page);
+      assert((await page.locator(".sheet-panel-footer").count()) === 0, "Export/Import should be gone once Context itself is closed, since they live inside it");
     })) && ok;
   });
 
@@ -261,10 +287,10 @@ export async function run(browser, baseUrl) {
       assert((await page.locator(".modal").count()) === 0, "Escape should close the modal");
     })) && ok;
 
-    ok = (await test("the header no longer has a Memories shortcut — clicking the panel's own Memories tab is the only way in", async () => {
+    ok = (await test("the header no longer has a Memories shortcut — opening Context and clicking the panel's own Memories tab is the only way in", async () => {
       assert((await page.locator('button[aria-label="Memories"]').count()) === 0, "header should not have a brain/Memories icon button anymore");
 
-      await page.click('.sheet-panel-tab:has-text("Memories")');
+      await showSheetPanelTab(page, "memories");
       assert(
         await page.locator('.sheet-panel-tab:has-text("Memories")').evaluate((el) => el.classList.contains("sheet-panel-tab--active")),
         "clicking the Memories tab directly should still switch to it",
@@ -326,10 +352,10 @@ export async function run(browser, baseUrl) {
       await page.click('.chat-pane .chat-input-row button[type="submit"]');
       await page.waitForTimeout(500);
 
-      // Scoped to .markdown-text specifically — the message also contains a
-      // sibling .chat-applied-list <ul>/<li> recording the auto-applied
-      // conversation_summary_update, which a bare "li" locator would also
-      // count.
+      // Scoped to .markdown-text specifically, not a bare "li" on the whole
+      // message — the assistant message also carries a sibling
+      // "Inspect pass" trigger and a routing badge, neither of which
+      // should be mistaken for the reply's own rendered markdown.
       const reply = page.locator(".chat-message--assistant").first();
       const markdown = reply.locator(".markdown-text");
       assert((await markdown.locator("li").count()) === 2, "the markdown list should render as real <li> items, not a literal '- ' line");
@@ -365,8 +391,10 @@ export async function run(browser, baseUrl) {
       await page.waitForTimeout(400);
 
       assert((await page.locator(".toast").count()) === 0, "conversation_summary_update is mandatory on every turn — a toast for it would fire constantly and say nothing notable, so it applies silently");
+      await showSheetPanelTab(page, "chat");
       const convoSection = page.locator(".sheet-section", { hasText: "Conversation Summary" }).first();
       assert((await convoSection.textContent()).includes("a quiet turn"), "it should still have actually applied, just without announcing itself");
+      await closeContext(page); // next test needs the chat input reachable again
     })) && ok;
 
     ok = (await test("a tone_update suggestion auto-applies with a toast", async () => {
@@ -381,9 +409,11 @@ export async function run(browser, baseUrl) {
       await page.click('.chat-pane .chat-input-row button[type="submit"]');
       await page.waitForTimeout(400);
 
+      await showSheetPanelTab(page, "chat");
       const toneSection = page.locator(".inline-field", { hasText: "Tone" }).first();
       assert((await toneSection.locator("textarea").inputValue()) === "Warm and casual.", "the tone should already be updated with no manual accept step");
       assert(await page.locator(".toast--applied", { hasText: "Tone updated" }).isVisible(), "a tone_update should announce itself via a toast");
+      await closeContext(page); // next test needs the chat input reachable again
     })) && ok;
 
     ok = (await test("multiple suggestions in one response apply sequentially and correctly, not just the first", async () => {

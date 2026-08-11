@@ -1,4 +1,4 @@
-import { assert, mockApi, setApiKey, showSheetPanelTab, test, withFreshPage } from "./support.mjs";
+import { assert, closeContext, mockApi, openManageWithAI, setApiKey, showSheetPanelTab, test, withFreshPage } from "./support.mjs";
 
 // the compression recommender — a Settings toggle,
 // a Token Estimator banner once Context size crosses a threshold, a
@@ -19,6 +19,15 @@ async function setRecommendCompression(page, enabled) {
   // Settings is a native <dialog> (useDialog.ts) — its close() dispatches
   // the real 'close' event, and the React unmount that follows, a tick
   // after this click resolves, not synchronously within it.
+  await page.waitForTimeout(150);
+}
+
+// Also native <dialog> — same close-event timing note as setRecommendCompression.
+async function setAutoRunCompression(page, enabled) {
+  await page.click('button[aria-label="Settings"]');
+  const checkbox = page.locator('input[aria-label="Run compression immediately without review"]');
+  if ((await checkbox.isChecked()) !== enabled) await checkbox.click();
+  await page.click('button[aria-label="Close settings"]');
   await page.waitForTimeout(150);
 }
 
@@ -54,7 +63,7 @@ export async function run(browser, baseUrl) {
       // completely untouched, proving compression targets exactly what
       // it's told to and nothing else.
       let turnToCompressId;
-      await page.click(".manage-ai-trigger");
+      await openManageWithAI(page);
       await mockApi(page, (body) => {
         turnToCompressId = body.system.match(/Turn to compress\. \(id: ([a-f0-9-]+)\)/)[1];
         return { text: `<!-- SHEET_SUGGESTIONS\n[{"type":"compress_conversation","body":"Digest of earlier turns.","turnIds":["${turnToCompressId}"]}]\n-->` };
@@ -109,14 +118,12 @@ export async function run(browser, baseUrl) {
       await page.click('.chat-pane .chat-input-row button[type="submit"]');
       await page.waitForTimeout(400);
 
-      const contextSizeBefore = await page.locator(".token-stat", { hasText: "Context size" }).textContent();
-
       // Real turn ids are only ever exposed via the system prompt (never
       // rendered in the UI) — captured the same way the model itself would
       // see them, from the next request's own system prompt, rather than
       // hand-waving fake ids that wouldn't exercise the real match logic.
       let turnIds = [];
-      await page.click(".manage-ai-trigger");
+      await openManageWithAI(page);
       await mockApi(page, (body) => {
         turnIds = [...body.system.matchAll(/\(id: ([a-f0-9-]+)\)/g)].map((m) => m[1]);
         return {
@@ -145,9 +152,11 @@ export async function run(browser, baseUrl) {
       const inactiveOriginals = page.locator(".memory-row--inactive:not(.conversation-summary-digest)");
       assert((await inactiveOriginals.count()) === 2, "both covered turns should now show as inactive — deactivated, not deleted");
       assert(await page.locator(".memory-row", { hasText: "Turn one about setup." }).isVisible(), "a deactivated turn stays visible (dimmed) for audit, never silently removed");
-
-      const contextSizeAfter = await page.locator(".token-stat", { hasText: "Context size" }).textContent();
-      assert(contextSizeAfter !== contextSizeBefore, "Context size should actually change once the turns are excluded from serialization");
+      // The live "Context size" readout this used to check against was
+      // removed from the UI (ChatPane.tsx: "Background-only now") — the
+      // structural assertions above (summary exists, both turns inactive)
+      // already prove the exclusion took effect; there's no separate
+      // visible number left to cross-check it against.
     })) && ok;
   });
 
@@ -162,7 +171,7 @@ export async function run(browser, baseUrl) {
       await page.click('.chat-pane .chat-input-row button[type="submit"]');
       await page.waitForTimeout(400);
 
-      await page.click(".manage-ai-trigger");
+      await openManageWithAI(page);
       await mockApi(page, (body) => {
         const ids = [...body.system.matchAll(/\(id: ([a-f0-9-]+)\)/g)].map((m) => m[1]);
         return { text: `<!-- SHEET_SUGGESTIONS\n[{"type":"compress_conversation","body":"Condensed.","turnIds":${JSON.stringify(ids)}}]\n-->` };
@@ -182,7 +191,7 @@ export async function run(browser, baseUrl) {
 
     ok = (await test("a compress_conversation suggestion naming only unmatched turnIds fails visibly, not silently", async () => {
       // The previous test closed the panel via .manage-ai-back — reopen it.
-      await page.click(".manage-ai-trigger");
+      await openManageWithAI(page);
       await mockApi(page, () => ({
         text: `<!-- SHEET_SUGGESTIONS\n[{"type":"compress_conversation","body":"Condensed.","turnIds":["does-not-exist"]}]\n-->`,
       }));
@@ -213,7 +222,7 @@ export async function run(browser, baseUrl) {
       await page.waitForTimeout(400);
 
       // First compression: fold turns one and two into an initial summary.
-      await page.click(".manage-ai-trigger");
+      await openManageWithAI(page);
       await mockApi(page, (body) => {
         const ids = [...body.system.matchAll(/\(id: ([a-f0-9-]+)\)/g)].map((m) => m[1]);
         return { text: `<!-- SHEET_SUGGESTIONS\n[{"type":"compress_conversation","body":"First digest.","turnIds":${JSON.stringify(ids)}}]\n-->` };
@@ -235,7 +244,7 @@ export async function run(browser, baseUrl) {
       // and the existing "[Summary]: First digest." entry in the system
       // prompt (both render with their own "(id: ...)"), and names both —
       // exactly what a real model is now instructed to do.
-      await page.click(".manage-ai-trigger");
+      await openManageWithAI(page);
       await mockApi(page, (body) => {
         const ids = [...body.system.matchAll(/\(id: ([a-f0-9-]+)\)/g)].map((m) => m[1]);
         assert(body.system.includes("[Summary]: First digest."), "sanity check: the existing summary should be visible to the model, with its own id");
@@ -266,39 +275,112 @@ export async function run(browser, baseUrl) {
     await page.waitForSelector(".sheet-switcher");
     await setApiKey(page, "sk-ant-fake-key");
 
-    ok = (await test("the banner shows by default once Context size crosses the threshold", async () => {
+    // The always-visible "Context size" readout this recommender used to
+    // key off of, and the non-blocking banner it showed, are both gone —
+    // CompressionPrompt.tsx is a blocking native <dialog> now, triggered
+    // purely as a background effect of ChatPane's own token estimate
+    // (never rendered as a number anywhere). Every close path (X, "Not
+    // now", backdrop click) routes through the same dialog 'close' event
+    // and records the current token count as a dismissal floor — the
+    // prompt won't reappear until context grows by another full threshold
+    // past that floor. And since it's a modal dialog, its backdrop blocks
+    // the rest of the page — Settings isn't reachable while it's open, so
+    // reaching it always dismisses the prompt as a side effect first
+    // (confirmed live: clicking the Settings button while the prompt is
+    // open times out).
+    const compressionPrompt = () => page.locator("#compression-prompt-title");
+
+    ok = (await test("the compression prompt shows by default once context crosses the threshold", async () => {
       await mockApi(page, () => `ok.\n\n<!-- SHEET_SUGGESTIONS\n[{"type":"conversation_summary_update","body":"${"x".repeat(15000)}"}]\n-->`);
       await page.fill(".chat-input-row textarea", "hello");
       await page.click('.chat-pane .chat-input-row button[type="submit"]');
       await page.waitForTimeout(400);
 
-      const contextSize = await page.locator(".token-stat", { hasText: "Context size" }).textContent();
-      const tokens = Number(contextSize.match(/~(\d+)/)[1]);
-      assert(tokens >= 3000, `sanity check: this test needs a large context, got ~${tokens} tokens`);
-      assert(await page.locator(".compression-banner").isVisible(), "the banner should show without any setting change — on is the default now");
+      assert(await compressionPrompt().isVisible(), "the prompt should show without any setting change — on is the default now");
     })) && ok;
 
-    ok = (await test("turning the setting off hides the banner even with a large context, and back on shows it again pre-filling Manage with AI", async () => {
+    ok = (await test("dismissing it, turning the setting off, then growing context further keeps it hidden", async () => {
+      await page.click('button[aria-label="Close"]');
+      await page.waitForTimeout(150);
       await setRecommendCompression(page, false);
-      assert((await page.locator(".compression-banner").count()) === 0, "the banner should hide once explicitly turned off, even though context is still large");
 
+      await mockApi(page, () => `ok.\n\n<!-- SHEET_SUGGESTIONS\n[{"type":"conversation_summary_update","body":"${"x".repeat(15000)}"}]\n-->`);
+      await page.fill(".chat-input-row textarea", "more");
+      await page.click('.chat-pane .chat-input-row button[type="submit"]');
+      await page.waitForTimeout(400);
+
+      assert((await compressionPrompt().count()) === 0, "the prompt should not reappear once the setting is off, even past another threshold's worth of growth");
+    })) && ok;
+
+    ok = (await test("turning the setting back on shows the prompt again immediately, since context already grew past the dismissal floor while it was off", async () => {
+      // Re-evaluated live off the current sheet, not just future sends —
+      // the previous test's "more" message already pushed context past the
+      // next threshold while the setting was off; flipping it back on and
+      // closing Settings re-renders ChatPane, which shows the prompt right
+      // away, no new send required.
       await setRecommendCompression(page, true);
-      assert(await page.locator(".compression-banner").isVisible(), "the banner should reappear once turned back on — context is still large from the previous test");
+      assert(await compressionPrompt().isVisible(), "the prompt should reappear as soon as the setting flips back on");
+    })) && ok;
 
-      await page.click(".compression-banner-button");
-      assert(await page.locator(".manage-ai-panel").isVisible(), "clicking the banner should open Manage with AI");
+    ok = (await test("accepting it by default runs compression immediately, not opening Manage with AI", async () => {
+      // "Run compression immediately without review" (auto-run) defaults
+      // to on — the deliberate exception among this app's recommend/
+      // collapse-by-default toggles (settingsStorage.ts): version history
+      // already makes this a one-click revert, so the low-friction path is
+      // the safe default. Accepting sends COMPRESSION_INSTRUCTION as a real
+      // call ("chat" mode, unlike Manage with AI's "sheet_editor" mode
+      // elsewhere in this file) — a compress_conversation response with no
+      // conversation_summary_update of its own doesn't satisfy the
+      // mandatory-proposal rule, so it also triggers a second, disambiguated
+      // follow-up call (conversationSummaryFollowup.ts). Discriminate by
+      // system prompt: only the main call's includes the suggestion-format
+      // instructions.
+      let turnIds = [];
+      await mockApi(page, (body) => {
+        if (!body.system.includes("## Suggesting Sheet Changes")) {
+          return { text: `<!-- SHEET_SUGGESTIONS\n[{"type":"conversation_summary_update","body":"n/a"}]\n-->` };
+        }
+        turnIds = [...body.system.matchAll(/\(id: ([a-f0-9-]+)\)/g)].map((m) => m[1]);
+        return { text: `<!-- SHEET_SUGGESTIONS\n[{"type":"compress_conversation","body":"Digest.","turnIds":${JSON.stringify(turnIds)}}]\n-->` };
+      });
+      await page.click('.modal-actions button:has-text("Compress")');
+      await page.waitForTimeout(500);
+
+      assert(turnIds.length > 0, "sanity check: the compress instruction should have gone out and matched real turn ids");
+      assert((await page.locator(".manage-ai-panel").count()) === 0, "accepting should not open Manage with AI while auto-run is on");
+      await showSheetPanelTab(page, "chat");
+      const summaries = page.locator(".conversation-summary-digest");
+      assert((await summaries.count()) > 0, "accepting should have actually run compression, producing a summary");
+      await closeContext(page);
+    })) && ok;
+
+    ok = (await test("with auto-run off, accepting the prompt opens Manage with AI pre-filled instead", async () => {
+      // Nothing is blocking Settings here — the previous test's own
+      // "Compress" click already closed the prompt (dialog.close() fires
+      // regardless of how a dialog is closed).
+      await setAutoRunCompression(page, false);
+
+      // The previous test's accepted dismissal floor was recorded from the
+      // token count right before compression actually shrank anything
+      // (ChatPane's onDismiss fires off the pre-compression tokenCount) —
+      // comfortably clearing it needs more than one more 15000-char turn.
+      await mockApi(page, () => `ok.\n\n<!-- SHEET_SUGGESTIONS\n[{"type":"conversation_summary_update","body":"${"x".repeat(15000)}"}]\n-->`);
+      for (let i = 0; i < 3; i++) {
+        await page.fill(".chat-input-row textarea", `yet more ${i}`);
+        await page.click('.chat-pane .chat-input-row button[type="submit"]');
+        await page.waitForTimeout(400);
+        if (await compressionPrompt().isVisible()) break;
+      }
+      assert(await compressionPrompt().isVisible(), "sanity check: the prompt should still trigger the same way with auto-run off");
+
+      await page.click('.modal-actions button:has-text("Compress")');
+      assert(await page.locator(".manage-ai-panel").isVisible(), "with auto-run off, accepting should open Manage with AI instead of compressing directly");
       // The pre-fill applies via a useEffect after mount, not synchronously
       // with the panel's own first paint — give it a beat before reading.
       await page.waitForTimeout(150);
       const draftValue = await page.locator(".manage-ai-input-row textarea").inputValue();
       assert(draftValue.length > 0, "the instruction field should be pre-filled");
       assert((await page.locator(".manage-ai-changes .change-card").count()) === 0, "pre-filling must not auto-submit — nothing should have been sent yet");
-    })) && ok;
-
-    ok = (await test("turning the setting back off hides the banner immediately", async () => {
-      await page.click(".manage-ai-back");
-      await setRecommendCompression(page, false);
-      assert((await page.locator(".compression-banner").count()) === 0, "the banner should disappear once the setting is off again, even with the same large context");
     })) && ok;
   });
 

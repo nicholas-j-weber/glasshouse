@@ -1,6 +1,9 @@
 import {
   assert,
+  closeContext,
   mockApi,
+  openHistory,
+  openManageWithAI,
   setApiKey,
   setCollapseHistoryByDefault,
   setCollapseTurnsByDefault,
@@ -41,6 +44,7 @@ export async function run(browser, baseUrl) {
       await page.click('.chat-pane .chat-input-row button[type="submit"]');
       await page.waitForTimeout(400);
 
+      await showSheetPanelTab(page, "chat");
       const turnRow = page.locator(".memory-row", { hasText: "User asked something" }).first();
       const body = turnRow.locator(".memory-row-body");
       assert(!(await body.evaluate((el) => el.classList.contains("memory-row-body--collapsed"))), "should start expanded (setting is off)");
@@ -55,6 +59,7 @@ export async function run(browser, baseUrl) {
     })) && ok;
 
     ok = (await test("an AI-created summary can be collapsed the same way, independent of turns", async () => {
+      await closeContext(page); // reach the chat input, which sits underneath the still-open overlay
       // summaries are AI-generated only now — the manual "Add
       // summary" form was removed as redundant with "Add entry"/"Add
       // memory". A second turn, compressed on its own, produces one here.
@@ -64,7 +69,7 @@ export async function run(browser, baseUrl) {
       await page.waitForTimeout(400);
 
       let secondTurnId;
-      await page.click(".manage-ai-trigger");
+      await openManageWithAI(page);
       await mockApi(page, (reqBody) => {
         secondTurnId = reqBody.system.match(/A second turn to compress\. \(id: ([a-f0-9-]+)\)/)[1];
         return { text: `<!-- SHEET_SUGGESTIONS\n[{"type":"compress_conversation","body":"A condensed digest of earlier turns.","turnIds":["${secondTurnId}"]}]\n-->` };
@@ -101,6 +106,10 @@ export async function run(browser, baseUrl) {
     await page.waitForTimeout(400);
 
     ok = (await test("turning the This Chat setting on live-collapses a turn already on screen", async () => {
+      // Settings is reachable while Context is open (a plain overlay div
+      // confined to .app-body, unlike the header — confirmed live), so this
+      // genuinely observes the same still-mounted row react live.
+      await showSheetPanelTab(page, "chat");
       const body = page.locator(".memory-row", { hasText: "An existing turn on screen" }).locator(".memory-row-body");
       assert(!(await body.evaluate((el) => el.classList.contains("memory-row-body--collapsed"))), "sanity check: starts expanded");
 
@@ -127,8 +136,7 @@ export async function run(browser, baseUrl) {
     await page.fill(".chat-input-row textarea", "hello");
     await page.click('.chat-pane .chat-input-row button[type="submit"]');
     await page.waitForTimeout(400);
-    await showSheetPanelTab(page, "history");
-    await page.waitForTimeout(200);
+    await openHistory(page);
 
     ok = (await test("a History entry's diff list starts expanded, and its own toggle collapses it", async () => {
       const versionRow = page.locator(".version-row").first();
@@ -149,8 +157,7 @@ export async function run(browser, baseUrl) {
     await page.fill(".chat-input-row textarea", "hello");
     await page.click('.chat-pane .chat-input-row button[type="submit"]');
     await page.waitForTimeout(400);
-    await showSheetPanelTab(page, "history");
-    await page.waitForTimeout(200);
+    await openHistory(page);
 
     ok = (await test("clicking a History entry's toggle a second time re-expands it, and no override means the global default still applies", async () => {
       const versionRow = page.locator(".version-row").first();
@@ -171,13 +178,26 @@ export async function run(browser, baseUrl) {
     await page.fill(".chat-input-row textarea", "hello");
     await page.click('.chat-pane .chat-input-row button[type="submit"]');
     await page.waitForTimeout(400);
-    await showSheetPanelTab(page, "history");
-    await page.waitForTimeout(200);
 
-    ok = (await test("turning the History setting on live-collapses an entry already on screen", async () => {
+    ok = (await test("turning the History setting on collapses an entry the next time it's opened", async () => {
+      // History is a native <dialog> too (HistoryModal.tsx) — its own
+      // backdrop blocks Settings the same way CompressionPrompt's does
+      // (confirmed live: clicking Settings while it's open times out), and
+      // App.tsx conditionally renders it ({historyOpen && <HistoryModal/>}),
+      // so closing it to reach Settings unmounts VersionHistory outright.
+      // There's no way to flip the setting while an entry is genuinely
+      // still on screen — this checks the next open picks up the live value.
+      await openHistory(page);
       const versionRow = page.locator(".version-row").first();
+      assert(await versionRow.locator(".version-diff").isVisible(), "sanity check: starts expanded");
+      await page.keyboard.press("Escape");
+      await page.waitForTimeout(150);
+
       await setCollapseHistoryByDefault(page, true);
-      assert((await versionRow.locator(".version-diff").count()) === 0, "flipping the global default should visibly collapse an entry already on screen");
+
+      await openHistory(page);
+      const reopenedRow = page.locator(".version-row").first();
+      assert((await reopenedRow.locator(".version-diff").count()) === 0, "flipping the global default should collapse a freshly-reopened entry");
     })) && ok;
   });
 
@@ -192,6 +212,7 @@ export async function run(browser, baseUrl) {
       await page.click('.chat-pane .chat-input-row button[type="submit"]');
       await page.waitForTimeout(400);
 
+      await showSheetPanelTab(page, "chat");
       const turnRow = page.locator(".memory-row", { hasText: "A turn about to be compressed away" });
       assert(
         !(await turnRow.locator(".memory-row-body").evaluate((el) => el.classList.contains("memory-row-body--collapsed"))),
@@ -202,7 +223,7 @@ export async function run(browser, baseUrl) {
       // permanently flips active: false (a manual checkbox toggle is
       // session-only overlay) — accept one to get a real inactive turn.
       let turnIds = [];
-      await page.click(".manage-ai-trigger");
+      await openManageWithAI(page);
       await mockApi(page, (body) => {
         turnIds = [...body.system.matchAll(/\(id: ([a-f0-9-]+)\)/g)].map((m) => m[1]);
         return { text: `<!-- SHEET_SUGGESTIONS\n[{"type":"compress_conversation","body":"Digest.","turnIds":${JSON.stringify(turnIds)}}]\n-->` };
@@ -213,6 +234,7 @@ export async function run(browser, baseUrl) {
       await page.locator(".change-card").locator('button[aria-label="Accept"]').click();
       await page.waitForTimeout(400);
       await page.click(".manage-ai-back");
+      await showSheetPanelTab(page, "chat");
       await page.waitForTimeout(200);
 
       const body = turnRow.locator(".memory-row-body");
@@ -244,8 +266,7 @@ export async function run(browser, baseUrl) {
     await page.fill(".chat-input-row textarea", "hello");
     await page.click('.chat-pane .chat-input-row button[type="submit"]');
     await page.waitForTimeout(400);
-    await showSheetPanelTab(page, "history");
-    await page.waitForTimeout(200);
+    await openHistory(page);
 
     // a confirmed real bug — with the diff list collapsed, the
     // "N changes" toggle and "Revert to here" sat directly against each

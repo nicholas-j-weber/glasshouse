@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { addMemory, assert, createChat, setApiKey, showSheetPanelTab, test, withFreshPage } from "./support.mjs";
+import { addMemory, assert, closeContext, createChat, setApiKey, showSheetPanelTab, test, withFreshPage } from "./support.mjs";
 
 // export/import round-trips both the local sheet and
 // the global memory pool — verified through a real file download from one
@@ -52,21 +52,27 @@ export async function run(browser, baseUrl) {
     const memSection = page.locator(".sheet-section", { hasText: "Memories" }).first();
 
     ok = (await test("a fresh install has no memory of the exported data before importing", async () => {
+      await showSheetPanelTab(page, "memories");
       assert(!(await memSection.locator(".memory-list").textContent()).includes("Favorite Color"), "fresh install must not already have the memory");
     })) && ok;
 
     ok = (await test("importing the file restores both the local Tone and the global memory", async () => {
+      await showSheetPanelTab(page, "chat"); // the import file input lives in the This Chat tab
       await page.setInputFiles("input[type=file]", tmpFile);
       await page.waitForTimeout(500);
 
+      await showSheetPanelTab(page, "memories");
       assert((await memSection.locator(".memory-list").textContent()).includes("Favorite Color"), "global memory should be restored");
+      await showSheetPanelTab(page, "chat");
       const toneSection = page.locator(".inline-field", { hasText: "Tone" }).first();
       assert((await toneSection.locator("textarea").inputValue()).includes("EXPORT_TEST_TONE"), "local tone should be restored");
     })) && ok;
 
     ok = (await test("the restored memory is visible on a brand-new sheet, proving it's genuinely global", async () => {
+      await closeContext(page); // createChat needs the chats sidebar reachable
       await createChat(page, "Second Chat");
       await page.waitForTimeout(400);
+      await showSheetPanelTab(page, "memories");
       assert((await memSection.locator(".memory-list").textContent()).includes("Favorite Color"), "restored memory should be visible from a new sheet too");
     })) && ok;
   });
@@ -85,6 +91,7 @@ export async function run(browser, baseUrl) {
     await setApiKey(page, "sk-ant-fake-key");
     const sameSessionFile = path.join(os.tmpdir(), `context-sheets-e2e-export-same-session-${Date.now()}.json`);
 
+    await showSheetPanelTab(page, "chat");
     const toneSection = page.locator(".inline-field", { hasText: "Tone" }).first();
     await toneSection.locator("textarea").fill("SAME_SESSION_TONE");
     await toneSection.locator("button", { hasText: "Save" }).click();
@@ -96,10 +103,12 @@ export async function run(browser, baseUrl) {
     // Chat 1 (the export's source) stays right where it is — untouched,
     // still in the same IndexedDB — while a second, different chat is
     // created and the same file is imported into *that* one instead.
+    await closeContext(page); // createChat needs the chats sidebar reachable
     await createChat(page, "Duplicate Target");
     await page.waitForTimeout(300);
 
     ok = (await test("importing an export into a different, still-existing chat in the same session doesn't throw ConstraintError (fixes a confirmed real bug)", async () => {
+      await showSheetPanelTab(page, "chat");
       await page.setInputFiles("input[type=file]", sameSessionFile);
       await page.waitForTimeout(500);
 
@@ -109,8 +118,10 @@ export async function run(browser, baseUrl) {
     })) && ok;
 
     ok = (await test("the original chat the file was exported from is completely unaffected", async () => {
+      await closeContext(page);
       await page.locator(".sheet-switcher-name", { hasText: "Chat 1" }).click();
       await page.waitForTimeout(300);
+      await showSheetPanelTab(page, "chat");
       const toneTextarea = page.locator(".inline-field", { hasText: "Tone" }).first().locator("textarea");
       assert((await toneTextarea.inputValue()).includes("SAME_SESSION_TONE"), "the source chat should still have its own (identical-content, different-id) version intact");
     })) && ok;

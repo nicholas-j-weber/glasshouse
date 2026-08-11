@@ -1,7 +1,5 @@
 import { chromium } from "playwright";
-import { run as runAutoApplyToggle } from "./autoApplyToggle.e2e.mjs";
 import { run as runCollapseContent } from "./collapseContent.e2e.mjs";
-import { run as runCollapseSuggestions } from "./collapseSuggestions.e2e.mjs";
 import { run as runCompressionRecommender } from "./compressionRecommender.e2e.mjs";
 import { run as runExportImport } from "./exportImport.e2e.mjs";
 import { run as runGlobalMemories } from "./globalMemories.e2e.mjs";
@@ -21,8 +19,6 @@ const specs = [
   ["globalMemories.e2e.mjs", runGlobalMemories],
   ["exportImport.e2e.mjs", runExportImport],
   ["manageWithAI.e2e.mjs", runManageWithAI],
-  ["autoApplyToggle.e2e.mjs", runAutoApplyToggle],
-  ["collapseSuggestions.e2e.mjs", runCollapseSuggestions],
   ["wordWrap.e2e.mjs", runWordWrap],
   ["compressionRecommender.e2e.mjs", runCompressionRecommender],
   ["collapseContent.e2e.mjs", runCollapseContent],

@@ -1,4 +1,4 @@
-import { addMemory, assert, createChat, mockApi, setApiKey, showSheetPanelTab, test, withFreshPage } from "./support.mjs";
+import { addMemory, assert, closeContext, createChat, mockApi, openHistory, setApiKey, showSheetPanelTab, test, withFreshPage } from "./support.mjs";
 
 // ordinary memories are shared across every sheet;
 // Tone and Conversation Summary stay per-sheet; edits/deletes from any
@@ -33,6 +33,10 @@ export async function run(browser, baseUrl) {
       await toneSection().locator("button", { hasText: "Save" }).click();
       await page.waitForTimeout(300);
 
+      // Context is a full app-body takeover at every width now (not a
+      // sidebar) — close it to reach the chat input and the chats sidebar
+      // underneath.
+      await closeContext(page);
       await page.fill(".chat-input-row textarea", "hello from sheet 1");
       await page.click('.chat-pane .chat-input-row button[type="submit"]');
       await page.waitForTimeout(500); // conversation_summary_update auto-applies now — no accept click needed
@@ -40,10 +44,12 @@ export async function run(browser, baseUrl) {
       await createChat(page, "Chat Two");
       await page.waitForTimeout(400);
 
+      await showSheetPanelTab(page, "memories");
       assert((await memSection().locator(".memory-list").textContent()).includes("Favorite Color"), "global memory should be visible on Chat 2");
     })) && ok;
 
     ok = (await test("Tone and Conversation Summary stay independent per sheet", async () => {
+      await showSheetPanelTab(page, "chat");
       assert(!(await toneSection().locator("textarea").inputValue()).includes("SHEET1_DISTINCTIVE_TONE"), "Chat 2's tone must not be Chat 1's");
       assert(!(await convoSection().textContent()).includes("local turn body"), "Chat 1's conversation turn must not leak into Chat 2");
     })) && ok;
@@ -55,10 +61,13 @@ export async function run(browser, baseUrl) {
       await memSection().locator(".memory-row--editing button", { hasText: "Save" }).click();
       await page.waitForTimeout(400);
 
+      await closeContext(page);
       await page.locator(".sheet-switcher-name", { hasText: "Chat 1" }).click();
       await page.waitForTimeout(400);
 
+      await showSheetPanelTab(page, "memories");
       assert((await memSection().locator(".memory-list").textContent()).includes("Teal"), "Chat 1 should see the edit made from Chat 2");
+      await showSheetPanelTab(page, "chat");
       assert((await toneSection().locator("textarea").inputValue()).includes("SHEET1_DISTINCTIVE_TONE"), "Chat 1's own tone must be untouched");
       assert((await convoSection().textContent()).includes("local turn body"), "Chat 1's own turn must be untouched");
     })) && ok;
@@ -67,8 +76,10 @@ export async function run(browser, baseUrl) {
       await showSheetPanelTab(page, "memories");
       await memSection().locator('.memory-row button[aria-label="Delete"]').click();
       await page.waitForTimeout(400);
+      await closeContext(page);
       await page.locator(".sheet-switcher-name", { hasText: "Chat Two" }).click();
       await page.waitForTimeout(400);
+      await showSheetPanelTab(page, "memories");
       assert(!(await memSection().locator(".memory-list").textContent()).includes("Teal"), "deleted global memory must be gone everywhere");
     })) && ok;
 
@@ -83,13 +94,17 @@ export async function run(browser, baseUrl) {
       await notesSection.locator("button", { hasText: "Save" }).click();
       await page.waitForTimeout(400);
 
-      await showSheetPanelTab(page, "history");
-      await page.waitForTimeout(200);
-      const revertButtons = page.locator(".version-row button:has-text('Revert to here')");
+      // History moved out to its own header button/modal — independent of
+      // Context, reachable regardless of whether Context is open or closed.
+      await openHistory(page);
+      const revertButtons = page.locator(".modal--history .version-row button:has-text('Revert to here')");
       assert((await revertButtons.count()) > 0, "expected at least one revertable local version");
       await revertButtons.first().click();
       await page.waitForTimeout(400);
+      await page.keyboard.press("Escape");
+      await page.waitForTimeout(150);
 
+      await showSheetPanelTab(page, "memories");
       assert((await memSection().locator(".memory-list").textContent()).includes("Persisted Fact"), "global memory must survive a local revert");
     })) && ok;
   });
@@ -152,6 +167,7 @@ export async function run(browser, baseUrl) {
     })) && ok;
 
     ok = (await test("an edit_memory suggestion targeting an unknown id fails visibly, not silently", async () => {
+      await closeContext(page); // Context was left open from the previous test
       await page.fill(".chat-input-row textarea", "hi");
       await page.click('.chat-pane .chat-input-row button[type="submit"]');
       await page.waitForTimeout(500);
@@ -160,14 +176,14 @@ export async function run(browser, baseUrl) {
       // turn succeeds silently (conversation_summary_update never gets a
       // toast — see suggestionSession.ts's toastTextFor); the bad
       // edit_memory fails visibly, now via a toast instead of a status
-      // badge on a pending card.
+      // badge on a pending card. There's no separate permanent transcript
+      // record anymore (SuggestionSessionView's old inline "applied" list
+      // was removed — Context/History are the durable record now, the
+      // toast is just the moment-of announcement).
       assert(await page.locator(".toast--failed").isVisible(), "a suggestion targeting an unknown id should fail visibly via a toast");
       assert((await page.locator(".toast--applied").count()) === 0, "the failed suggestion shouldn't also show a success toast");
 
-      // The transcript's own permanent record should say so too, not just
-      // the transient toast — scrolling back later should still show it.
-      assert((await page.locator(".chat-applied-item--failed").count()) === 1, "the chat transcript should permanently record the failure, not just the transient toast");
-
+      await showSheetPanelTab(page, "chat");
       const convoSection = page.locator(".sheet-section", { hasText: "Conversation Summary" }).first();
       assert((await convoSection.textContent()).includes("turn"), "the valid conversation_summary_update in the same batch should still have applied");
     })) && ok;
@@ -186,14 +202,16 @@ export async function run(browser, baseUrl) {
       await page.click('.chat-pane .chat-input-row button[type="submit"]');
       await page.waitForTimeout(400);
 
-      // Applied immediately — no accept click anywhere in this test.
-      await showSheetPanelTab(page, "memories");
-      assert((await memSection().locator(".memory-list").textContent()).includes("A cat named Milo"), "the memory should already be added with no manual accept step");
-      await showSheetPanelTab(page, "chat");
-
+      // Checked with Context closed — the toast lives in the chat column,
+      // which a full app-body takeover Context overlay would sit on top of.
       const toast = page.locator(".toast--applied", { hasText: "Pet" });
       assert(await toast.isVisible(), "an applied new_memory should announce itself via a toast");
       assert(await toast.locator('button[aria-label="Undo"]').isVisible(), "the toast should offer Undo while it's showing");
+
+      // Applied immediately — no accept click anywhere in this test.
+      await showSheetPanelTab(page, "memories");
+      assert((await memSection().locator(".memory-list").textContent()).includes("A cat named Milo"), "the memory should already be added with no manual accept step");
+      await closeContext(page);
     })) && ok;
 
     ok = (await test("clicking Undo on a toast reverts the auto-applied memory", async () => {

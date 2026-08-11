@@ -1,4 +1,4 @@
-import { assert, mockApi, setApiKey, setAutoApply, test, withFreshPage } from "./support.mjs";
+import { assert, closeContext, mockApi, openManageWithAI, setApiKey, showSheetPanelTab, test, withFreshPage } from "./support.mjs";
 
 // a confirmed real bug, not a hypothetical — normal
 // word-wrapping only breaks at spaces, so one long unbroken token (a URL,
@@ -25,7 +25,10 @@ export async function run(browser, baseUrl) {
     await page.waitForSelector(".sheet-switcher");
     await setApiKey(page, "sk-ant-fake-key");
 
-    ok = (await test("a long unbroken token in an applied suggestion summary wraps instead of overflowing", async () => {
+    ok = (await test("a long unbroken token in an auto-applied memory's body wraps instead of overflowing", async () => {
+      // The old inline "applied" list this used to check was removed —
+      // Context/History are the durable record now. A new_memory's body
+      // permanently lives in the Memories tab's MemoryRow instead.
       await mockApi(page, () => ({
         text: `Got it.\n\n<!-- SHEET_SUGGESTIONS\n[{"type":"new_memory","label":"Long","body":"${LONG_TOKEN}"}]\n-->`,
       }));
@@ -33,7 +36,9 @@ export async function run(browser, baseUrl) {
       await page.click('.chat-pane .chat-input-row button[type="submit"]');
       await page.waitForTimeout(400);
 
-      assert(!(await overflows(page, ".chat-applied-list li")), "the applied-list entry should wrap, not overflow its container");
+      await showSheetPanelTab(page, "memories");
+      assert(!(await overflows(page, ".memory-row-main > span")), "the memory row's body should wrap, not overflow its container");
+      await closeContext(page); // next test needs the chat input reachable again
     })) && ok;
 
     ok = (await test("a long unbroken token in the model's own reply wraps instead of overflowing", async () => {
@@ -51,19 +56,21 @@ export async function run(browser, baseUrl) {
     })) && ok;
 
     ok = (await test("a long unbroken token in a pending ChangeCard's diff text wraps instead of overflowing", async () => {
-      await setAutoApply(page, false);
+      // Chat mode always auto-applies now — the only remaining pending-
+      // ChangeCard surface is Manage with AI's own mandatory review.
+      await openManageWithAI(page);
       await mockApi(page, () => ({
-        text: `<!-- SHEET_SUGGESTIONS\n[{"type":"new_memory","label":"Pending","body":"${LONG_TOKEN}"},{"type":"conversation_summary_update","body":"turn"}]\n-->`,
+        text: `<!-- SHEET_SUGGESTIONS\n[{"type":"new_memory","label":"Pending","body":"${LONG_TOKEN}"}]\n-->`,
       }));
-      await page.fill(".chat-input-row textarea", "pending one");
-      await page.click('.chat-pane .chat-input-row button[type="submit"]');
+      await page.fill(".manage-ai-input-row textarea", "pending one");
+      await page.click(".manage-ai-go");
       await page.waitForTimeout(400);
 
       assert(!(await overflows(page, ".change-card-after")), "the pending card's after-text should wrap, not overflow its container");
     })) && ok;
 
     ok = (await test("a long unbroken token in a Manage with AI 'no changes' response wraps instead of overflowing", async () => {
-      await page.click(".manage-ai-trigger");
+      // Manage with AI is already open from the previous test.
       await mockApi(page, () => `No changes, but a word: ${LONG_TOKEN} anyway.`);
       await page.fill(".manage-ai-input-row textarea", "anything?");
       await page.click(".manage-ai-go");
@@ -82,6 +89,7 @@ export async function run(browser, baseUrl) {
       await page.click('.chat-pane .chat-input-row button[type="submit"]');
       await page.waitForTimeout(400);
 
+      await showSheetPanelTab(page, "chat");
       assert(!(await overflows(page, ".memory-row-body")), "a conversation turn's body should wrap, not overflow its row");
     })) && ok;
   });

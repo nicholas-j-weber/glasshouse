@@ -1,4 +1,4 @@
-import { assert, mockApi, setApiKey, showSheetPanelTab, test, withFreshPage } from "./support.mjs";
+import { assert, closeContext, mockApi, openContext, openManageWithAI, setApiKey, showSheetPanelTab, test, withFreshPage } from "./support.mjs";
 
 // Coverage for ManageWithAIPanel — the AI-collaboration surface,
 // reimagined as a one-shot review UI (button in the Context panel header)
@@ -22,12 +22,12 @@ export async function run(browser, baseUrl) {
 
     ok =
       (await test("the Context panel header shows Manage with AI, and opens the panel in place of the chat list", async () => {
+        await openContext(page);
         assert(await page.locator(".manage-ai-trigger").isVisible(), "trigger button should sit in the Context header");
         assert(!(await page.locator(".manage-ai-trigger").evaluate((el) => el.classList.contains("manage-ai-trigger--active"))), "trigger should not look active before the panel is open");
 
         await page.click(".manage-ai-trigger");
         assert(await page.locator(".manage-ai-panel").isVisible(), "panel should open");
-        assert(await page.locator(".manage-ai-trigger").evaluate((el) => el.classList.contains("manage-ai-trigger--active")), "trigger should look active once the panel it opens is visible");
         assert((await page.locator(".manage-ai-panel .sidebar-title").textContent()).includes("Manage with AI"), "panel should be titled correctly");
         assert((await page.locator(".sheet-switcher").count()) === 0, "the chat list should be replaced, not just overlaid");
         assert(await page.locator(".manage-ai-input-row textarea").isVisible(), "instruction textarea should be visible");
@@ -36,24 +36,43 @@ export async function run(browser, baseUrl) {
           "the instruction label above the field should explain what it's for",
         );
         assert((await page.locator(".manage-ai-empty").textContent()) === "Nothing proposed yet.", "should show a plain empty-state hint before any instruction is submitted");
+
+        // Clicking the trigger always closes Context as a side effect
+        // (App.tsx's openManageWithAIFromContext) — the trigger only ever
+        // exists inside Context's own header, so it's gone the instant
+        // Context closes. Verifying it now shows as active means
+        // reopening Context (an independent toggle from Manage with AI
+        // itself) and checking the freshly-rendered trigger there.
+        assert((await page.locator(".manage-ai-trigger").count()) === 0, "the trigger is gone along with Context, which just closed");
+        await openContext(page);
+        assert(await page.locator(".manage-ai-trigger").evaluate((el) => el.classList.contains("manage-ai-trigger--active")), "trigger should look active once reopened, since the panel it opens is still open");
+        await closeContext(page);
       })) && ok;
 
     ok =
-      (await test("the chat pane and Context panel stay visible and interactive while the panel is open", async () => {
-        assert(await page.locator(".chat-pane:not(.chat-pane--embedded)").isVisible(), "the main chat pane should still be visible");
-        assert(await page.locator(".controls-sidebar").isVisible(), "the Context panel should still be visible");
+      (await test("the chat pane stays visible and interactive while the Manage with AI panel is open", async () => {
+        // Context, unlike before, is a full app-body takeover at every
+        // width (not a sidebar) — it can't be genuinely simultaneous with
+        // the chat pane or Manage with AI's panel, only independently
+        // reachable. What actually stays visible/interactive alongside
+        // Manage with AI is the chat pane itself, since the panel only
+        // occupies the chats-sidebar column, not the whole app-body.
+        assert(await page.locator(".chat-pane").isVisible(), "the main chat pane should still be visible");
+        assert(await page.locator(".chats-sidebar .manage-ai-panel").isVisible(), "Manage with AI should occupy the chats sidebar column, not a separate overlay");
 
-        // Actually interact with both, not just check visibility.
+        // Actually interact with the chat pane, not just check visibility.
         await page.fill(".chat-input-row textarea", "still usable");
         assert((await page.locator(".chat-input-row textarea").inputValue()) === "still usable", "the main chat textarea should still accept input");
 
+        // Context is still independently reachable via its header button.
         await showSheetPanelTab(page, "memories");
-        assert(await page.locator(".sheet-section", { hasText: "Memories" }).first().isVisible(), "Context panel tabs should still switch");
-        await showSheetPanelTab(page, "chat");
+        assert(await page.locator(".sheet-section", { hasText: "Memories" }).first().isVisible(), "Context should still be reachable while Manage with AI is open");
+        await closeContext(page);
       })) && ok;
 
     ok =
       (await test("submitting an instruction shows change cards, not a chat reply", async () => {
+        await closeContext(page);
         await mockApi(page, () => ({
           text: `Sure, here's what I'd change.\n\n<!-- SHEET_SUGGESTIONS\n[{"type":"tone_update","body":"Warm and casual."},{"type":"new_memory","label":"Pet","body":"A cat named Milo"}]\n-->`,
         }));
@@ -93,6 +112,7 @@ export async function run(browser, baseUrl) {
 
     ok =
       (await test("rejecting a change card leaves the sheet unchanged, and the card disappears too", async () => {
+        await closeContext(page);
         await page.locator(".change-card", { hasText: "New memory" }).locator('.suggestion-actions button[aria-label="Reject"]').click();
         await page.waitForTimeout(200);
         assert((await page.locator(".change-card").count()) === 0, "a rejected card should vanish immediately, same as an accepted one");
@@ -109,6 +129,7 @@ export async function run(browser, baseUrl) {
         // Both cards from the previous response are now resolved (one
         // accepted, one rejected), so the panel should already be back to
         // zero change-cards before this response even lands.
+        await closeContext(page);
         assert((await page.locator(".change-card").count()) === 0, "sanity check: no undecided cards should remain from the previous response");
 
         await mockApi(page, () => "No changes are warranted here.");
@@ -227,10 +248,15 @@ export async function run(browser, baseUrl) {
 
     ok =
       (await test("the Back button and Escape both restore the normal chat list", async () => {
+        await closeContext(page);
         assert(await page.locator(".manage-ai-panel").isVisible(), "sanity check: panel should still be open");
         await page.click(".manage-ai-back");
         assert((await page.locator(".manage-ai-panel").count()) === 0, "Back button should close the panel");
         assert(await page.locator(".sheet-switcher").isVisible(), "the chats sidebar should be usable again");
+
+        // The trigger only exists inside Context's own header now, so
+        // checking it no longer looks active means reopening Context first.
+        await openContext(page);
         assert(!(await page.locator(".manage-ai-trigger").evaluate((el) => el.classList.contains("manage-ai-trigger--active"))), "trigger should stop looking active once Back closes the panel");
 
         await page.click(".manage-ai-trigger");
@@ -240,16 +266,26 @@ export async function run(browser, baseUrl) {
         assert(await page.locator(".sheet-switcher").isVisible(), "Escape should restore the chat list too");
       })) && ok;
 
+    // Clicking the trigger always force-opens Manage with AI and closes
+    // Context (App.tsx's openManageWithAIFromContext) — it was never a
+    // real open/close toggle, even before Context became a full app-body
+    // overlay. Re-clicking it while the panel is already open just closes
+    // Context (already a no-op from Manage with AI's own perspective) and
+    // re-opens the panel, which was already open — it does not close it,
+    // unlike Back/Escape above.
     ok =
-      (await test("clicking the active trigger button itself also closes the panel", async () => {
+      (await test("clicking the trigger again while the panel is already open keeps it open, not closes it", async () => {
+        await openContext(page);
         await page.click(".manage-ai-trigger");
         assert(await page.locator(".manage-ai-panel").isVisible(), "reopen for this check");
-        assert(await page.locator(".manage-ai-trigger").evaluate((el) => el.classList.contains("manage-ai-trigger--active")), "sanity check: trigger should look active while open");
 
+        await openContext(page);
+        assert(await page.locator(".manage-ai-trigger").evaluate((el) => el.classList.contains("manage-ai-trigger--active")), "sanity check: trigger should look active while open");
         await page.click(".manage-ai-trigger");
-        assert((await page.locator(".manage-ai-panel").count()) === 0, "clicking the already-active trigger should close the panel, same as Back/Escape");
-        assert(await page.locator(".sheet-switcher").isVisible(), "the chats sidebar should be usable again");
-        assert(!(await page.locator(".manage-ai-trigger").evaluate((el) => el.classList.contains("manage-ai-trigger--active"))), "trigger should stop looking active once it closes the panel itself");
+
+        assert(await page.locator(".manage-ai-panel").isVisible(), "the panel should still be open — the trigger only ever opens it, it never closes it");
+        assert((await page.locator(".context-overlay").count()) === 0, "Context itself should be closed, since the trigger's click always closes it as a side effect");
+        assert(await page.locator(".sheet-switcher").count() === 0, "the chats sidebar should still show Manage with AI, not have reverted to the chat list");
       })) && ok;
   });
 
@@ -281,10 +317,11 @@ export async function run(browser, baseUrl) {
         await page.click('.chat-pane .chat-input-row button[type="submit"]');
         await page.waitForTimeout(400);
         assert(
-          await page.locator(".chat-pane:not(.chat-pane--embedded) .chat-applied-list li", { hasText: "Tone update" }).isVisible(),
-          "sanity check: the chat pane itself should record the applied tone suggestion",
+          await page.locator(".toast--applied", { hasText: "Tone updated" }).isVisible(),
+          "sanity check: the chat pane itself should record the applied tone suggestion via a toast",
         );
 
+        await openContext(page);
         await page.click(".manage-ai-trigger");
         // ManageWithAIPanel is mounting for the first time here, which
         // kicks off its own async IndexedDB load (see useSuggestionSession's
@@ -325,10 +362,6 @@ export async function run(browser, baseUrl) {
           (await page.locator(".chat-message", { hasText: "remember something via manage with AI" }).count()) === 0,
           "a Manage with AI instruction should not show up as a chat message in the main transcript",
         );
-        assert(
-          (await page.locator(".chat-pane:not(.chat-pane--embedded) .chat-applied-list li", { hasText: "SHEET_EDITOR_ORIGINATED" }).count()) === 0,
-          "a suggestion proposed via Manage with AI should not show up as an applied entry in the main chat",
-        );
       })) && ok;
   });
 
@@ -342,7 +375,7 @@ export async function run(browser, baseUrl) {
         await mockApi(page, () => ({
           text: `I'd suggest **pruning** the duplicates.\n\n<!-- SHEET_SUGGESTIONS\n[{"type":"new_memory","label":"Item","body":"body"}]\n-->`,
         }));
-        await page.click(".manage-ai-trigger");
+        await openManageWithAI(page);
         await page.fill(".manage-ai-input-row textarea", "clean this up");
         await page.click(".manage-ai-go");
         await page.waitForTimeout(400);
@@ -363,7 +396,7 @@ export async function run(browser, baseUrl) {
 
     ok =
       (await test("an error response can be dismissed, same as a 'no changes' response", async () => {
-        await page.click(".manage-ai-trigger");
+        await openManageWithAI(page);
         await page.fill(".manage-ai-input-row textarea", "do something");
         await page.click(".manage-ai-go");
         await page.waitForTimeout(300);

@@ -1,4 +1,4 @@
-import { assert, createChat, setApiKey, test, withFreshPage } from "./support.mjs";
+import { assert, closeContext, createChat, openContext, setApiKey, test, withFreshPage } from "./support.mjs";
 
 // Cascade-delete edge cases — deleting the only
 // sheet, and deleting the currently active sheet with others remaining.
@@ -16,7 +16,10 @@ export async function run(browser, baseUrl) {
       await page.locator(".sheet-switcher-item").first().locator('button[aria-label^="Delete"]').click();
       await page.waitForTimeout(400);
       assert((await page.locator(".sheet-switcher-item").count()) === 1, "expected exactly one sheet to remain (a fresh default)");
-      assert((await page.locator(".sheet-panel").count()) > 0, "app should still be functional, not stuck loading");
+      assert(await page.locator(".chat-input-row textarea").isVisible(), "app should still be functional, not stuck loading");
+      await openContext(page);
+      assert(await page.locator(".sheet-panel").isVisible(), "Context/SheetPanel should be reachable for the fresh default sheet too");
+      await closeContext(page); // next test needs the chats sidebar reachable again
     })) && ok;
 
     ok = (await test("deleting the active sheet falls back to another remaining sheet", async () => {

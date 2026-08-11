@@ -113,36 +113,21 @@ async function closeSettings(page) {
 }
 
 // The API key lives behind the Settings modal (gear icon), not inline in
-// the header — opens it, fills the key, and closes it again.
+// the header — opens it, fills the key, and closes it again. Goes through
+// openHeaderMenuItem (defined below, hoisted) since Settings sits behind
+// the hamburger at narrow widths — most specs run at this suite's desktop
+// default and never hit that branch, but mobileLayout.e2e.mjs deliberately
+// narrows the viewport before some of its own setup needs the API key.
 export async function setApiKey(page, key) {
-  await page.click('button[aria-label="Settings"]');
+  await openHeaderMenuItem(page, 'button[aria-label="Settings"]');
   await page.fill('input[aria-label="Anthropic API key"]', key);
   await closeSettings(page);
 }
 
-// the chat-mode auto-apply toggle, on by default — only
-// clicks the checkbox if it isn't already in the requested state, so
-// callers don't need to know or care what the default is.
-export async function setAutoApply(page, enabled) {
-  await page.click('button[aria-label="Settings"]');
-  const checkbox = page.locator('input[aria-label="Auto-apply context updates while chatting"]');
-  if ((await checkbox.isChecked()) !== enabled) await checkbox.click();
-  await closeSettings(page);
-}
-
-// the chat pane's "collapse suggestion details by default"
-// toggle, off by default — same only-click-if-needed shape as setAutoApply.
-export async function setCollapseSuggestionsByDefault(page, enabled) {
-  await page.click('button[aria-label="Settings"]');
-  const checkbox = page.locator('input[aria-label="Collapse suggestion details by default"]');
-  if ((await checkbox.isChecked()) !== enabled) await checkbox.click();
-  await closeSettings(page);
-}
-
 // This Chat's turn/summary collapse-by-default toggle, off by
-// default — same only-click-if-needed shape as setCollapseSuggestionsByDefault.
+// default — same only-click-if-needed shape as setCollapseHistoryByDefault below.
 export async function setCollapseTurnsByDefault(page, enabled) {
-  await page.click('button[aria-label="Settings"]');
+  await openHeaderMenuItem(page, 'button[aria-label="Settings"]');
   const checkbox = page.locator('input[aria-label="Collapse conversation turns and summaries by default"]');
   if ((await checkbox.isChecked()) !== enabled) await checkbox.click();
   await closeSettings(page);
@@ -150,19 +135,77 @@ export async function setCollapseTurnsByDefault(page, enabled) {
 
 // History's per-version diff-list collapse-by-default toggle.
 export async function setCollapseHistoryByDefault(page, enabled) {
-  await page.click('button[aria-label="Settings"]');
+  await openHeaderMenuItem(page, 'button[aria-label="Settings"]');
   const checkbox = page.locator('input[aria-label="Collapse History entries by default"]');
   if ((await checkbox.isChecked()) !== enabled) await checkbox.click();
   await closeSettings(page);
 }
 
-// The details sidebar's Memories/This-Chat tab content stays mounted
-// (CSS-hidden) even when inactive, so reads (.textContent()/.inputValue())
-// work regardless of which tab is showing — but fill()/click() require
+// Context/History/Library/Settings collapse into a single ☰ dropdown below
+// App.css's 1024px breakpoint — visible directly in the header at desktop
+// widths (this suite's default), but hidden behind the hamburger at
+// narrower ones. Checked live via .header-menu-trigger's own visibility
+// rather than a hardcoded width comparison, so the same helper works
+// whichever viewport a given spec happens to be running at.
+async function openHeaderMenuItem(page, selector) {
+  const hamburger = page.locator(".header-menu-trigger");
+  if (await hamburger.isVisible()) {
+    await hamburger.click();
+  }
+  await page.click(selector);
+}
+
+// Context is a header button/overlay now (previously an always-visible
+// sidebar) — opens it if it isn't already, so call sites don't need to
+// track whether some earlier step already opened it.
+export async function openContext(page) {
+  if ((await page.locator(".context-overlay").count()) === 0) {
+    await openHeaderMenuItem(page, ".context-trigger");
+    await page.waitForSelector(".context-overlay");
+  }
+}
+
+// Context is a full-viewport overlay within .app-body at every width now
+// (App.css's .context-overlay: position: absolute; inset: 0), not a
+// sidebar the chat pane stays interactive alongside — so any test that
+// edits something in Context and then needs to send a chat message or use
+// the chats sidebar again must close it first, or those elements sit
+// underneath an overlay intercepting their clicks.
+export async function closeContext(page) {
+  if ((await page.locator(".context-overlay").count()) === 0) return;
+  await openHeaderMenuItem(page, ".context-trigger");
+  await page.waitForSelector(".context-overlay", { state: "detached" });
+}
+
+export async function openHistory(page) {
+  await openHeaderMenuItem(page, 'button[aria-label="History"]');
+  await page.waitForSelector(".modal--history");
+  // The modal shell mounts synchronously, but VersionHistory's own lineage
+  // fetch (useActiveLineage) is async and starts empty — waiting only for
+  // the shell leaves a real race where .version-row doesn't exist yet.
+  // There's always at least the skeleton version, so this reliably settles.
+  await page.waitForSelector(".version-row");
+}
+
+// Manage with AI's trigger lives inside the Context overlay's own header
+// (ContextOverlay.tsx) — opens Context first if needed. Clicking the
+// trigger closes Context as a side effect (App.tsx's
+// openManageWithAIFromContext), which is real app behavior, not a bug.
+export async function openManageWithAI(page) {
+  await openContext(page);
+  await page.click(".manage-ai-trigger");
+  await page.waitForSelector(".manage-ai-panel");
+}
+
+// SheetPanel's This-Chat/Memories tab content stays mounted (CSS-hidden)
+// even when inactive, so reads (.textContent()/.inputValue()) work
+// regardless of which tab is showing — but fill()/click() require
 // actionability (visibility), so any test that fills or clicks inside a
-// tab's content must switch to it first.
+// tab's content must switch to it first. SheetPanel itself only mounts
+// inside the Context overlay, so this opens Context first if needed.
 export async function showSheetPanelTab(page, tab) {
-  const label = tab === "memories" ? "Memories" : tab === "history" ? "History" : "This Chat";
+  await openContext(page);
+  const label = tab === "memories" ? "Memories" : "This Chat";
   await page.click(`.sheet-panel-tab:has-text("${label}")`);
 }
 
@@ -192,15 +235,18 @@ export async function createChat(page, name) {
   await page.keyboard.press("Enter");
 }
 
-// The responder normally just returns reply text (a string). It may instead return { text, usage: { inputTokens, outputTokens } } to
-// simulate the real API's usage field for token-tracking tests.
+// The responder normally just returns reply text (a string), but may
+// return { text } instead when a spec wants to inspect the request body
+// (responder receives it) while still just producing plain text back.
 export async function mockApi(page, responder) {
   await page.route("https://api.anthropic.com/v1/messages", async (route) => {
     const body = JSON.parse(route.request().postData());
     const result = await responder(body, route.request());
-    const { text, usage } = typeof result === "string" ? { text: result, usage: undefined } : result;
-    const responseBody = { content: [{ type: "text", text }] };
-    if (usage) responseBody.usage = { input_tokens: usage.inputTokens, output_tokens: usage.outputTokens };
-    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(responseBody) });
+    const text = typeof result === "string" ? result : result.text;
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ content: [{ type: "text", text }] }),
+    });
   });
 }
