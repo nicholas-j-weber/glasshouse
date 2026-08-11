@@ -1,5 +1,7 @@
+import type { ContextSheetDB } from "./db";
+import { db as defaultDb } from "./db";
 import { applyOverlay, type PendingOverlay } from "./sheetOverlay";
-import { resetOverlay, setOverlay } from "./sheetOverlayStore";
+import { setOverlay } from "./sheetOverlayStore";
 import { ensureInitialized, createVersion } from "./store";
 import type { Memory, Sheet } from "./types";
 
@@ -17,10 +19,24 @@ export async function editChain(
   sheetId: string,
   overlay: PendingOverlay,
   edit: (sheet: Sheet) => Sheet,
+  db: ContextSheetDB = defaultDb,
 ): Promise<void> {
-  const head = await ensureInitialized(sheetId);
-  await createVersion(edit(applyOverlay(head.sheet, overlay)), { kind: "manual_edit" }, sheetId);
-  resetOverlay(); // any pending toggle/reorder is now baked into this version
+  const head = await ensureInitialized(sheetId, db);
+  await createVersion(edit(applyOverlay(head.sheet, overlay)), { kind: "manual_edit" }, sheetId, db);
+
+  // A full resetOverlay() here was a real bug: the overlay is shared across
+  // both the local and global chains (sheetOverlayStore.ts), so wiping it
+  // wholesale after writing only *this* chain silently drops a still-
+  // pending toggle on the *other* chain's memory — e.g. deactivate a global
+  // memory, then edit a local one, and the global toggle vanishes without
+  // ever being baked into a version. Only clear the entries this chain's
+  // own memories actually cover; anything left survives for that other
+  // chain's own next edit to bake in instead.
+  const idsInThisChain = new Set(head.sheet.memories.map((m) => m.id));
+  setOverlay((prev) => ({
+    activeOverrides: Object.fromEntries(Object.entries(prev.activeOverrides).filter(([id]) => !idsInThisChain.has(id))),
+    pinReorder: prev.pinReorder?.some((id) => !idsInThisChain.has(id)) ? prev.pinReorder : null,
+  }));
 }
 
 // Deliberately not an editChain call: a manual active/inactive toggle is
