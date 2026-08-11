@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import "./App.css";
 import { ChatHeaderTitle } from "./ChatHeaderTitle";
 import { ChatPane } from "./ChatPane";
@@ -9,6 +9,7 @@ import { LibraryModal } from "./LibraryModal";
 import { MobileChatsOverlay } from "./MobileChatsOverlay";
 import { SettingsModal } from "./SettingsModal";
 import type { SheetPanelTab } from "./SheetPanel";
+import { useEscapeKey } from "./useEscapeKey";
 import { useSheets } from "./useSheets";
 import { WelcomeModal } from "./WelcomeModal";
 
@@ -71,6 +72,35 @@ function App() {
   // false so a fresh mobile load shows the chat pane, not an overlay
   // covering it.
   const [mobileChatsOpen, setMobileChatsOpen] = useState(false);
+  // Context/History/Library/Settings collapse into a single ☰ menu below
+  // App.css's 1024px breakpoint — .header-menu-trigger is the only one of
+  // the two visible at a given width (base rule hides it, the media query
+  // flips it on and hides the plain button row instead), same "one thing
+  // hidden by default, media query turns it on" shape as .mobile-nav-trigger.
+  const [headerMenuOpen, setHeaderMenuOpen] = useState(false);
+  const headerMenuRef = useRef<HTMLDivElement>(null);
+
+  useEscapeKey(() => setHeaderMenuOpen(false), headerMenuOpen);
+
+  // Click-outside-to-close — the only floating (non-modal) panel in this
+  // app, so the only place this is needed; every other dismissible surface
+  // is either a native <dialog> (backdrop click handled by useDialog) or a
+  // full-screen overlay (nothing "outside" to click). Listens on the
+  // capture phase's bubble-complete 'click' rather than 'mousedown' so a
+  // click on the trigger button itself (which toggles the menu in its own
+  // onClick) isn't immediately re-closed by this handler seeing the same
+  // click — both run on the same event, but the ref check below already
+  // excludes clicks inside the trigger/menu regardless of order.
+  useEffect(() => {
+    if (!headerMenuOpen) return;
+    function handleClick(e: MouseEvent) {
+      if (headerMenuRef.current && !headerMenuRef.current.contains(e.target as Node)) {
+        setHeaderMenuOpen(false);
+      }
+    }
+    document.addEventListener("click", handleClick);
+    return () => document.removeEventListener("click", handleClick);
+  }, [headerMenuOpen]);
 
   function openManageWithAI(prefill?: string) {
     setManageAIPrefill(prefill);
@@ -138,46 +168,72 @@ function App() {
             </h1>
           </div>
         </div>
-        <div className="header-icon-buttons">
+        <div className="header-icon-buttons" ref={headerMenuRef}>
           <button
             type="button"
-            className="context-trigger"
-            onClick={toggleContext}
-            disabled={!activeSheetId}
-            aria-pressed={contextOpen}
-            aria-label={contextOpen ? "Close context" : "Open context"}
+            className="header-menu-trigger"
+            onClick={() => setHeaderMenuOpen((open) => !open)}
+            aria-expanded={headerMenuOpen}
+            aria-label={headerMenuOpen ? "Close menu" : "Open menu"}
           >
-            Context
+            <span aria-hidden="true">☰</span>
           </button>
-          <button
-            type="button"
-            className="icon-button"
-            onClick={() => setHistoryOpen(true)}
-            disabled={!activeSheetId}
-            aria-label="History"
-            title="History"
-          >
-            <span className="icon-emoji">🕐</span>
-          </button>
-          <button
-            type="button"
-            className="icon-button"
-            onClick={() => setLibraryOpen(true)}
-            disabled={!activeSheetId}
-            aria-label="Library"
-            title="Library"
-          >
-            <span className="icon-emoji">📚</span>
-          </button>
-          <button
-            type="button"
-            className="icon-button"
-            onClick={() => setSettingsOpen(true)}
-            aria-label="Settings"
-            title="Settings"
-          >
-            <span className="icon-emoji">⚙️</span>
-          </button>
+          <div className={`header-menu${headerMenuOpen ? " header-menu--open" : ""}`}>
+            <button
+              type="button"
+              className="context-trigger"
+              onClick={() => {
+                toggleContext();
+                setHeaderMenuOpen(false);
+              }}
+              disabled={!activeSheetId}
+              aria-pressed={contextOpen}
+              aria-label={contextOpen ? "Close context" : "Open context"}
+            >
+              Context
+            </button>
+            <button
+              type="button"
+              className="icon-button"
+              onClick={() => {
+                setHistoryOpen(true);
+                setHeaderMenuOpen(false);
+              }}
+              disabled={!activeSheetId}
+              aria-label="History"
+              title="History"
+            >
+              <span className="icon-emoji">🕐</span>
+              <span className="header-menu-item-label">History</span>
+            </button>
+            <button
+              type="button"
+              className="icon-button"
+              onClick={() => {
+                setLibraryOpen(true);
+                setHeaderMenuOpen(false);
+              }}
+              disabled={!activeSheetId}
+              aria-label="Library"
+              title="Library"
+            >
+              <span className="icon-emoji">📚</span>
+              <span className="header-menu-item-label">Library</span>
+            </button>
+            <button
+              type="button"
+              className="icon-button"
+              onClick={() => {
+                setSettingsOpen(true);
+                setHeaderMenuOpen(false);
+              }}
+              aria-label="Settings"
+              title="Settings"
+            >
+              <span className="icon-emoji">⚙️</span>
+              <span className="header-menu-item-label">Settings</span>
+            </button>
+          </div>
         </div>
       </header>
       {activeSheetId ? (

@@ -41,9 +41,53 @@
   line-height: 1.2;
 }
 
+/* position: relative anchors .header-menu when it becomes a floating
+   dropdown below the 1024px breakpoint (see .header-menu's own rule) —
+   harmless at desktop widths, where .header-menu stays a plain static
+   flex row and never needs the anchor. */
 .header-icon-buttons {
   display: flex;
   gap: 8px;
+  position: relative;
+}
+
+/* ☰ — collapses Context/History/Library/Settings into a menu below
+   App.css's 1024px breakpoint, same "hidden by default, media query turns
+   it on" shape as .mobile-nav-trigger, and reusing .icon-button's exact
+   square/bordered look rather than inventing a new button style for it. */
+.header-menu-trigger {
+  display: none;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text-h);
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+}
+
+/* Desktop: a plain static row, visually identical to the four buttons it
+   wraps rendering directly (this is just their container now). The
+   narrow-viewport version — a floating, closed-by-default dropdown — lives
+   entirely in the @media block below, the single place every narrow-
+   viewport rule lives. */
+.header-menu {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Hidden on desktop — .icon-button's compact square/icon-only look is
+   unchanged there. Shown only inside the narrow-viewport dropdown (see
+   the @media block), where the buttons are full-width stacked rows
+   instead of a tight toolbar, so a text label has room and earns its
+   keep (an icon alone reads far less clearly in a vertical list). */
+.header-menu-item-label {
+  display: none;
 }
 
 /* the "Chats" header trigger that opens the narrow-viewport
@@ -2170,6 +2214,60 @@ dialog.modal::backdrop {
   .mobile-nav-trigger {
     display: inline-flex;
     align-items: center;
+  }
+
+  /* Context/History/Library/Settings collapse into ☰ here — four buttons
+     plus Context's wider text label don't reliably fit the header at
+     narrow widths, the same problem .mobile-nav-trigger already solves
+     for Chats by moving it off the header entirely. This is a closer-in
+     floating dropdown instead (position: absolute, anchored to
+     .header-icon-buttons's own position: relative) rather than a
+     full-screen .modal-overlay — four simple nav buttons don't need a
+     whole screen, unlike Chats/Context's actual panel content. */
+  .header-menu-trigger {
+    display: flex;
+  }
+
+  .header-menu {
+    display: none;
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+    min-width: 180px;
+    padding: 8px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    /* Above .modal-overlay (100) — brief window where the menu could
+       still technically be open the instant an item's own overlay/modal
+       starts mounting, and it shouldn't render underneath. */
+    z-index: 110;
+  }
+
+  .header-menu--open {
+    display: flex;
+  }
+
+  /* Full-width stacked rows instead of a tight square toolbar icon — same
+     override shape .sheet-switcher-actions .icon-button already uses
+     elsewhere to adapt the same base class to a different context. */
+  .header-menu .icon-button {
+    width: auto;
+    height: auto;
+    justify-content: flex-start;
+    gap: 8px;
+    padding: 8px 10px;
+  }
+
+  .header-menu .context-trigger {
+    text-align: left;
+  }
+
+  .header-menu-item-label {
+    display: inline;
   }
 
   .modal-body.pass-triage-body {
