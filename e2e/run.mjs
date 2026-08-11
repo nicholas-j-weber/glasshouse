@@ -11,7 +11,6 @@ import { run as runModelSelector } from "./modelSelector.e2e.mjs";
 import { run as runMultiSheet } from "./multiSheet.e2e.mjs";
 import { run as runSettingsModalScroll } from "./settingsModalScroll.e2e.mjs";
 import { run as runSheetDeletion } from "./sheetDeletion.e2e.mjs";
-import { run as runTokenUsage } from "./tokenUsage.e2e.mjs";
 import { run as runWelcomeModal } from "./welcomeModal.e2e.mjs";
 import { run as runWordWrap } from "./wordWrap.e2e.mjs";
 import { startDevServer } from "./support.mjs";
@@ -21,7 +20,6 @@ const specs = [
   ["sheetDeletion.e2e.mjs", runSheetDeletion],
   ["globalMemories.e2e.mjs", runGlobalMemories],
   ["exportImport.e2e.mjs", runExportImport],
-  ["tokenUsage.e2e.mjs", runTokenUsage],
   ["manageWithAI.e2e.mjs", runManageWithAI],
   ["autoApplyToggle.e2e.mjs", runAutoApplyToggle],
   ["collapseSuggestions.e2e.mjs", runCollapseSuggestions],

@@ -1,7 +1,7 @@
 // Minimal pub-sub primitive: notify() runs every subscribed listener,
-// subscribe() registers one and returns its unsubscribe. Shared by
-// headSubscription/sheetsSubscription/usageSubscription, each of which
-// wraps one for its own named notify/subscribe pair rather than exposing
+// subscribe() registers one and returns its unsubscribe. Used by
+// subscriptions.ts (head/sheets changes) and sheetOverlayStore.ts, each
+// wrapping one in its own named notify/subscribe pair rather than exposing
 // this generic shape directly.
 export function createSignal() {
   const listeners = new Set<() => void>();

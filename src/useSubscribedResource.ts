@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 // Shared "subscribe to a store + async refresh" pattern used by
 // useHeadVersion, useActiveLineage, and useSheets. Each
 // independently reads from IndexedDB, then re-reads whenever the
-// relevant store notifies a change (headSubscription/sheetsSubscription) —
+// relevant store notifies a change (subscriptions.ts) —
 // and each independently needed a guard against two overlapping fetches
 // resolving out of order: useSheets.ts originally found this the hard way
 // (a real, e2e-reproduced race — an auto-rename's fire-and-forget refresh

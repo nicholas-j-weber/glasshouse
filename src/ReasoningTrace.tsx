@@ -87,7 +87,7 @@ function parseJudgeVerdict(step: StepRecord): { status: string; reason: string }
 // unreadable and not what actually drives the loop. The parsed verdict
 // already lives in metadata (judgeMetadata in reasoningAgent.ts); show that
 // instead. rawResponse itself is untouched in Dexie either way, so nothing
-// here costs the audit trail — filterSteps/replayStep still see the exact
+// here costs the audit trail — the stored record still holds the exact
 // original text. Plain-string form, kept separate from judgeVerdictNode
 // below for anything that wants the verdict as text rather than markup.
 export function judgeVerdictText(step: StepRecord): string {

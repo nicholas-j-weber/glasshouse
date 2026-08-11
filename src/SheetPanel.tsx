@@ -1,13 +1,12 @@
 import { useId, useState } from "react";
 import { ExportImportControls } from "./ExportImportControls";
+import { editChain, toggleMemoryActive } from "./chainEdits";
 import { GLOBAL_MEMORIES_SHEET_ID, mergeMemoryPools } from "./globalMemories";
 import { MemoryRow } from "./MemoryRow";
 import { orderConversationTurns, orderMemoriesForDisplay, orderSummaries } from "./serializer";
 import { addConversationTurn, addMemory, deleteMemory, editFreeformNotes, editMemory, editTone, setPinned } from "./sheetEdits";
 import { applyOverlay } from "./sheetOverlay";
-import { setOverlay as setSharedOverlay, resetOverlay } from "./sheetOverlayStore";
 import { getStoredCollapseTurnsByDefault } from "./settingsStorage";
-import { createVersion, ensureInitialized } from "./store";
 import { useCollapsedOverrides } from "./useCollapsedOverrides";
 import { useHeadVersion } from "./useHeadVersion";
 import { useSheetOverlay } from "./useSheetOverlay";
@@ -90,84 +89,35 @@ export function SheetPanel({
 
   const sheet = applyOverlay(mergeMemoryPools(localHead.sheet, globalHead.sheet), overlay);
 
-  async function commitLocal(newSheet: Sheet) {
-    await createVersion(newSheet, { kind: "manual_edit" }, sheetId);
-    resetOverlay(); // Any pending toggle/reorder is now baked into this version
-  }
-
-  async function commitGlobal(newSheet: Sheet) {
-    await createVersion(newSheet, { kind: "manual_edit" }, GLOBAL_MEMORIES_SHEET_ID);
-    resetOverlay();
-  }
-
-  async function withCurrentLocalSheet(): Promise<Sheet> {
-    const currentHead = await ensureInitialized(sheetId);
-    return applyOverlay(currentHead.sheet, overlay);
-  }
-
-  async function withCurrentGlobalSheet(): Promise<Sheet> {
-    const currentHead = await ensureInitialized(GLOBAL_MEMORIES_SHEET_ID);
-    return applyOverlay(currentHead.sheet, overlay);
-  }
-
-  function handleToggleActive(memory: Memory) {
-    // Manual toggle is session-only, never version-stamped on its own.
-    // Pool-agnostic — the overlay doesn't care which chain a memory lives in.
-    setSharedOverlay((prev) => ({
-      ...prev,
-      activeOverrides: { ...prev.activeOverrides, [memory.id]: !memory.active },
-    }));
-  }
+  // Tone, Conversation Summary and Freeform Notes are local-chain; ordinary
+  // memories are global-pool. Both go through the same read-edit-commit
+  // cycle (chainEdits.ts), so the only thing that differs per edit is which
+  // chain it names.
+  const editLocal = (edit: (sheet: Sheet) => Sheet) => editChain(sheetId, overlay, edit);
+  const editGlobal = (edit: (sheet: Sheet) => Sheet) => editChain(GLOBAL_MEMORIES_SHEET_ID, overlay, edit);
+  const editMemoryChain = (memory: Memory, edit: (sheet: Sheet) => Sheet) =>
+    isLocalKind(memory.kind) ? editLocal(edit) : editGlobal(edit);
 
   // Only ever called on ordinary memories — TurnRow has no Pin control
   // (conversation turns are never pinned, 5.1.3), so this always targets
   // the global chain.
-  async function handleTogglePin(memory: Memory) {
-    const base = await withCurrentGlobalSheet();
-    await commitGlobal(setPinned(base, memory.id, memory.pinRank === null));
-  }
+  const handleTogglePin = (memory: Memory) => editGlobal((s) => setPinned(s, memory.id, memory.pinRank === null));
 
-  async function handleDelete(memory: Memory) {
-    if (isLocalKind(memory.kind)) {
-      const base = await withCurrentLocalSheet();
-      await commitLocal(deleteMemory(base, memory.id));
-    } else {
-      const base = await withCurrentGlobalSheet();
-      await commitGlobal(deleteMemory(base, memory.id));
-    }
-  }
+  const handleDelete = (memory: Memory) => editMemoryChain(memory, (s) => deleteMemory(s, memory.id));
 
-  async function handleEditMemory(memory: Memory, label: string, body: string) {
-    const now = new Date().toISOString();
-    if (isLocalKind(memory.kind)) {
-      const base = await withCurrentLocalSheet();
-      await commitLocal(editMemory(base, memory.id, label, body, now));
-    } else {
-      const base = await withCurrentGlobalSheet();
-      await commitGlobal(editMemory(base, memory.id, label, body, now));
-    }
-  }
+  const handleEditMemory = (memory: Memory, label: string, body: string) =>
+    editMemoryChain(memory, (s) => editMemory(s, memory.id, label, body, new Date().toISOString()));
 
   // Ordinary memories always target the global pool.
-  async function handleAddMemory(label: string, body: string) {
-    const base = await withCurrentGlobalSheet();
-    await commitGlobal(addMemory(base, label, body, new Date().toISOString()));
-  }
+  const handleAddMemory = (label: string, body: string) =>
+    editGlobal((s) => addMemory(s, label, body, new Date().toISOString()));
 
-  async function handleAddConversationTurn(body: string) {
-    const base = await withCurrentLocalSheet();
-    await commitLocal(addConversationTurn(base, body, new Date().toISOString()));
-  }
+  const handleAddConversationTurn = (body: string) =>
+    editLocal((s) => addConversationTurn(s, body, new Date().toISOString()));
 
-  async function handleSaveTone(value: string) {
-    const base = await withCurrentLocalSheet();
-    await commitLocal(editTone(base, value, new Date().toISOString()));
-  }
+  const handleSaveTone = (value: string) => editLocal((s) => editTone(s, value, new Date().toISOString()));
 
-  async function handleSaveFreeformNotes(value: string) {
-    const base = await withCurrentLocalSheet();
-    await commitLocal(editFreeformNotes(base, value));
-  }
+  const handleSaveFreeformNotes = (value: string) => editLocal((s) => editFreeformNotes(s, value));
 
   // conversation turns and ordinary memories share Sheet.memories
   // now, distinguished by kind — each section filters to its own subset and
@@ -223,12 +173,12 @@ export function SheetPanel({
           {summaries.length > 0 && (
             <ul className="memory-list conversation-summary-digests">
               {summaries.map((summary) => (
-                <SummaryRow
+                <TurnRow
                   key={summary.id}
                   memory={summary}
                   collapsed={isRowCollapsed(summary)}
                   onToggleCollapsed={() => toggleRowCollapsed(summary)}
-                  onToggleActive={() => handleToggleActive(summary)}
+                  onToggleActive={() => toggleMemoryActive(summary)}
                   onDelete={() => handleDelete(summary)}
                   onEdit={(body) => handleEditMemory(summary, summary.label, body)}
                 />
@@ -243,7 +193,7 @@ export function SheetPanel({
                 memory={turn}
                 collapsed={isRowCollapsed(turn)}
                 onToggleCollapsed={() => toggleRowCollapsed(turn)}
-                onToggleActive={() => handleToggleActive(turn)}
+                onToggleActive={() => toggleMemoryActive(turn)}
                 onDelete={() => handleDelete(turn)}
                 onEdit={(body) => handleEditMemory(turn, turn.label, body)}
               />
@@ -286,7 +236,7 @@ export function SheetPanel({
               <MemoryRow
                 key={memory.id}
                 memory={memory}
-                onToggleActive={() => handleToggleActive(memory)}
+                onToggleActive={() => toggleMemoryActive(memory)}
                 onTogglePin={() => handleTogglePin(memory)}
                 onDelete={() => handleDelete(memory)}
                 onEdit={(label, body) => handleEditMemory(memory, label, body)}
@@ -408,11 +358,17 @@ function NewMemoryForm({ onAdd }: { onAdd: (label: string, body: string) => void
   );
 }
 
-// one block per conversation turn, chronologically ordered,
-// individually editable/deactivatable/deletable — the reason numbered
-// conversation turns exist as their own row type. Deliberately no Pin
+// one block per Conversation Summary entry, chronologically ordered,
+// individually editable/deactivatable/deletable. Deliberately no Pin
 // control: pinning a turn would reintroduce the ordering collision
 // avoided by keeping turns off pinRank entirely.
+//
+// Renders both kinds of entry there. A numbered turn passes `number`; a
+// compressed digest (kind: "summary") omits it and gets a "Summary" chip
+// instead — it isn't one more turn, and numbering it would misrepresent
+// what it is. That, plus where the body text sits, is the entire
+// difference: the edit-in-place form, collapse toggle, and action row were
+// duplicated verbatim between two components before this was one.
 function TurnRow({
   number,
   memory,
@@ -422,7 +378,7 @@ function TurnRow({
   onDelete,
   onEdit,
 }: {
-  number: number;
+  number?: number;
   memory: Memory;
   collapsed: boolean;
   onToggleCollapsed: () => void;
@@ -432,6 +388,7 @@ function TurnRow({
 }) {
   const [editing, setEditing] = useState(false);
   const [bodyDraft, setBodyDraft] = useState(memory.body);
+  const isSummary = number === undefined;
 
   if (!editing && bodyDraft !== memory.body) {
     setBodyDraft(memory.body);
@@ -465,8 +422,12 @@ function TurnRow({
     );
   }
 
+  const bodyClassName = `memory-row-body${collapsed ? " memory-row-body--collapsed" : ""}`;
+
   return (
-    <li className={`memory-row${memory.active ? "" : " memory-row--inactive"}`}>
+    <li
+      className={`memory-row${isSummary ? " conversation-summary-digest" : ""}${memory.active ? "" : " memory-row--inactive"}`}
+    >
       <div className="memory-row-main">
         <div className="memory-row-body-row">
           <button
@@ -483,10 +444,19 @@ function TurnRow({
               ⌃
             </span>
           </button>
-          <span className={`memory-row-body${collapsed ? " memory-row-body--collapsed" : ""}`}>
-            {number}. {memory.body}
-          </span>
+          {/* A digest's own label sits on the toggle row and its body below,
+              so the "Summary" chip reads as a heading for the text rather
+              than a prefix running into it; a numbered turn has no such
+              label, so its body goes inline on the same row. */}
+          {isSummary ? (
+            <span className="conversation-summary-digest-label">Summary</span>
+          ) : (
+            <span className={bodyClassName}>
+              {number}. {memory.body}
+            </span>
+          )}
         </div>
+        {isSummary && <span className={bodyClassName}>{memory.body}</span>}
       </div>
       <div className="memory-row-actions">
         <label className="memory-toggle">
@@ -536,100 +506,6 @@ function NewTurnForm({ onAdd }: { onAdd: (body: string) => void }) {
         Add entry
       </button>
     </form>
-  );
-}
-
-// a compressed digest replacing one or more conversation
-// turns — same MemoryRow-style edit-in-place/Delete treatment as TurnRow,
-// deliberately not TurnRow itself (no "number" — it isn't one more turn,
-// and numbering it would misrepresent what it is), with its own small
-// label so it reads as a distinct kind of entry even before you notice it
-// sits above the numbered list rather than inside it.
-function SummaryRow({
-  memory,
-  collapsed,
-  onToggleCollapsed,
-  onToggleActive,
-  onDelete,
-  onEdit,
-}: {
-  memory: Memory;
-  collapsed: boolean;
-  onToggleCollapsed: () => void;
-  onToggleActive: () => void;
-  onDelete: () => void;
-  onEdit: (body: string) => void;
-}) {
-  const [editing, setEditing] = useState(false);
-  const [bodyDraft, setBodyDraft] = useState(memory.body);
-
-  if (!editing && bodyDraft !== memory.body) {
-    setBodyDraft(memory.body);
-  }
-
-  if (editing) {
-    return (
-      <li className="memory-row memory-row--editing">
-        <textarea value={bodyDraft} onChange={(e) => setBodyDraft(e.target.value)} rows={2} />
-        <div className="memory-row-actions">
-          <button
-            type="button"
-            onClick={() => {
-              onEdit(bodyDraft);
-              setEditing(false);
-            }}
-          >
-            Save
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setBodyDraft(memory.body);
-              setEditing(false);
-            }}
-          >
-            Cancel
-          </button>
-        </div>
-      </li>
-    );
-  }
-
-  return (
-    <li className={`memory-row conversation-summary-digest${memory.active ? "" : " memory-row--inactive"}`}>
-      <div className="memory-row-main">
-        <div className="memory-row-body-row">
-          <button
-            type="button"
-            className="memory-row-collapse-toggle"
-            onClick={onToggleCollapsed}
-            aria-label={collapsed ? "Expand" : "Collapse"}
-            title={collapsed ? "Expand" : "Collapse"}
-          >
-            <span
-              className={`memory-row-collapse-caret${collapsed ? "" : " memory-row-collapse-caret--flipped"}`}
-              aria-hidden="true"
-            >
-              ⌃
-            </span>
-          </button>
-          <span className="conversation-summary-digest-label">Summary</span>
-        </div>
-        <span className={`memory-row-body${collapsed ? " memory-row-body--collapsed" : ""}`}>{memory.body}</span>
-      </div>
-      <div className="memory-row-actions">
-        <label className="memory-toggle">
-          <input type="checkbox" checked={memory.active} onChange={onToggleActive} />
-          active
-        </label>
-        <button type="button" className="icon-button" onClick={() => setEditing(true)} aria-label="Edit" title="Edit">
-          <span className="icon-emoji">📝</span>
-        </button>
-        <button type="button" className="icon-button" onClick={onDelete} aria-label="Delete" title="Delete">
-          <span className="icon-emoji">🗑️</span>
-        </button>
-      </div>
-    </li>
   );
 }
 

@@ -1,17 +1,37 @@
-import { useRef, useState } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { GLOBAL_MEMORIES_SHEET_ID } from "./globalMemories";
 import { MemoryRow } from "./MemoryRow";
 import { orderMemoriesForDisplay } from "./serializer";
+import { editChain, toggleMemoryActive } from "./chainEdits";
 import { addKnowledgeMemory, deleteMemory, editMemory, setPinned } from "./sheetEdits";
 import { applyOverlay } from "./sheetOverlay";
-import { setOverlay as setSharedOverlay, resetOverlay } from "./sheetOverlayStore";
-import { createVersion, ensureInitialized } from "./store";
+import { setOverlay as setSharedOverlay } from "./sheetOverlayStore";
 import { useDialog } from "./useDialog";
 import { useHeadVersion } from "./useHeadVersion";
 import { useSheetOverlay } from "./useSheetOverlay";
 import type { Memory, Sheet } from "./types";
 
-type LibraryTab = "knowledge" | "skills";
+// The two tabs differ only in which Memory.kind they list and the prose
+// describing it — everything else (search box, module list, upload form) is
+// identical, so they're driven off this table rather than written out twice.
+const LIBRARY_TABS = [
+  {
+    id: "knowledge",
+    kind: "knowledge",
+    label: "Knowledge",
+    caption:
+      "Reference material — facts and documentation the AI should be able to draw on, not step-by-step instructions (see Skills). Import by uploading a .txt/.md file: its content becomes plain, inspectable text right in the entry — not an opaque index or embedding — landing immediately, no review step.",
+  },
+  {
+    id: "skills",
+    kind: "skill",
+    label: "Skills",
+    caption:
+      "Step-by-step procedures — ordered or branching instructions for how to do something, not reference facts (see Knowledge). Import by uploading a .txt/.md file: its content becomes plain, inspectable text right in the entry — not an opaque index or embedding — landing immediately, no review step.",
+  },
+] as const;
+
+type LibraryTab = (typeof LIBRARY_TABS)[number]["id"];
 
 // Knowledge/Skills, moved out of SheetPanel.tsx's tab row into their own
 // modal (spec.md "Knowledge & Skills") — occasional/setup-time concerns,
@@ -33,7 +53,10 @@ export function LibraryModal({ onClose }: { onClose: () => void }) {
   // Shared across both tabs — each tab filters its own kind by this text.
   const [librarySearch, setLibrarySearch] = useState("");
 
-  if (!globalHead) {
+  // The <dialog> element itself has to render even while loading — useDialog's
+  // showModal() effect needs something to call on mount — so the shell is
+  // written once here and both states fill in its body.
+  function shell(body: ReactNode) {
     return (
       <dialog className="modal modal--library" ref={dialog.ref} onClose={dialog.onClose} onClick={dialog.onBackdropClick} aria-labelledby="library-modal-title">
         <div className="modal-header">
@@ -42,56 +65,35 @@ export function LibraryModal({ onClose }: { onClose: () => void }) {
             ×
           </button>
         </div>
-        <div className="modal-body">Loading…</div>
+        {body}
       </dialog>
     );
   }
 
+  if (!globalHead) return shell(<div className="modal-body">Loading…</div>);
+
   const sheet = applyOverlay(globalHead.sheet, overlay);
 
-  async function commitGlobal(newSheet: Sheet) {
-    await createVersion(newSheet, { kind: "manual_edit" }, GLOBAL_MEMORIES_SHEET_ID);
-    resetOverlay();
-  }
+  // Every write here targets the global chain — knowledge/skill entries only
+  // ever live there (mergeMemoryPools restricts the local chain to
+  // conversation turns and summaries), so unlike SheetPanel there's no
+  // per-memory routing to do.
+  const editGlobal = (edit: (sheet: Sheet) => Sheet) => editChain(GLOBAL_MEMORIES_SHEET_ID, overlay, edit);
 
-  async function withCurrentGlobalSheet(): Promise<Sheet> {
-    const currentHead = await ensureInitialized(GLOBAL_MEMORIES_SHEET_ID);
-    return applyOverlay(currentHead.sheet, overlay);
-  }
-
-  function handleToggleActive(memory: Memory) {
-    setSharedOverlay((prev) => ({
-      ...prev,
-      activeOverrides: { ...prev.activeOverrides, [memory.id]: !memory.active },
-    }));
-  }
-
-  async function handleTogglePin(memory: Memory) {
-    const base = await withCurrentGlobalSheet();
-    await commitGlobal(setPinned(base, memory.id, memory.pinRank === null));
-  }
-
-  async function handleDelete(memory: Memory) {
-    const base = await withCurrentGlobalSheet();
-    await commitGlobal(deleteMemory(base, memory.id));
-  }
-
-  async function handleEditMemory(memory: Memory, label: string, body: string) {
-    const base = await withCurrentGlobalSheet();
-    await commitGlobal(editMemory(base, memory.id, label, body, new Date().toISOString()));
-  }
+  const handleTogglePin = (memory: Memory) => editGlobal((s) => setPinned(s, memory.id, memory.pinRank === null));
+  const handleDelete = (memory: Memory) => editGlobal((s) => deleteMemory(s, memory.id));
+  const handleEditMemory = (memory: Memory, label: string, body: string) =>
+    editGlobal((s) => editMemory(s, memory.id, label, body, new Date().toISOString()));
 
   // spec.md "Knowledge & Skills" — "an uploaded file becomes a Memory...
   // landing as a new global-chain version directly — no accept/reject, same
   // as whole-sheet import today." No overlay, no pending review: commits
   // immediately.
-  async function handleUploadKnowledge(kind: "knowledge" | "skill", filename: string, content: string) {
-    const base = await withCurrentGlobalSheet();
-    await commitGlobal(addKnowledgeMemory(base, kind, filename, content, new Date().toISOString()));
-  }
+  const handleUploadKnowledge = (kind: "knowledge" | "skill", filename: string, content: string) =>
+    editGlobal((s) => addKnowledgeMemory(s, kind, filename, content, new Date().toISOString()));
 
   // Bulk-toggles every entry sharing one moduleId at once (spec.md
-  // "Modules") — same session-only overlay mechanism handleToggleActive
+  // "Modules") — same session-only overlay mechanism toggleMemoryActive
   // uses for a single memory, written for every id in the module.
   function handleToggleModuleActive(entries: Memory[]) {
     const nextActive = !entries.every((m) => m.active);
@@ -102,10 +104,9 @@ export function LibraryModal({ onClose }: { onClose: () => void }) {
     });
   }
 
-  // One kind per tab now (Knowledge vs. Skills), rather than one merged
-  // "Knowledge" list with a per-entry kind picker — the tab itself already
-  // says which kind you're looking at, so uploads within a tab are fixed to
-  // that kind (see UploadKnowledgeForm's kind prop below).
+  // Grouped by moduleId (spec.md "Modules"). Uploads within a tab are fixed
+  // to that tab's kind — the tab itself is already the explicit choice, so
+  // there's no per-entry kind picker.
   const librarySearchQuery = librarySearch.trim().toLowerCase();
   function modulesForKind(kind: "knowledge" | "skill") {
     const entries = orderMemoriesForDisplay(sheet.memories.filter((m) => m.kind === kind)).filter(
@@ -114,7 +115,6 @@ export function LibraryModal({ onClose }: { onClose: () => void }) {
         m.label.toLowerCase().includes(librarySearchQuery) ||
         m.body.toLowerCase().includes(librarySearchQuery),
     );
-    // Grouped by moduleId (spec.md "Modules").
     const groups = new Map<string, Memory[]>();
     for (const memory of entries) {
       const key = memory.moduleId ?? memory.id;
@@ -122,108 +122,63 @@ export function LibraryModal({ onClose }: { onClose: () => void }) {
     }
     return [...groups.entries()].map(([moduleId, moduleEntries]) => ({ moduleId, entries: moduleEntries }));
   }
-  const knowledgeModules = modulesForKind("knowledge");
-  const skillModules = modulesForKind("skill");
 
-  return (
-    <dialog className="modal modal--library" ref={dialog.ref} onClose={dialog.onClose} onClick={dialog.onBackdropClick} aria-labelledby="library-modal-title">
-      <div className="modal-header">
-        <h2 id="library-modal-title">Library</h2>
-        <button type="button" className="modal-close" onClick={dialog.close} aria-label="Close library">
-          ×
-        </button>
-      </div>
-
+  return shell(
+    <>
       <div className="sheet-panel-tabs">
-        <button
-          type="button"
-          className={`sheet-panel-tab${activeTab === "knowledge" ? " sheet-panel-tab--active" : ""}`}
-          onClick={() => setActiveTab("knowledge")}
-        >
-          Knowledge
-        </button>
-        <button
-          type="button"
-          className={`sheet-panel-tab${activeTab === "skills" ? " sheet-panel-tab--active" : ""}`}
-          onClick={() => setActiveTab("skills")}
-        >
-          Skills
-        </button>
+        {LIBRARY_TABS.map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            className={`sheet-panel-tab${activeTab === tab.id ? " sheet-panel-tab--active" : ""}`}
+            onClick={() => setActiveTab(tab.id)}
+          >
+            {tab.label}
+          </button>
+        ))}
       </div>
 
       <div className="modal-body">
-        <div className={`sheet-panel-tab-content${activeTab === "knowledge" ? "" : " sheet-panel-tab-content--hidden"}`}>
-          <section className="sheet-section">
-            <p className="sheet-section-caption">
-              Reference material — facts and documentation the AI should be able to draw on, not step-by-step
-              instructions (see Skills). Import by uploading a .txt/.md file: its content becomes plain,
-              inspectable text right in the entry — not an opaque index or embedding — landing immediately, no
-              review step.
-            </p>
-            <div className="inline-field">
-              <input
-                type="search"
-                className="inline-field-input"
-                aria-label="Search knowledge"
-                placeholder="Search label or body…"
-                value={librarySearch}
-                onChange={(e) => setLibrarySearch(e.target.value)}
-              />
-            </div>
-            <ul className="memory-list">
-              {knowledgeModules.map(({ moduleId, entries }) => (
-                <KnowledgeModule
-                  key={moduleId}
-                  moduleId={moduleId}
-                  entries={entries}
-                  onToggleModuleActive={() => handleToggleModuleActive(entries)}
-                  onToggleActive={(memory) => handleToggleActive(memory)}
-                  onTogglePin={(memory) => handleTogglePin(memory)}
-                  onDelete={(memory) => handleDelete(memory)}
-                  onEdit={(memory, label, body) => handleEditMemory(memory, label, body)}
+        {/* Both tabs stay mounted (CSS-hidden, not conditionally rendered),
+            same reason SheetPanel does it: switching tabs must never discard
+            an in-progress edit. */}
+        {LIBRARY_TABS.map((tab) => (
+          <div
+            key={tab.id}
+            className={`sheet-panel-tab-content${activeTab === tab.id ? "" : " sheet-panel-tab-content--hidden"}`}
+          >
+            <section className="sheet-section">
+              <p className="sheet-section-caption">{tab.caption}</p>
+              <div className="inline-field">
+                <input
+                  type="search"
+                  className="inline-field-input"
+                  aria-label={`Search ${tab.label.toLowerCase()}`}
+                  placeholder="Search label or body…"
+                  value={librarySearch}
+                  onChange={(e) => setLibrarySearch(e.target.value)}
                 />
-              ))}
-            </ul>
-            <UploadKnowledgeForm kind="knowledge" onUpload={handleUploadKnowledge} />
-          </section>
-        </div>
-
-        <div className={`sheet-panel-tab-content${activeTab === "skills" ? "" : " sheet-panel-tab-content--hidden"}`}>
-          <section className="sheet-section">
-            <p className="sheet-section-caption">
-              Step-by-step procedures — ordered or branching instructions for how to do something, not reference
-              facts (see Knowledge). Import by uploading a .txt/.md file: its content becomes plain, inspectable
-              text right in the entry — not an opaque index or embedding — landing immediately, no review step.
-            </p>
-            <div className="inline-field">
-              <input
-                type="search"
-                className="inline-field-input"
-                aria-label="Search skills"
-                placeholder="Search label or body…"
-                value={librarySearch}
-                onChange={(e) => setLibrarySearch(e.target.value)}
-              />
-            </div>
-            <ul className="memory-list">
-              {skillModules.map(({ moduleId, entries }) => (
-                <KnowledgeModule
-                  key={moduleId}
-                  moduleId={moduleId}
-                  entries={entries}
-                  onToggleModuleActive={() => handleToggleModuleActive(entries)}
-                  onToggleActive={(memory) => handleToggleActive(memory)}
-                  onTogglePin={(memory) => handleTogglePin(memory)}
-                  onDelete={(memory) => handleDelete(memory)}
-                  onEdit={(memory, label, body) => handleEditMemory(memory, label, body)}
-                />
-              ))}
-            </ul>
-            <UploadKnowledgeForm kind="skill" onUpload={handleUploadKnowledge} />
-          </section>
-        </div>
+              </div>
+              <ul className="memory-list">
+                {modulesForKind(tab.kind).map(({ moduleId, entries }) => (
+                  <KnowledgeModule
+                    key={moduleId}
+                    moduleId={moduleId}
+                    entries={entries}
+                    onToggleModuleActive={() => handleToggleModuleActive(entries)}
+                    onToggleActive={toggleMemoryActive}
+                    onTogglePin={handleTogglePin}
+                    onDelete={handleDelete}
+                    onEdit={handleEditMemory}
+                  />
+                ))}
+              </ul>
+              <UploadKnowledgeForm kind={tab.kind} onUpload={handleUploadKnowledge} />
+            </section>
+          </div>
+        ))}
       </div>
-    </dialog>
+    </>,
   );
 }
 

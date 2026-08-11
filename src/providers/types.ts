@@ -21,15 +21,9 @@ export interface ProviderError {
   retryAfterSeconds?: number;
 }
 
-// real, provider-billed token counts — populated when
-// the provider's response includes them, omitted otherwise. Nothing
-// downstream requires this to be present (same tolerant-of-absence
-// pattern this file's model-agnostic design already uses elsewhere).
-export interface ProviderUsage {
-  inputTokens: number;
-  outputTokens: number;
-}
-
-export type ProviderCallResult =
-  | { ok: true; text: string; usage?: ProviderUsage }
-  | { ok: false; error: ProviderError };
+// The provider's own reported token counts are deliberately not surfaced
+// here. They were, once, feeding a "Tokens consumed" readout that has since
+// been removed from the UI — leaving the whole lane (adapter → store →
+// IndexedDB) writing to something nothing ever read. If that readout comes
+// back, this is where its `usage?: ProviderUsage` field goes back too.
+export type ProviderCallResult = { ok: true; text: string } | { ok: false; error: ProviderError };

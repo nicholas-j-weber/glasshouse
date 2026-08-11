@@ -1,6 +1,6 @@
 import type { ContextSheetDB } from "./db";
 import { db as defaultDb } from "./db";
-import { notifyHeadChanged } from "./headSubscription";
+import { notifyHeadChanged } from "./subscriptions";
 import { createSkeletonSheet } from "./skeleton";
 import type { Memory, Sheet, SheetExport, Version, VersionAttribution } from "./types";
 

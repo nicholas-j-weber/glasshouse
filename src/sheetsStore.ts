@@ -1,7 +1,7 @@
 import type { ContextSheetDB } from "./db";
 import { db as defaultDb } from "./db";
 import { getStoredActiveSheetId, setStoredActiveSheetId } from "./settingsStorage";
-import { notifySheetsChanged } from "./sheetsSubscription";
+import { notifySheetsChanged } from "./subscriptions";
 import { resetOverlay } from "./sheetOverlayStore";
 import { ensureInitialized } from "./store";
 import type { SheetMeta } from "./types";
@@ -94,7 +94,9 @@ export async function renameSheet(sheetId: string, name: string, db: ContextShee
 // version (non-destructive), this is the first destructive action in
 // this codebase; the caller (UI) is responsible for confirming with the
 // user before calling this.
-// also cascades to the sheet's usage records.
+// also cascades to the sheet's usage records — nothing writes those anymore
+// (the readout they fed is gone), but existing installs still hold rows from
+// when it did, and those shouldn't outlive their sheet.
 export async function deleteSheet(sheetId: string, db: ContextSheetDB = defaultDb): Promise<void> {
   const wasActive = getStoredActiveSheetId() === sheetId;
 

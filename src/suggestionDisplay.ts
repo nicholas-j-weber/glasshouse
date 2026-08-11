@@ -1,29 +1,5 @@
 import type { SheetSuggestion } from "./types";
 
-// Human-readable rendering of a suggestion for the chat pane.
-export function describeSuggestion(suggestion: SheetSuggestion): string {
-  switch (suggestion.type) {
-    case "new_memory":
-      return `New memory "${suggestion.label}": ${suggestion.body}`;
-    case "edit_memory":
-      return `Edit memory "${suggestion.label}" (${suggestion.memoryId}): ${suggestion.body}`;
-    case "tone_update":
-      return `Tone update: ${suggestion.body}`;
-    case "deactivate_memory":
-      return `Deactivate memory ${suggestion.memoryId}: ${suggestion.reason}`;
-    case "reorder_pins":
-      return `Reorder pins: ${suggestion.pinOrder.join(" → ")}`;
-    case "conversation_summary_update":
-      return `Conversation Summary update: ${suggestion.body}`;
-    case "compress_conversation":
-      return `Compress ${suggestion.turnIds.length} conversation turn${suggestion.turnIds.length === 1 ? "" : "s"} into one summary: ${suggestion.body}`;
-    case "code_change": {
-      const paths = Object.keys(suggestion.files);
-      return `Code change (${paths.length} file${paths.length === 1 ? "" : "s"}): ${suggestion.summary ?? paths.join(", ")}`;
-    }
-  }
-}
-
 // "the original suggestion... serialized the same way a
 // Memory block would be." new_memory/edit_memory/tone_update map naturally
 // onto that (`## Memory: <label>` / `## Tone` shape); the two

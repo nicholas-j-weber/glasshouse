@@ -6,15 +6,18 @@ import {
   JUDGE_INSTRUCTION,
   filterSteps,
   loadRunSteps,
-  replayStep,
   runReasoningAgent,
   type ModelCallFn,
-  type StructuralCheckFn,
 } from "./reasoningAgent";
 import type { StepRecord } from "./types";
 
 // Mirrors agent.py's _demo()/_demo_observability() self-checks, against the
 // real Dexie tables (fake-indexeddb) rather than the JSONL log.
+
+// The label every step this helper's runs record is stamped with — passed
+// explicitly so the model-name assertions below test "the run's own
+// modelName is used", not the value of runReasoningAgent's default.
+const RUN_MODEL_NAME = "test-model";
 
 let db: ContextSheetDB;
 
@@ -27,7 +30,6 @@ function run(
   opts: {
     maxSteps?: number;
     minSteps?: number;
-    structuralCheckFn?: StructuralCheckFn;
     finalPromptSuffix?: string;
     judgeModelCallFn?: ModelCallFn;
     judgeModelName?: string;
@@ -39,6 +41,7 @@ function run(
     problem: "What is 2+2?",
     topLevelInstructions: "Answer carefully.",
     modelCallFn,
+    modelName: RUN_MODEL_NAME,
     db,
     ...opts,
   });
@@ -149,37 +152,6 @@ describe("runReasoningAgent", () => {
     expect(judges[0].metadata?.treated_as).toBe("continue");
   });
 
-  it("short-circuits the judge model call entirely when a structural check decides", async () => {
-    const modelCallFn: ModelCallFn = async (prompt) => {
-      if (prompt.includes(JUDGE_INSTRUCTION)) throw new Error("judge model call should not happen");
-      return "reasoning output DONE";
-    };
-    const markerCheck: StructuralCheckFn = (transcript) => {
-      const lastReasoning = transcript.filter((s) => s.role === "reasoning").at(-1);
-      return lastReasoning?.rawResponse.includes("DONE") ? { status: "ready", reason: "marker found" } : null;
-    };
-
-    const log = await run(modelCallFn, { maxSteps: 5, minSteps: 1, structuralCheckFn: markerCheck });
-
-    expect(log.status).toBe("completed");
-    const judges = await filterSteps(log.runId, { role: "judge" }, db);
-    expect(judges).toHaveLength(1);
-    expect(judges[0].metadata?.method).toBe("structural");
-    expect(judges[0].metadata?.status).toBe("ready");
-    expect(judges[0].model).toBe("none"); // no model call made for the verdict
-  });
-
-  it("defers to the judge call when the structural check returns no verdict", async () => {
-    const log = await run(judgeSays({ status: "ready", reason: "judge decided" }), {
-      maxSteps: 5,
-      minSteps: 1,
-      structuralCheckFn: () => null,
-    });
-
-    const judges = await filterSteps(log.runId, { role: "judge" }, db);
-    expect(judges[0].metadata?.method).toBe("model");
-  });
-
   it("walks the fixed instruction sequence, wrapping past its end", async () => {
     const log = await run(judgeSays({ status: "continue", reason: "not done" }), { maxSteps: 6, minSteps: 6 });
 
@@ -263,14 +235,14 @@ describe("runReasoningAgent", () => {
     const steps = await loadRunSteps(log.runId, db);
     const judge = steps.find((s) => s.role === "judge")!;
     expect(judge.model).toBe("claude-haiku-4-5-20251001");
-    expect(steps.filter((s) => s.role !== "judge").every((s) => s.model === "stub-model")).toBe(true);
+    expect(steps.filter((s) => s.role !== "judge").every((s) => s.model === RUN_MODEL_NAME)).toBe(true);
   });
 
   it("falls back to modelCallFn/modelName for the judge when judgeModelCallFn is omitted, unchanged from before", async () => {
     const log = await run(judgeSays({ status: "ready", reason: "done" }), { maxSteps: 5, minSteps: 1 });
 
     const judge = (await loadRunSteps(log.runId, db)).find((s) => s.role === "judge")!;
-    expect(judge.model).toBe("stub-model");
+    expect(judge.model).toBe(RUN_MODEL_NAME);
   });
 
   it("persists each step as it is produced, not batched at the end", async () => {
@@ -307,15 +279,6 @@ describe("observability: load / filter / replay", () => {
     const windowed = await filterSteps(log.runId, { stepIdRange: [0, 1] }, db);
     expect(windowed).toEqual(loaded.filter((s) => s.stepId >= 0 && s.stepId <= 1));
 
-    // replay: the exact recorded prompt text is what gets resent
-    const target = loaded[1];
-    const seenPrompts: string[] = [];
-    await replayStep(log.runId, target.stepId, async (prompt) => {
-      seenPrompts.push(prompt);
-      return "replayed";
-    }, db);
-    expect(seenPrompts).toEqual([target.prompt]);
-
     // the run row itself round-trips, with its final answer
     const storedRun = await db.runs.get(log.runId);
     expect(storedRun).toEqual(log);
@@ -331,9 +294,5 @@ describe("observability: load / filter / replay", () => {
     expect(firstSteps.every((s) => s.runId === first.runId)).toBe(true);
     expect(await db.runSteps.count()).toBe(firstSteps.length * 2);
     expect(await filterSteps(second.runId, { role: "judge" }, db)).toHaveLength(1);
-  });
-
-  it("throws on replay of a step that does not exist", async () => {
-    await expect(replayStep("no-such-run", 0, async () => "x", db)).rejects.toThrow("no step 0");
   });
 });

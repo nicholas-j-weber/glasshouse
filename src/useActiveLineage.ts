@@ -1,4 +1,4 @@
-import { subscribeHeadChanged } from "./headSubscription";
+import { subscribeHeadChanged } from "./subscriptions";
 import { getActiveLineage } from "./store";
 import type { Version } from "./types";
 import { useSubscribedResource } from "./useSubscribedResource";

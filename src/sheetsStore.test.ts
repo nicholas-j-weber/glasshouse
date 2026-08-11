@@ -2,7 +2,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ContextSheetDB } from "./db";
 import { createSheet, deleteSheet, ensureActiveSheet, listSheets, renameSheet, switchSheet } from "./sheetsStore";
 import { getStoredActiveSheetId } from "./settingsStorage";
-import { recordUsage } from "./tokenUsageStore";
 
 let db: ContextSheetDB;
 
@@ -73,7 +72,7 @@ describe("switchSheet", () => {
     const b = await createSheet("B", db);
 
     const listener = vi.fn();
-    const { subscribeSheetsChanged } = await import("./sheetsSubscription");
+    const { subscribeSheetsChanged } = await import("./subscriptions");
     const unsubscribe = subscribeSheetsChanged(listener);
 
     switchSheet(a);
@@ -118,7 +117,10 @@ describe("deleteSheet", () => {
       routingMode: "blackbox",
       createdAt: new Date().toISOString(),
     });
-    await recordUsage(id, { inputTokens: 10, outputTokens: 5 }, db);
+    // Written directly: nothing records usage anymore (the "Tokens consumed"
+    // readout that read it is gone), but existing installs still hold rows
+    // from when it did, and deleting a sheet must still take them with it.
+    await db.usage.add({ id: "u1", sheetId: id, inputTokens: 10, outputTokens: 5, createdAt: new Date().toISOString() });
 
     await deleteSheet(id, db);
 

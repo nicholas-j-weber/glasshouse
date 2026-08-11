@@ -19,11 +19,11 @@ import type { RunLog, StepRecord, StepRole } from "./types";
 // wired to a real provider in a later milestone.
 //
 // Not ported for v1 (spec.md "What does not port"): pytest_structural_check
-// (Python/subprocess-specific — structuralCheckFn stays a typed extension
-// point with nothing wired in by default) and dynamic instruction routing /
-// abandon branch-back (still a stretch goal).
-
-export const MODEL_NAME = "stub-model";
+// (Python/subprocess-specific) and dynamic instruction routing / abandon
+// branch-back (still a stretch goal). A typed structuralCheckFn extension
+// point for the former existed here for a while with nothing ever wired
+// into it — removed; the judge call is the only completion check. Bring it
+// back alongside a real check, not ahead of one.
 
 export const FIXED_SEQUENCE = [
   "Restate the problem in your own words to confirm understanding.",
@@ -53,12 +53,6 @@ export interface JudgeVerdict {
   reason: string;
 }
 
-// A structural check inspects the transcript and either returns a verdict
-// or null to mean "no verdict, defer to the judge call." Domain-specific
-// (test suites, solvers, etc.) — no check is required, and none is wired
-// in by default.
-export type StructuralCheckFn = (transcript: StepRecord[]) => JudgeVerdict | null;
-
 export function buildPrompt(
   problem: string,
   topLevelInstructions: string,
@@ -77,9 +71,11 @@ export function buildPrompt(
   return parts.join("\n\n");
 }
 
-// --- observability: the Python spec's load/filter/replay, as Dexie queries.
-// Falls out of runSteps' existing indexes ("[runId+stepId], runId, role") —
-// no separate query layer.
+// --- observability: the Python spec's load/filter, as Dexie queries. Falls
+// out of runSteps' existing indexes ("[runId+stepId], runId, role") — no
+// separate query layer. The spec's replay (resend one step's exact recorded
+// prompt) had no caller here and is gone; every prompt is still stored
+// verbatim, so it's a few lines to write again against a real need.
 
 export function loadRunSteps(runId: string, db: ContextSheetDB = defaultDb): Promise<StepRecord[]> {
   return filterSteps(runId, {}, db);
@@ -97,47 +93,17 @@ export function filterSteps(
   return (role === undefined ? range : range.and((s) => s.role === role)).toArray();
 }
 
-// Resend the exact prompt for a given run/step to reproduce or test a fix.
-export async function replayStep(
-  runId: string,
-  stepId: number,
-  modelCallFn: ModelCallFn,
-  db: ContextSheetDB = defaultDb,
-): Promise<string> {
-  const step = await db.runSteps.get([runId, stepId]);
-  if (!step) throw new Error(`no step ${stepId} found in run ${runId}`);
-  return modelCallFn(step.prompt);
-}
-
-function judgeMetadata(method: string, status: JudgeStatus, reason: string): Record<string, unknown> {
-  const metadata: Record<string, unknown> = { method, status, reason };
+// `method: "model"` is a constant now that the judge model call is the only
+// path to a verdict — kept in the persisted record because existing rows
+// already carry it and the trace reads it back.
+function judgeMetadata(status: JudgeStatus, reason: string): Record<string, unknown> {
+  const metadata: Record<string, unknown> = { method: "model", status, reason };
   if (status === "abandon") {
     // branch-back is a stretch goal — for now, abandon just continues the
     // loop like any other non-ready verdict.
     metadata.treated_as = "continue";
   }
   return metadata;
-}
-
-function structuralCheckStep(
-  runId: string,
-  stepId: number,
-  transcript: StepRecord[],
-  structuralCheckFn: StructuralCheckFn,
-): StepRecord | null {
-  const result = structuralCheckFn(transcript);
-  if (result === null) return null;
-  return {
-    runId,
-    stepId,
-    role: "judge",
-    instruction: "Structural completion check",
-    prompt: "(no model call — deterministic structural check)",
-    rawResponse: JSON.stringify(result),
-    timestamp: new Date().toISOString(),
-    model: "none",
-    metadata: judgeMetadata("structural", result.status, result.reason),
-  };
 }
 
 // Real models routinely wrap "respond with ONLY JSON" output in a markdown
@@ -184,7 +150,7 @@ async function judgeStep(
     rawResponse,
     timestamp: new Date().toISOString(),
     model: modelName,
-    metadata: judgeMetadata("model", status, reason),
+    metadata: judgeMetadata(status, reason),
   };
 }
 
@@ -196,7 +162,6 @@ export interface RunReasoningAgentOptions {
   modelCallFn: ModelCallFn;
   maxSteps?: number;
   minSteps?: number;
-  structuralCheckFn?: StructuralCheckFn;
   // Appended directly to the compiled prompt before the final call —
   // domain-agnostic on this side (just a string tacked on), but lets a
   // caller (e.g. suggestionSession.ts's SUGGESTION_INSTRUCTIONS) guarantee
@@ -208,10 +173,11 @@ export interface RunReasoningAgentOptions {
   // open-ended generation, and a natural fit for a cheaper/faster model
   // than whatever the caller uses for actual reasoning/answer steps. Falls
   // back to modelCallFn/modelName when omitted, identical to today's
-  // behavior. Never used for the structural-check path (no model call
-  // there at all).
+  // behavior.
   judgeModelCallFn?: ModelCallFn;
   judgeModelName?: string;
+  // Recorded on every StepRecord this run writes. Only a label for the
+  // trace — the actual model is whatever modelCallFn is wired to.
   modelName?: string;
   db?: ContextSheetDB;
 }
@@ -224,11 +190,10 @@ export async function runReasoningAgent({
   modelCallFn,
   maxSteps = 10,
   minSteps = FIXED_SEQUENCE.length,
-  structuralCheckFn,
   finalPromptSuffix,
   judgeModelCallFn,
   judgeModelName,
-  modelName = MODEL_NAME,
+  modelName = "unknown-model",
   db = defaultDb,
 }: RunReasoningAgentOptions): Promise<RunLog> {
   const run: RunLog = {
@@ -266,20 +231,15 @@ export async function runReasoningAgent({
     });
 
     if (stepNum + 1 >= minSteps) {
-      const structural = structuralCheckFn
-        ? structuralCheckStep(run.runId, steps.length, steps, structuralCheckFn)
-        : null;
-      const record =
-        structural ??
-        (await judgeStep(
-          run.runId,
-          steps.length,
-          problem,
-          topLevelInstructions,
-          steps,
-          judgeModelCallFn ?? modelCallFn,
-          judgeModelCallFn ? (judgeModelName ?? modelName) : modelName,
-        ));
+      const record = await judgeStep(
+        run.runId,
+        steps.length,
+        problem,
+        topLevelInstructions,
+        steps,
+        judgeModelCallFn ?? modelCallFn,
+        judgeModelCallFn ? (judgeModelName ?? modelName) : modelName,
+      );
       await persist(record);
       if (record.metadata?.status === "ready") {
         ready = true;

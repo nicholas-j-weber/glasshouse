@@ -22,7 +22,6 @@ import { resolveAttribution, resolveContentChange } from "./suggestionAcceptance
 import { describeSuggestionChange } from "./suggestionChangeDisplay";
 import { parseModelResponse, type ParsedModelResponse } from "./suggestionParser";
 import { buildReasoningInstructions, buildSystemPrompt, SUGGESTION_INSTRUCTIONS, type CallMode, type ContentMode } from "./systemPrompt";
-import { recordUsage } from "./tokenUsageStore";
 import type { ConversationSummaryUpdateSuggestion, PersistedDisplaySuggestion, PersistedSuggestionStatus, RoutingMode, Sheet, SheetSuggestion } from "./types";
 import { useSheetOverlay } from "./useSheetOverlay";
 
@@ -217,8 +216,8 @@ export interface SuggestionSession {
   setContentMode: (mode: ContentMode) => void;
   handleSend: () => Promise<void>;
   // ChatPane's CompressionPrompt "Compress now" path (auto-run setting on)
-  // — see runCompressionNow's own comment for why this bypasses the
-  // general chat auto-apply setting rather than reusing handleSend.
+  // — handleSend for a fixed instruction rather than the draft; see its own
+  // comment for which parts of a normal send it overrides.
   runCompressionNow: () => Promise<void>;
   handleAccept: (message: SessionMessage, index: number) => Promise<void>;
   handleReject: (message: SessionMessage, index: number) => void;
@@ -418,9 +417,6 @@ export function useSuggestionSession(mode: CallMode, sheetId: string): Suggestio
         buildSummaryFollowupUserMessage(userMessage, aiReplyText),
       );
       if (!result.ok) return null;
-      // this call has a real cost even though it never produces
-      // its own visible chat message — record it here, not tied to any message.
-      if (result.usage) void recordUsage(sheetId, result.usage);
       return extractSingleConversationSummaryUpdate(parseModelResponse(result.text));
     } finally {
       setIsSending(false);
@@ -447,9 +443,6 @@ export function useSuggestionSession(mode: CallMode, sheetId: string): Suggestio
         return null;
       }
 
-      // covers the main chat/revision call and sheet-editor
-      // calls alike — this function is already shared across both modes.
-      if (result.usage) void recordUsage(sheetId, result.usage);
       return parseModelResponse(result.text);
     } finally {
       setIsSending(false);
@@ -487,24 +480,23 @@ export function useSuggestionSession(mode: CallMode, sheetId: string): Suggestio
 
     setIsSending(true);
     try {
-      const adapter = createAnthropicAdapter({ apiKey, model: getStoredModel() });
-      const modelCallFn: ModelCallFn = async (prompt) => {
-        const result = await adapter.call("", prompt);
-        if (!result.ok) throw new Error(describeProviderError(result.error));
-        if (result.usage) void recordUsage(sheetId, result.usage);
-        return result.text;
+      // Throws rather than returning an error, unlike runCall above: the
+      // agent loop has no way to carry a failed step forward, so the throw
+      // unwinds to the catch below and the whole pass reports as failed.
+      const callWith = (model: string): ModelCallFn => {
+        const adapter = createAnthropicAdapter({ apiKey, model });
+        return async (prompt) => {
+          const result = await adapter.call("", prompt);
+          if (!result.ok) throw new Error(describeProviderError(result.error));
+          return result.text;
+        };
       };
       // Judge is a bounded continue/ready/abandon classification, not
       // open-ended generation — always JUDGE_MODEL (cheapest/fastest known
       // model), independent of the user's chosen model for actual
       // reasoning/answer steps.
-      const judgeAdapter = createAnthropicAdapter({ apiKey, model: JUDGE_MODEL });
-      const judgeModelCallFn: ModelCallFn = async (prompt) => {
-        const result = await judgeAdapter.call("", prompt);
-        if (!result.ok) throw new Error(describeProviderError(result.error));
-        if (result.usage) void recordUsage(sheetId, result.usage);
-        return result.text;
-      };
+      const modelCallFn = callWith(getStoredModel());
+      const judgeModelCallFn = callWith(JUDGE_MODEL);
 
       let run;
       try {
@@ -672,60 +664,34 @@ export function useSuggestionSession(mode: CallMode, sheetId: string): Suggestio
   }
 
   // Fired when ChatPane's CompressionPrompt is accepted with the auto-run
-  // setting on (settingsStorage.ts's getStoredAutoRunCompression) — same
-  // call shape as handleSend, but for the fixed COMPRESSION_INSTRUCTION
-  // rather than the draft, always routingMode "blackbox" (an automated
-  // background action has no business going through the reasoning agent,
-  // same reasoning as handleRevisionSubmit forcing blackbox), and autoApply
-  // is always true rather than read from the general chat auto-apply
-  // setting — a user might want their own messages reviewed manually while
-  // still wanting this specific backstop to just run.
-  async function runCompressionNow(): Promise<void> {
-    if (isSending) return;
-
-    const [localHead, globalHead] = await Promise.all([
-      ensureInitialized(sheetId),
-      ensureInitialized(GLOBAL_MEMORIES_SHEET_ID),
-    ]);
-    const merged = mergeMemoryPools(localHead.sheet, globalHead.sheet);
-    const overlaidSheet = applyOverlay(merged, overlay);
-    const systemPrompt = buildSystemPrompt(overlaidSheet, mode, "prose");
-    const contextSnapshot = serializeSheet(overlaidSheet);
-
-    const parsed = await runCall(systemPrompt, COMPRESSION_INSTRUCTION);
-    if (!parsed) return; // error already appended
-
-    const suggestions = await resolveSuggestions(parsed, mode, COMPRESSION_INSTRUCTION, attemptSummaryFollowup);
-
-    addMessage({
-      id: crypto.randomUUID(),
-      createdAt: new Date().toISOString(),
-      mode,
-      role: "user",
+  // setting on (settingsStorage.ts's getStoredAutoRunCompression) — the same
+  // pass handleSend builds, just for the fixed COMPRESSION_INSTRUCTION rather
+  // than the draft, and always blackbox/prose/auto-applied: an automated
+  // background action has no business going through the reasoning agent
+  // (same reasoning as handleRevisionSubmit forcing blackbox), and this
+  // specific backstop should just run. Named here rather than making
+  // ChatPane assemble the override itself — the call shape is this file's
+  // business, not the view's.
+  function runCompressionNow(): Promise<void> {
+    return handleSend({
       text: COMPRESSION_INSTRUCTION,
       routingMode: "blackbox",
+      contentMode: "prose",
+      autoApply: true,
     });
-    const assistantMessage: SessionMessage = {
-      id: crypto.randomUUID(),
-      createdAt: new Date().toISOString(),
-      mode,
-      role: "assistant",
-      text: parsed.conversationalText,
-      sourceText: COMPRESSION_INSTRUCTION,
-      suggestions,
-      autoApplied: true,
-      routingMode: "blackbox",
-      contextSnapshot,
-    };
-    addMessage(assistantMessage);
-
-    if (suggestions && suggestions.length > 0) {
-      await autoApplyAll(assistantMessage, suggestions);
-    }
   }
 
-  async function handleSend() {
-    const messageText = draft.trim();
+  // `override` is how runCompressionNow above sends a pass that isn't the
+  // user's draft — everything else about the two is identical, which is why
+  // they're one function. Absent (the ordinary send) means: text from the
+  // draft, routing/content from the live toggles, auto-apply per mode.
+  async function handleSend(override?: {
+    text: string;
+    routingMode: RoutingMode;
+    contentMode: ContentMode;
+    autoApply: boolean;
+  }) {
+    const messageText = override ? override.text : draft.trim();
     if (!messageText || isSending) return;
 
     const [localHead, globalHead] = await Promise.all([
@@ -738,9 +704,10 @@ export function useSuggestionSession(mode: CallMode, sheetId: string): Suggestio
     // user could flip again before the (possibly multi-step) call resolves,
     // but a pass must be built from whichever mode actually produced it, not
     // whatever the toggles happen to read afterward.
-    const passRoutingMode = routingMode;
+    const passRoutingMode = override ? override.routingMode : routingMode;
+    const passContentMode = override ? override.contentMode : contentMode;
     const overlaidSheet = applyOverlay(merged, overlay);
-    const systemPrompt = buildSystemPrompt(overlaidSheet, mode, contentMode);
+    const systemPrompt = buildSystemPrompt(overlaidSheet, mode, passContentMode);
     const contextSnapshot = serializeSheet(overlaidSheet);
     // Generated ahead of the call so a reasoning-routed run's RunLog can
     // reference this message's id as chatMessageId before the SessionMessage
@@ -748,14 +715,14 @@ export function useSuggestionSession(mode: CallMode, sheetId: string): Suggestio
     const assistantMessageId = crypto.randomUUID();
     const { parsed, reasoningRunId } =
       passRoutingMode === "reasoning"
-        ? await runReasoningPass(buildReasoningInstructions(overlaidSheet, mode, contentMode), messageText, assistantMessageId)
+        ? await runReasoningPass(buildReasoningInstructions(overlaidSheet, mode, passContentMode), messageText, assistantMessageId)
         : { parsed: await runCall(systemPrompt, messageText), reasoningRunId: undefined };
     if (!parsed) return; // error already appended; draft preserved, no "sent" turn added
 
     const suggestions = await resolveSuggestions(parsed, mode, messageText, attemptSummaryFollowup);
     // sheet_editor mode never auto-applies — Manage with AI's
     // review-every-batch model; chat mode always does now.
-    const autoApply = mode === "chat";
+    const autoApply = override ? override.autoApply : mode === "chat";
 
     addMessage({ id: crypto.randomUUID(), createdAt: new Date().toISOString(), mode, role: "user", text: messageText, routingMode: passRoutingMode });
     const assistantMessage: SessionMessage = {
@@ -772,7 +739,7 @@ export function useSuggestionSession(mode: CallMode, sheetId: string): Suggestio
       contextSnapshot,
     };
     addMessage(assistantMessage);
-    setDraft("");
+    if (!override) setDraft(""); // nothing to clear when the text didn't come from the draft
 
     if (autoApply && suggestions && suggestions.length > 0) {
       await autoApplyAll(assistantMessage, suggestions);

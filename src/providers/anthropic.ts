@@ -11,7 +11,6 @@ interface AnthropicAdapterOptions {
 
 interface AnthropicSuccessBody {
   content?: Array<{ type: string; text?: string }>;
-  usage?: { input_tokens?: number; output_tokens?: number };
 }
 
 interface AnthropicErrorBody {
@@ -106,15 +105,7 @@ export function createAnthropicAdapter(config: ProviderConfig, options: Anthropi
         };
       }
 
-      // real usage, when the provider includes it —
-      // omitted (not zero-filled) if either field is missing/malformed, so
-      // callers can tell "no data" apart from "genuinely zero tokens."
-      const inputTokens = successBody.usage?.input_tokens;
-      const outputTokens = successBody.usage?.output_tokens;
-      const usage =
-        typeof inputTokens === "number" && typeof outputTokens === "number" ? { inputTokens, outputTokens } : undefined;
-
-      return { ok: true, text, usage };
+      return { ok: true, text };
     },
   };
 }

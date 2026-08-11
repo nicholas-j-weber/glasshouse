@@ -1,5 +1,5 @@
 import { ensureActiveSheet, listSheets } from "./sheetsStore";
-import { subscribeSheetsChanged } from "./sheetsSubscription";
+import { subscribeSheetsChanged } from "./subscriptions";
 import type { SheetMeta } from "./types";
 import { useSubscribedResource } from "./useSubscribedResource";
 

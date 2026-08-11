@@ -44,7 +44,10 @@ describe("createAnthropicAdapter", () => {
     expect(result).toEqual({ ok: true, text: "Part one. Part two." });
   });
 
-  it("surfaces real usage when the provider includes it", async () => {
+  it("ignores the provider's usage field rather than surfacing it", async () => {
+    // Nothing downstream reads token counts anymore (the "Tokens consumed"
+    // readout is gone) — a response carrying them must still parse cleanly,
+    // it just doesn't put them on the result.
     const fetchImpl = vi.fn().mockResolvedValue(
       jsonResponse(200, {
         content: [{ type: "text", text: "Hi there." }],
@@ -54,16 +57,7 @@ describe("createAnthropicAdapter", () => {
     const adapter = createAnthropicAdapter({ apiKey: "sk-test", model: "claude-sonnet-5" }, { fetchImpl });
 
     const result = await adapter.call("sys", "hi");
-    expect(result).toEqual({ ok: true, text: "Hi there.", usage: { inputTokens: 123, outputTokens: 45 } });
-  });
-
-  it("omits usage (not zero-fills it) when the provider doesn't include it", async () => {
-    const fetchImpl = vi.fn().mockResolvedValue(jsonResponse(200, { content: [{ type: "text", text: "Hi." }] }));
-    const adapter = createAnthropicAdapter({ apiKey: "sk-test", model: "claude-sonnet-5" }, { fetchImpl });
-
-    const result = await adapter.call("sys", "hi");
-    expect(result.ok).toBe(true);
-    if (result.ok) expect(result.usage).toBeUndefined();
+    expect(result).toEqual({ ok: true, text: "Hi there." });
   });
 
   it("classifies HTTP 401 as an auth error", async () => {
