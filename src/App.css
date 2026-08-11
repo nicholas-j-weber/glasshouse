@@ -1994,13 +1994,15 @@ dialog.modal::backdrop {
 
 /* A small two-button segmented control, same visual language as
    .chat-send--revising's paired buttons — persistent rather than a
-   revise/cancel pair. Originally the chat pane's Reasoning/Blackbox toggle;
-   reused as-is for SheetPanel.tsx's Knowledge-tab upload kind picker, hence
-   the generic name rather than a "routing"-specific one. */
+   revise/cancel pair. The chat pane's only Reasoning/Blackbox toggle right
+   now, but named generically rather than "routing"-specific since it's
+   meant to be reusable for any future segmented control. padding-bottom
+   gives it breathing room from .chat-input-row's border-top directly
+   below, which otherwise sits flush against the toggle buttons. */
 .segmented-toggle {
   display: flex;
   gap: 0;
-  padding: 0 16px;
+  padding: 0 16px 8px;
   margin-top: 8px;
 }
 
