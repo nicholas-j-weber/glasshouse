@@ -30,13 +30,6 @@
   --accent-strong: #835aab;
   --error: #ff8a80;
   --error-bg: rgba(255, 138, 128, 0.12);
-  --gold: #e0b34c;
-  /* Code-diff lane (spec.md) — added/removed line coloring, same
-     text-color-plus-tinted-background pairing as --error/--error-bg above. */
-  --diff-added: #7ee787;
-  --diff-added-bg: rgba(126, 231, 135, 0.12);
-  --diff-removed: #ff8a80;
-  --diff-removed-bg: rgba(255, 138, 128, 0.12);
   /* Visual consistency audit: the six solid --accent-strong buttons and
      the modal backdrop were the only two colors in the app not routed
      through a custom property — not actually inconsistent in value (all

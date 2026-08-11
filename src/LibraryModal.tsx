@@ -238,7 +238,7 @@ function KnowledgeModule({
 // Import Context. Kind is fixed by which tab this form renders in (no
 // picker needed anymore — the Knowledge/Skills tabs themselves are the
 // explicit choice, same "toggle, not heuristic" posture as
-// routingMode/contentMode elsewhere). Uploading commits immediately (no
+// routingMode elsewhere). Uploading commits immediately (no
 // pending/preview state); the only local state here is the in-flight/error
 // UI around that.
 function UploadKnowledgeForm({

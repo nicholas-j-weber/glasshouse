@@ -21,11 +21,5 @@ export function formatSuggestionAsSourceBlock(suggestion: SheetSuggestion): stri
       return `## Conversation Summary\n${suggestion.body}`;
     case "compress_conversation":
       return `## Conversation Summary (compressed, replacing turns: ${suggestion.turnIds.join(", ")})\n${suggestion.body}`;
-    case "code_change": {
-      const files = Object.entries(suggestion.files)
-        .map(([path, content]) => `### ${path}\n${content}`)
-        .join("\n\n");
-      return `## Code change\n${suggestion.summary ?? ""}\n\n${files}`;
-    }
   }
 }

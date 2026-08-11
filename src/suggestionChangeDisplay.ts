@@ -75,18 +75,5 @@ export function describeSuggestionChange(suggestion: SheetSuggestion, sheet: She
         after: suggestion.body,
       };
     }
-
-    case "code_change": {
-      // No single "before" string worth showing here — each file's actual
-      // diff only exists once this is accepted (CodeDiffView reads it off
-      // the resulting CodeVersion). This is just the pending-review
-      // preview: the model's own summary plus which files are touched.
-      const paths = Object.keys(suggestion.files);
-      return {
-        title: "Code change",
-        before: null,
-        after: suggestion.summary ? `${suggestion.summary}\n\nFiles: ${paths.join(", ")}` : `Files: ${paths.join(", ")}`,
-      };
-    }
   }
 }

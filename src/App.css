@@ -262,18 +262,20 @@ dialog.modal::backdrop {
   width: 500px;
 }
 
-/* PassTriage.tsx — one pass's three lanes side by side, as wide as the
-   viewport allows so each pane gets real room (a context snapshot,
-   reasoning trace, and diff all competing for the same 1040px got cramped
-   on wide monitors) without forcing horizontal scroll on any single pane. */
+/* PassTriage.tsx — one pass's two lanes (context snapshot, reasoning
+   trace) side by side, as wide as the viewport reasonably allows so each
+   pane gets real room without forcing horizontal scroll on either one.
+   Narrower than before the code-diff lane was removed (that third pane's
+   own width need is gone); not re-verified live in a browser this pass,
+   worth a visual check if it reads too wide or narrow at typical widths. */
 .modal--pass-triage {
-  width: min(1600px, calc(100vw - 32px));
+  width: min(1200px, calc(100vw - 32px));
 }
 
 /* .modal-body.pass-triage-body (not just .pass-triage-body) — .modal-body
    itself sets flex-direction: column further down this file, and with
    equal specificity the later rule wins regardless of intent, silently
-   forcing the three panes into a stack. The extra class beats that. */
+   forcing the panes into a stack. The extra class beats that. */
 .modal-body.pass-triage-body {
   display: flex;
   flex-direction: row;
@@ -1658,80 +1660,6 @@ dialog.modal::backdrop {
   color: var(--text-dim);
 }
 
-/* spec.md "Code-diff lane" — a coding pass's per-file diff
-   (CodeDiffView.tsx). The "diff, not inline code" rule (milestone 6)
-   makes this the only place a coding pass's actual content is meant to
-   be readable. */
-.code-diff-files {
-  margin-top: 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.code-diff-file {
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  overflow: hidden;
-}
-
-.code-diff-file-header {
-  display: flex;
-  gap: 8px;
-  align-items: baseline;
-  padding: 6px 8px;
-  background: var(--code-bg);
-  border-bottom: 1px solid var(--border);
-  font-size: 13px;
-}
-
-.code-diff-file-status {
-  text-transform: uppercase;
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-}
-
-.code-diff-file-status--added {
-  color: var(--diff-added);
-}
-
-.code-diff-file-status--removed {
-  color: var(--diff-removed);
-}
-
-.code-diff-file-status--modified {
-  color: var(--gold);
-}
-
-.code-diff-file-path {
-  font-family: var(--mono);
-  color: var(--text-h);
-}
-
-.code-diff-file-body {
-  margin: 0;
-  padding: 4px 0;
-  font-family: var(--mono);
-  font-size: 12px;
-  overflow-x: auto;
-}
-
-.code-diff-line {
-  padding: 0 8px;
-  white-space: pre;
-}
-
-.code-diff-line--added {
-  color: var(--diff-added);
-  background: var(--diff-added-bg);
-}
-
-.code-diff-line--removed {
-  color: var(--diff-removed);
-  background: var(--diff-removed-bg);
-}
-
 /* Wraps rather than shrinks — "Revise with AI" doesn't reliably fit
    alongside Accept/Reject in Manage with AI's narrower ~226px cards. */
 .suggestion-actions {
@@ -2066,34 +1994,14 @@ dialog.modal::backdrop {
 
 /* A small two-button segmented control, same visual language as
    .chat-send--revising's paired buttons — persistent rather than a
-   revise/cancel pair. Originally the chat pane's Reasoning/Blackbox and
-   Prose/Code toggles; reused as-is for SheetPanel.tsx's Knowledge-tab
-   upload kind picker, hence the generic name rather than a "routing"-
-   specific one. */
+   revise/cancel pair. Originally the chat pane's Reasoning/Blackbox toggle;
+   reused as-is for SheetPanel.tsx's Knowledge-tab upload kind picker, hence
+   the generic name rather than a "routing"-specific one. */
 .segmented-toggle {
   display: flex;
   gap: 0;
   padding: 0 16px;
   margin-top: 8px;
-}
-
-/* SuggestionSessionView.tsx's content/routing toggles, side by side
-   instead of stacked — this row now owns the padding/margin-top that
-   .segmented-toggle normally carries on its own, so its two children don't
-   double up on spacing (each stays a plain flex row for its own buttons). */
-.chat-toggles-row {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  align-items: center;
-  gap: 8px;
-  padding: 0 16px 8px;
-  margin-top: 8px;
-}
-
-.chat-toggles-row .segmented-toggle {
-  padding: 0;
-  margin-top: 0;
 }
 
 .segmented-toggle-option {

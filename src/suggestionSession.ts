@@ -5,7 +5,6 @@ import {
   extractSingleConversationSummaryUpdate,
   SUMMARY_FOLLOWUP_SYSTEM_PROMPT,
 } from "./conversationSummaryFollowup";
-import { createCodeVersion, revertCodeHead } from "./codeStore";
 import { GLOBAL_MEMORIES_SHEET_ID, mergeMemoryPools } from "./globalMemories";
 import { loadMessages, saveMessage } from "./messagesStore";
 import { createAnthropicAdapter } from "./providers/anthropic";
@@ -21,7 +20,7 @@ import { createVersion, ensureInitialized, revertToVersion } from "./store";
 import { resolveAttribution, resolveContentChange } from "./suggestionAcceptance";
 import { describeSuggestionChange } from "./suggestionChangeDisplay";
 import { parseModelResponse, type ParsedModelResponse } from "./suggestionParser";
-import { buildReasoningInstructions, buildSystemPrompt, SUGGESTION_INSTRUCTIONS, type CallMode, type ContentMode } from "./systemPrompt";
+import { buildReasoningInstructions, buildSystemPrompt, SUGGESTION_INSTRUCTIONS, type CallMode } from "./systemPrompt";
 import type { ConversationSummaryUpdateSuggestion, PersistedDisplaySuggestion, PersistedSuggestionStatus, RoutingMode, Sheet, SheetSuggestion } from "./types";
 import { useSheetOverlay } from "./useSheetOverlay";
 
@@ -91,13 +90,6 @@ export interface SessionMessage {
   // never sets this, even mid-reasoning-toggled session — see
   // handleRevisionSubmit's comment.
   reasoningRunId?: string;
-  // set iff this pass touched code (spec.md "The Pass") — independent of
-  // routingMode. Links to the CodeVersion chain PassTriage.tsx's code pane
-  // renders (via CodeDiffView.tsx's useCodeDiff/CodeDiffFiles). Nothing
-  // sets this yet — that's the coding-pass detection milestone 6 wires
-  // into the suggestion parser; this field and CodeDiffView are the
-  // read/render side, built ahead of it.
-  codeVersionId?: string;
   // Mirrors types.ts's PersistedMessage.contextSnapshot — captured at send
   // time (handleSend/handleRevisionSubmit below), for both routing modes.
   // Rendered by PassTriage.tsx.
@@ -156,10 +148,6 @@ function toastTextFor(suggestion: SheetSuggestion, sheet: Sheet): string | null 
       return "Pins reordered";
     case "compress_conversation":
       return `Compressed ${suggestion.turnIds.length} conversation turn${suggestion.turnIds.length === 1 ? "" : "s"} into one summary`;
-    case "code_change": {
-      const count = Object.keys(suggestion.files).length;
-      return `Code updated: ${count} file${count === 1 ? "" : "s"} changed`;
-    }
   }
 }
 
@@ -207,13 +195,6 @@ export interface SuggestionSession {
   // default-routing-mode preference each time the sheet/mode changes.
   routingMode: RoutingMode;
   setRoutingMode: (mode: RoutingMode) => void;
-  // Per-message toggle (systemPrompt.ts's ContentMode) — "code" is the sole
-  // gate on whether code_change is a legal suggestion, read at send time by
-  // handleSend. Always resets to "prose" per sheet/mode, unlike routingMode
-  // which has a configurable default — most messages are prose, so that's
-  // simply the right default, not something worth a Settings toggle.
-  contentMode: ContentMode;
-  setContentMode: (mode: ContentMode) => void;
   handleSend: () => Promise<void>;
   // ChatPane's CompressionPrompt "Compress now" path (auto-run setting on)
   // — handleSend for a fixed instruction rather than the draft; see its own
@@ -286,7 +267,6 @@ export function useSuggestionSession(mode: CallMode, sheetId: string): Suggestio
   const [revisionDraft, setRevisionDraft] = useState("");
   const [toasts, setToasts] = useState<SuggestionToast[]>([]);
   const [routingMode, setRoutingMode] = useState<RoutingMode>(getStoredDefaultRoutingMode());
-  const [contentMode, setContentMode] = useState<ContentMode>("prose");
 
   useEffect(() => {
     let cancelled = false;
@@ -296,7 +276,6 @@ export function useSuggestionSession(mode: CallMode, sheetId: string): Suggestio
     setRevisionDraft("");
     setToasts([]);
     setRoutingMode(getStoredDefaultRoutingMode());
-    setContentMode("prose");
 
     loadMessages(sheetId, mode).then((loaded) => {
       if (!cancelled) setMessages(loaded);
@@ -329,19 +308,6 @@ export function useSuggestionSession(mode: CallMode, sheetId: string): Suggestio
           ? { ...m, suggestions: m.suggestions.map((s, i) => (i === index ? { ...s, status } : s)) }
           : m,
       );
-      const updated = next.find((m) => m.id === messageId);
-      if (updated) void saveMessage(sheetId, updated);
-      return next;
-    });
-  }
-
-  // Stamps codeVersionId onto a message once its code_change suggestion has
-  // actually produced a CodeVersion (spec.md "The Pass") — applySuggestion's
-  // code_change branch calls this the same way updateSuggestionStatus above
-  // reacts to any other suggestion resolving.
-  function updateMessageCodeVersionId(messageId: string, codeVersionId: string) {
-    setMessages((prev) => {
-      const next = prev.map((m) => (m.id === messageId ? { ...m, codeVersionId } : m));
       const updated = next.find((m) => m.id === messageId);
       if (updated) void saveMessage(sheetId, updated);
       return next;
@@ -605,22 +571,6 @@ export function useSuggestionSession(mode: CallMode, sheetId: string): Suggestio
       };
     }
 
-    if (suggestion.type === "code_change") {
-      // Doesn't touch the Sheet at all — a separate chain (codeStore.ts),
-      // same "overlay-only suggestions don't reach resolveContentChange"
-      // shape as deactivate_memory/reorder_pins above, but with its own
-      // real, append-only chain instead of session-only overlay state.
-      const version = await createCodeVersion(suggestion.files, messageId, sheetId);
-      updateMessageCodeVersionId(messageId, version.id);
-      return {
-        ok: true,
-        toastText: toastTextFor(suggestion, mergedForDisplay) ?? undefined,
-        undo: async () => {
-          await revertCodeHead(sheetId, version.parentId);
-        },
-      };
-    }
-
     const { attribution, provenance } = resolveAttribution(display.isFallback, mode, messageId, sourceExcerpt, autoApplied);
     const resolved = resolveContentChange(suggestion, localBase, globalBase, provenance, now);
     if (!resolved) {
@@ -666,7 +616,7 @@ export function useSuggestionSession(mode: CallMode, sheetId: string): Suggestio
   // Fired when ChatPane's CompressionPrompt is accepted with the auto-run
   // setting on (settingsStorage.ts's getStoredAutoRunCompression) — the same
   // pass handleSend builds, just for the fixed COMPRESSION_INSTRUCTION rather
-  // than the draft, and always blackbox/prose/auto-applied: an automated
+  // than the draft, and always blackbox/auto-applied: an automated
   // background action has no business going through the reasoning agent
   // (same reasoning as handleRevisionSubmit forcing blackbox), and this
   // specific backstop should just run. Named here rather than making
@@ -676,7 +626,6 @@ export function useSuggestionSession(mode: CallMode, sheetId: string): Suggestio
     return handleSend({
       text: COMPRESSION_INSTRUCTION,
       routingMode: "blackbox",
-      contentMode: "prose",
       autoApply: true,
     });
   }
@@ -684,11 +633,10 @@ export function useSuggestionSession(mode: CallMode, sheetId: string): Suggestio
   // `override` is how runCompressionNow above sends a pass that isn't the
   // user's draft — everything else about the two is identical, which is why
   // they're one function. Absent (the ordinary send) means: text from the
-  // draft, routing/content from the live toggles, auto-apply per mode.
+  // draft, routing from the live toggle, auto-apply per mode.
   async function handleSend(override?: {
     text: string;
     routingMode: RoutingMode;
-    contentMode: ContentMode;
     autoApply: boolean;
   }) {
     const messageText = override ? override.text : draft.trim();
@@ -700,14 +648,13 @@ export function useSuggestionSession(mode: CallMode, sheetId: string): Suggestio
     ]);
     const merged = mergeMemoryPools(localHead.sheet, globalHead.sheet);
 
-    // Captured once, up front — routingMode/contentMode are live toggles the
-    // user could flip again before the (possibly multi-step) call resolves,
-    // but a pass must be built from whichever mode actually produced it, not
-    // whatever the toggles happen to read afterward.
+    // Captured once, up front — routingMode is a live toggle the user could
+    // flip again before the (possibly multi-step) call resolves, but a pass
+    // must be built from whichever mode actually produced it, not whatever
+    // the toggle happens to read afterward.
     const passRoutingMode = override ? override.routingMode : routingMode;
-    const passContentMode = override ? override.contentMode : contentMode;
     const overlaidSheet = applyOverlay(merged, overlay);
-    const systemPrompt = buildSystemPrompt(overlaidSheet, mode, passContentMode);
+    const systemPrompt = buildSystemPrompt(overlaidSheet, mode);
     const contextSnapshot = serializeSheet(overlaidSheet);
     // Generated ahead of the call so a reasoning-routed run's RunLog can
     // reference this message's id as chatMessageId before the SessionMessage
@@ -715,7 +662,7 @@ export function useSuggestionSession(mode: CallMode, sheetId: string): Suggestio
     const assistantMessageId = crypto.randomUUID();
     const { parsed, reasoningRunId } =
       passRoutingMode === "reasoning"
-        ? await runReasoningPass(buildReasoningInstructions(overlaidSheet, mode, passContentMode), messageText, assistantMessageId)
+        ? await runReasoningPass(buildReasoningInstructions(overlaidSheet, mode), messageText, assistantMessageId)
         : { parsed: await runCall(systemPrompt, messageText), reasoningRunId: undefined };
     if (!parsed) return; // error already appended; draft preserved, no "sent" turn added
 
@@ -784,13 +731,8 @@ export function useSuggestionSession(mode: CallMode, sheetId: string): Suggestio
       ensureInitialized(GLOBAL_MEMORIES_SHEET_ID),
     ]);
     const merged = mergeMemoryPools(localHead.sheet, globalHead.sheet);
-    // Derived from what's actually being revised, not the pane's live
-    // toggle — a code_change's revision must stay offered the code_change
-    // format regardless of what Content mode happens to be selected right
-    // now; an ordinary suggestion's revision has no reason to switch into it.
-    const revisionContentMode: ContentMode = display.suggestion.type === "code_change" ? "code" : "prose";
     const overlaidSheet = applyOverlay(merged, overlay);
-    const systemPrompt = buildSystemPrompt(overlaidSheet, mode, revisionContentMode);
+    const systemPrompt = buildSystemPrompt(overlaidSheet, mode);
     const parsed = await runCall(systemPrompt, syntheticMessage);
     if (!parsed) return; // error already appended; suggestion stays pending so the user can retry
 
@@ -827,8 +769,6 @@ export function useSuggestionSession(mode: CallMode, sheetId: string): Suggestio
     isSending,
     routingMode,
     setRoutingMode,
-    contentMode,
-    setContentMode,
     handleSend,
     runCompressionNow,
     handleAccept,

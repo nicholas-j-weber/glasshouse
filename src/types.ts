@@ -172,21 +172,6 @@ export interface CompressConversationSuggestion {
   turnIds: string[];
 }
 
-// spec.md "Code-diff lane" — the vehicle for a coding pass's actual file
-// changes. Only ever legal on a response sent under systemPrompt.ts's Code
-// content mode (gated by that mode's addendum being present in the prompt,
-// not by model judgment — same "toggle, not heuristic" posture as
-// routingMode). files is a full snapshot per changed/created file
-// (path -> complete new content, never a patch), matching
-// CodeVersion.files exactly. summary is a short plain-language description
-// for the pending-review card and toast — actual file content only ever
-// surfaces through CodeDiffView after acceptance, never inline here.
-export interface CodeChangeSuggestion {
-  type: "code_change";
-  summary?: string;
-  files: Record<string, string>;
-}
-
 export type SheetSuggestion =
   | NewMemorySuggestion
   | EditMemorySuggestion
@@ -194,8 +179,7 @@ export type SheetSuggestion =
   | DeactivateMemorySuggestion
   | ReorderPinsSuggestion
   | ConversationSummaryUpdateSuggestion
-  | CompressConversationSuggestion
-  | CodeChangeSuggestion;
+  | CompressConversationSuggestion;
 
 // The two independent call surfaces sharing useSuggestionSession
 // (suggestionSession.ts) — canonical home for this type since PersistedMessage
@@ -252,11 +236,9 @@ export interface PersistedMessage {
   // applicable."
   autoApplied?: boolean;
   // Glasshouse pass routing (spec.md "The Pass" / "Routing"). routingMode
-  // is always set; reasoningRunId is set iff "reasoning", codeVersionId
-  // iff this pass touched code (independent of routingMode).
+  // is always set; reasoningRunId is set iff "reasoning".
   routingMode: RoutingMode;
   reasoningRunId?: string;
-  codeVersionId?: string;
   // Pass Triage's "what actually went in" pane — serializeSheet(overlaidSheet)
   // captured at send time (suggestionSession.ts), for both routing modes.
   // Reasoning-routed passes technically also have this in RunLog.topLevelInstructions,
@@ -293,18 +275,6 @@ export interface RunLog {
   topLevelInstructions: string;
   finalAnswer?: string;
   status: "running" | "completed" | "max_steps_reached" | "error";
-}
-
-// Code-diff lane (spec.md "Code-diff lane"). Schema only for now —
-// diffCode() and the "diff, not inline code" rule land in a later
-// milestone.
-export interface CodeVersion {
-  id: string;
-  sheetId: string;
-  parentId: string | null;
-  createdAt: string; // ISO 8601
-  chatMessageId: string;
-  files: Record<string, string>; // path -> full content, snapshot not patch
 }
 
 // one record per real API call that reported usage, scoped by

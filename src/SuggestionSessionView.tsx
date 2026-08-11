@@ -36,8 +36,6 @@ export function SuggestionSessionView({
     isSending,
     routingMode,
     setRoutingMode,
-    contentMode,
-    setContentMode,
     handleSend,
     revising,
     revisionDraft,
@@ -113,69 +111,34 @@ export function SuggestionSessionView({
       </div>
       <ToastStack toasts={toasts} onDismiss={dismissToast} onUndo={undoToast} />
       {triageMessage && <PassTriage message={triageMessage} onClose={() => setTriageMessage(null)} />}
-      {/* Content mode (left) and routing (right) on one row — two
-          independent per-message toggles that were previously stacked as
-          separate full-width strips despite having nothing to do with each
-          other's layout; grouping them as one "message options" row reads
-          cleaner and saves vertical space above the input box. */}
-      <div className="chat-toggles-row">
-        {/* Content-mode toggle — "Code" is the sole gate on whether the model
-            is allowed to propose a code_change suggestion (systemPrompt.ts),
-            same deterministic-toggle posture as routing below. Independent
-            of it: a reasoning-routed pass can still be a coding request, the
-            reasoning trace just leads up to a code_change as its final step. */}
-        <div className="segmented-toggle" role="radiogroup" aria-label="Message content">
-          <button
-            type="button"
-            role="radio"
-            aria-checked={contentMode === "prose"}
-            className={`segmented-toggle-option${contentMode === "prose" ? " segmented-toggle-option--active" : ""}`}
-            onClick={() => setContentMode("prose")}
-            disabled={isSending}
-          >
-            Prose
-          </button>
-          <button
-            type="button"
-            role="radio"
-            aria-checked={contentMode === "code"}
-            className={`segmented-toggle-option${contentMode === "code" ? " segmented-toggle-option--active" : ""}`}
-            onClick={() => setContentMode("code")}
-            disabled={isSending}
-          >
-            Code
-          </button>
-        </div>
-        {/* spec.md "Routing: reasoning vs. blackbox" — a per-message toggle,
-            not a heuristic. "Reasoning" routes the send through
-            reasoningAgent.ts's fixed-sequence loop (auditable per-message via
-            the "Inspect pass" trigger's PassTriage modal); "Blackbox" is a
-            direct call, labeled honestly via the Blackbox badge. Disabled
-            mid-send so a pass is always tagged with the routing that
-            actually produced it, not one flipped after the call already
-            started. */}
-        <div className="segmented-toggle" role="radiogroup" aria-label="Message routing">
-          <button
-            type="button"
-            role="radio"
-            aria-checked={routingMode === "blackbox"}
-            className={`segmented-toggle-option${routingMode === "blackbox" ? " segmented-toggle-option--active" : ""}`}
-            onClick={() => setRoutingMode("blackbox")}
-            disabled={isSending}
-          >
-            Blackbox
-          </button>
-          <button
-            type="button"
-            role="radio"
-            aria-checked={routingMode === "reasoning"}
-            className={`segmented-toggle-option${routingMode === "reasoning" ? " segmented-toggle-option--active" : ""}`}
-            onClick={() => setRoutingMode("reasoning")}
-            disabled={isSending}
-          >
-            Reasoning
-          </button>
-        </div>
+      {/* spec.md "Routing: reasoning vs. blackbox" — a per-message toggle,
+          not a heuristic. "Reasoning" routes the send through
+          reasoningAgent.ts's fixed-sequence loop (auditable per-message via
+          the "Inspect pass" trigger's PassTriage modal); "Blackbox" is a
+          direct call, labeled honestly via the Blackbox badge. Disabled
+          mid-send so a pass is always tagged with the routing that actually
+          produced it, not one flipped after the call already started. */}
+      <div className="segmented-toggle" role="radiogroup" aria-label="Message routing">
+        <button
+          type="button"
+          role="radio"
+          aria-checked={routingMode === "blackbox"}
+          className={`segmented-toggle-option${routingMode === "blackbox" ? " segmented-toggle-option--active" : ""}`}
+          onClick={() => setRoutingMode("blackbox")}
+          disabled={isSending}
+        >
+          Blackbox
+        </button>
+        <button
+          type="button"
+          role="radio"
+          aria-checked={routingMode === "reasoning"}
+          className={`segmented-toggle-option${routingMode === "reasoning" ? " segmented-toggle-option--active" : ""}`}
+          onClick={() => setRoutingMode("reasoning")}
+          disabled={isSending}
+        >
+          Reasoning
+        </button>
       </div>
       <form
         className="chat-input-row"

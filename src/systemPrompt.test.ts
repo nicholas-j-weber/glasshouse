@@ -100,32 +100,6 @@ describe("buildSystemPrompt", () => {
     expect(result).toContain("do not guess or invent one");
   });
 
-  it("always lists code_change's format, regardless of content mode", () => {
-    expect(buildSystemPrompt(sheet, "chat")).toContain('"type": "code_change"');
-    expect(buildSystemPrompt(sheet, "chat", "code")).toContain('"type": "code_change"');
-  });
-
-  it("omits the coding-pass addendum by default (prose)", () => {
-    expect(buildSystemPrompt(sheet, "chat")).not.toContain("This is a coding pass");
-    expect(buildSystemPrompt(sheet, "chat", "prose")).not.toContain("This is a coding pass");
-  });
-
-  it("appends the coding-pass addendum, after the mode preamble, when contentMode is code", () => {
-    for (const mode of ["chat", "sheet_editor"] as const) {
-      const result = buildSystemPrompt(sheet, mode, "code");
-      expect(result).toContain("This is a coding pass");
-      expect(result).toContain("Never write code anywhere in your conversational reply");
-    }
-  });
-
-  it("keeps the addendum after the mode preamble and before the serialized sheet", () => {
-    const result = buildSystemPrompt(sheet, "chat", "code");
-    const addendumIndex = result.indexOf("This is a coding pass");
-    const sheetIndex = result.indexOf("## Tone");
-    expect(addendumIndex).toBeGreaterThan(-1);
-    expect(addendumIndex).toBeLessThan(sheetIndex);
-  });
-
   // Milestone 9: "Confirm active knowledge/skill entries flow into
   // topLevelInstructions" — buildSystemPrompt's output *is*
   // topLevelInstructions for both call paths (runCall's system prompt and
@@ -133,16 +107,14 @@ describe("buildSystemPrompt", () => {
   // are the exact same string). No knowledge-specific code exists in this
   // file either; this end-to-end pass confirms serializeSheet's inclusion
   // (verified in serializer.test.ts) survives all the way through, in every
-  // mode and content mode.
-  it("includes an active knowledge entry's full content, in every mode and content mode", () => {
+  // mode.
+  it("includes an active knowledge entry's full content, in every mode", () => {
     const sheetWithKnowledge = makeSheet({
       memories: [makeMemory({ id: "k1", kind: "knowledge", label: "onboarding.md", body: "Step one. Step two." })],
     });
     for (const mode of ["chat", "sheet_editor"] as const) {
-      for (const contentMode of ["prose", "code"] as const) {
-        const result = buildSystemPrompt(sheetWithKnowledge, mode, contentMode);
-        expect(result).toContain("## Memory: onboarding.md (id: k1)\nStep one. Step two.");
-      }
+      const result = buildSystemPrompt(sheetWithKnowledge, mode);
+      expect(result).toContain("## Memory: onboarding.md (id: k1)\nStep one. Step two.");
     }
   });
 

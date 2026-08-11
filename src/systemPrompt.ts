@@ -12,15 +12,6 @@ import type { CallMode, Sheet } from "./types";
 // already imports Sheet from types.ts).
 export type { CallMode };
 
-// Per-message content-mode toggle (not a heuristic — same "deterministic
-// and visible" posture as routingMode): "code" is the sole gate on whether
-// code_change is a legal suggestion for the model to propose, enforced by
-// CODE_MODE_ADDENDUM only ever appearing in the prompt when this is "code".
-// Not persisted anywhere — unlike routingMode, nothing downstream needs to
-// know after the fact which mode produced a given pass; only whether the
-// resulting message ended up with a codeVersionId.
-export type ContentMode = "prose" | "code";
-
 // This supersedes an earlier conditional
 // trigger: conversation_summary_update is now the one suggestion type
 // that's mandatory to propose on every chat response, not optional — live
@@ -84,18 +75,8 @@ const CHAT_PREAMBLE = `${CHAT_PREAMBLE_BASE}\n\n${CHAT_PREAMBLE_SUGGESTION_ADDEN
 // off-limits in reply text.
 const SHEET_EDITOR_PREAMBLE = `You are in a dedicated sheet-editing session, not a conversation — the user only ever sees your final reply, never your reasoning. The user's instruction below describes how they want their context sheet restructured (e.g. merging memories, pruning, reordering pins). Do your analysis silently; its result must be expressed as suggestions in the format below, not as prose describing what you found or what should change. Never restate the sheet's contents or any memory's id in your reply text — ids exist only so you can target suggestions precisely. Keep conversational text to at most one short sentence. If no changes are warranted after your analysis, say so in that one sentence — but an instruction like "eliminate redundancies" calls for actual suggestions, not a description of the redundancies.`;
 
-// spec.md "Code-diff lane" — appended (not substituted) when the caller's
-// ContentMode is "code", so the mode's ordinary rules (mandatory
-// conversation_summary_update, sheet-editor's silent-analysis rule, etc.)
-// stay in force during a coding pass too. This is the sole gate
-// SUGGESTION_INSTRUCTIONS' code_change rule below refers to — its presence
-// here, controlled entirely by the caller's toggle, is what makes
-// code_change legal on this response, not the model's own judgment about
-// whether the request "counts as code."
-const CODE_MODE_ADDENDUM = `This is a coding pass — the user wants an actual code change, not a description of one. Never write code anywhere in your conversational reply (no fenced code blocks, no inline snippets) — describe what changed in plain language and refer to "the diff" for the real content. Express the actual file changes as a single code_change suggestion below, containing the complete, final content of every file you are creating or modifying — a full snapshot of each file, never a patch, partial excerpt, or a comment like "// rest unchanged."`;
-
 // new_memory, edit_memory, tone_update, deactivate_memory, reorder_pins,
-// conversation_summary_update, compress_conversation, and code_change — the
+// conversation_summary_update, and compress_conversation — the
 // full SheetSuggestion union.
 const SUGGESTION_INSTRUCTIONS = `## Suggesting Sheet Changes
 
@@ -114,22 +95,17 @@ Omit the block entirely if you have no suggestions. Each array element is one ca
 - {"type": "reorder_pins", "pinOrder": ["memoryId1", "memoryId2", "..."]}
 - {"type": "conversation_summary_update", "body": "..."}
 - {"type": "compress_conversation", "body": "...", "turnIds": ["turnId1", "turnId2", "..."]}
-- {"type": "code_change", "summary": "...", "files": {"path/to/file": "complete new file content", "...": "..."}}
 
 When editing or deactivating an existing memory, use the exact id shown next to it above — do not guess or invent one.
 
-code_change is only ever valid on a coding pass — propose it only when the message above told you this is a coding pass; never on an ordinary conversational or sheet-editing response. files must map each changed or created file's repo-relative path to its complete, final content (a full snapshot, not a diff or partial excerpt) — never omit unchanged surrounding code with a placeholder comment. summary is a short plain-language description of the change, shown to the user before the diff itself is available; the actual content only ever surfaces as a diff, never inline in your reply. At most one code_change per response.
-
 compress_conversation condenses two or more *existing* Conversation Summary turns (referenced by the ids shown next to them) into a single new summary entry, in one action — turnIds must list ids actually shown above, body is the condensed replacement text, and the turns it names are removed from the model's context (not deleted — they remain visible to the user, just no longer sent) once accepted. Only propose this when specifically asked to compress, condense, or summarize older turns — never on your own initiative alongside an ordinary reply. turnIds may name a numbered turn's id or a "[Summary]:" entry's id interchangeably — an existing summary is just as foldable into a new, larger one as a plain turn is, so a second compression later in the same conversation should fold any existing summary in alongside whatever new turns have accumulated since, rather than leaving it stranded as a separate entry. When asked to condense all, every, or the oldest turns without a specific number given, turnIds must include every Conversation Summary turn id shown above — every numbered turn and every existing summary — with no exceptions; do not stop early at an arbitrary subset (e.g. only the first few, or only one topical cluster) and do not leave an existing summary out of a new one. Count them if it helps. If the instruction does name a specific number or range, follow that instead. body must keep the user's questions, statements, and positions distinguishable from your own replies, explanations, and proposals — not full "User:"/"AI:" tags on every clause (that would defeat the point of compressing), but natural attributive phrasing at each major point (e.g. "user asked about...", "user pushed back that...", "AI proposed...", "AI cautioned that..."); an undifferentiated topic recap that loses track of who said what is not an acceptable summary. Deactivating the named turns happens automatically once this suggestion is accepted — not a separate judgment call, and not something to narrate: do not describe in your reply text which turns you condensed, what they covered, or what was left alone; propose the actual compress_conversation entry with real turnIds, or propose nothing at all.`;
 
-function modePreamble(mode: CallMode, contentMode: ContentMode, includeSuggestionAddendum: boolean): string {
-  const base =
-    mode === "chat" ? (includeSuggestionAddendum ? CHAT_PREAMBLE : CHAT_PREAMBLE_BASE) : SHEET_EDITOR_PREAMBLE;
-  return contentMode === "code" ? `${base}\n\n${CODE_MODE_ADDENDUM}` : base;
+function modePreamble(mode: CallMode, includeSuggestionAddendum: boolean): string {
+  return mode === "chat" ? (includeSuggestionAddendum ? CHAT_PREAMBLE : CHAT_PREAMBLE_BASE) : SHEET_EDITOR_PREAMBLE;
 }
 
-export function buildSystemPrompt(sheet: Sheet, mode: CallMode, contentMode: ContentMode = "prose"): string {
-  return [modePreamble(mode, contentMode, true), serializeSheet(sheet), SUGGESTION_INSTRUCTIONS].join("\n\n");
+export function buildSystemPrompt(sheet: Sheet, mode: CallMode): string {
+  return [modePreamble(mode, true), serializeSheet(sheet), SUGGESTION_INSTRUCTIONS].join("\n\n");
 }
 
 // Reasoning agent's intermediate steps (restate/generate/evaluate/select/
@@ -145,8 +121,8 @@ export function buildSystemPrompt(sheet: Sheet, mode: CallMode, contentMode: Con
 // that nothing ever reads. SUGGESTION_INSTRUCTIONS is exported separately so
 // the final call can have it reattached directly, rather than trusting the
 // compile step to carry it forward on its own.
-export function buildReasoningInstructions(sheet: Sheet, mode: CallMode, contentMode: ContentMode = "prose"): string {
-  return [modePreamble(mode, contentMode, false), serializeSheet(sheet)].join("\n\n");
+export function buildReasoningInstructions(sheet: Sheet, mode: CallMode): string {
+  return [modePreamble(mode, false), serializeSheet(sheet)].join("\n\n");
 }
 
 export { SUGGESTION_INSTRUCTIONS };

@@ -2,13 +2,16 @@
 
 ## Goal
 
-Glasshouse is ACM2's context-sheet methodology plus two additions: a
-**reasoning agent** (auditable multi-step reasoning instead of one opaque
-completion) and a **code-diff lane** (versioned code changes, tracked
-separately from memory/knowledge). Slogan: *minimize your opacity
-surface* — shrink where failures can hide, not eliminate black-box
-behavior. Every branch, memory, and step input should be logged and
-re-runnable in isolation.
+Glasshouse is ACM2's context-sheet methodology plus a **reasoning agent**
+(auditable multi-step reasoning instead of one opaque completion).
+Slogan: *minimize your opacity surface* — shrink where failures can hide,
+not eliminate black-box behavior. Every branch, memory, and step input
+should be logged and re-runnable in isolation.
+
+A **code-diff lane** (versioned code changes, proposed and shown as a
+diff) was built and then removed — a browser demo has no real filesystem
+or git to apply an accepted diff to, so the diff itself had nowhere to
+go. If a real coding integration exists later, that's where this returns.
 
 This spec covers only what's new. Context-sheet mechanics (memories,
 versioning, suggestions, chat) are ACM2 as-is — see `README.md`/`src/`.
@@ -19,16 +22,14 @@ for the browser.
 ## The Pass
 
 A **pass** is one chat turn (`PersistedMessage`, `role: "assistant"`)
-with up to three lanes, versioned and revertable together — same UX as
-ACM2's existing per-sheet version history:
+with two lanes, versioned and revertable together — same UX as ACM2's
+existing per-sheet version history:
 
 1. **Context-sheet delta** — already built (`Version`, `diffSheets`).
    Present on every pass, possibly empty.
 2. **Reasoning trace** — either a full `RunLog` (routed through the
    reasoning agent) or a `blackbox` marker (routed direct). Exactly one
    of the two, always present.
-3. **Code diff** — present only if the pass touched code; absent
-   (`codeVersionId: undefined`) for pure text-output passes.
 
 ```ts
 // extends existing PersistedMessage (types.ts)
@@ -36,7 +37,6 @@ interface PersistedMessage {
   // ...existing fields...
   routingMode: "reasoning" | "blackbox";
   reasoningRunId?: string;   // set iff routingMode === "reasoning"
-  codeVersionId?: string;    // set iff this pass changed code
 }
 ```
 
@@ -168,50 +168,15 @@ like the existing Anthropic calls) + brute-force cosine similarity in
 IndexedDB. If built, retrieval must log as its own step (`role:
 "retrieval"` — chunks, module, score), never silent injection.
 
-## Code-diff lane
-
-No real git — browser-only, no filesystem (existing, deliberate ACM2
-constraint). Reuses the *pattern* ACM2 already has for `Sheet`
-versioning (parent-linked chain + head pointer), applied to code text
-instead of memory objects:
-
-```ts
-interface CodeVersion {
-  id: string;
-  sheetId: string;
-  parentId: string | null;
-  createdAt: string;
-  chatMessageId: string;
-  files: Record<string, string>; // path -> full content, snapshot not patch
-}
-```
-
-```ts
-codeVersions: Table<CodeVersion, string>;
-codeHead: Table<HeadRecord, string>; // reuse existing HeadRecord shape
-```
-
-Diff computed on demand between a version and its parent (same
-"compute, don't store" note as `diffSheets`), using the `diff` package
-(Myers diff — worth the one new dependency; not a few lines to hand-roll
-correctly). New file `codeDiff.ts`:
-
-```ts
-function diffCode(parent: CodeVersion | null, version: CodeVersion): FileDiff[];
-```
-
-**Rule:** a coding pass's chat-visible reply must not repeat code
-inline — reference the diff instead (e.g. "see diff v3"). Reason: chat
-text is what `conversation_summary_update` compresses (lossily); keeping
-code only in `CodeVersion` excludes it from that pathway by
-construction, rather than hoping the summary preserves it.
-
 ## Non-goals (v1)
 
 - Not optimizing token/cost efficiency — inherited from the reasoning
   agent's non-goal; context grows with step count by design.
-- Not real git — no filesystem in a browser-only app; a real requirement
-  here implies a backend/CLI component, out of scope for this skeleton.
+- Not a coding assistant — a code-diff lane (versioned file changes,
+  shown as a diff) was built and removed: no real git or filesystem in a
+  browser-only app means an accepted diff had nowhere to actually go. A
+  real requirement here implies a backend/CLI component, out of scope
+  for this skeleton.
 - Not eliminating model bias — relocating it into visible prompt
   templates/step sequencing, same as the Python spec's stance.
 - Not RAG — no embeddings, chunking, or similarity search in v1.
@@ -221,8 +186,8 @@ construction, rather than hoping the summary preserves it.
 
 ## Milestones
 
-1. Extend `PersistedMessage`, add `runs`/`runSteps`/`codeVersions`/
-   `codeHead` Dexie tables (schema-only, no behavior yet).
+1. Extend `PersistedMessage`, add `runs`/`runSteps` Dexie tables
+   (schema-only, no behavior yet).
 2. Port `agent.py`'s core loop to TS (`reasoningAgent.ts`) with a unit
    test mirroring `_demo`/`_demo_observability` (transcript-superset
    assertion, `MIN`/`MAX_STEPS` bounds, replay round-trip).
@@ -230,15 +195,16 @@ construction, rather than hoping the summary preserves it.
    direct-routed passes.
 4. Wire reasoning-routed passes into the chat pane: expandable step
    trace per message, using the reasoning module from (2).
-5. Add `codeDiff.ts` + `CodeVersion` chain; render a diff view per pass
-   that has one.
-6. Enforce the "diff, not inline code" rule in the system prompt /
-   suggestion parser for coding passes.
-7. Extend `Memory.kind` with `"knowledge"`/`"skill"`, add `moduleId`;
+5. Extend `Memory.kind` with `"knowledge"`/`"skill"`, add `moduleId`;
    extend `Provenance.source` with `"file_upload"`.
-8. Add the "Knowledge" tab to `SheetPanel.tsx`: unified list (badge-
+6. Add the "Knowledge" tab to `SheetPanel.tsx`: unified list (badge-
    distinguished by kind), substring search, bulk module toggle, upload
    control.
-9. Confirm active knowledge/skill entries flow into
+7. Confirm active knowledge/skill entries flow into
    `topLevelInstructions` through the same serialization path ordinary
    memories already use — no separate integration point.
+
+A code-diff lane (`codeVersions`/`codeHead` Dexie tables, `codeDiff.ts`,
+a diff view per pass, a "diff, not inline code" system-prompt rule) was
+built after milestone 4 and later removed in full — see the Non-goals
+section.

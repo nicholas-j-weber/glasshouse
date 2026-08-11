@@ -103,39 +103,4 @@ describe("parseModelResponse", () => {
       expect(parseModelResponse(raw).suggestions).toEqual([{ type: "compress_conversation", body: "Condensed.", turnIds: [] }]);
     });
   });
-
-  describe("code_change", () => {
-    it("parses a well-formed code_change suggestion, with summary", () => {
-      const raw = `See diff.\n\n<!-- SHEET_SUGGESTIONS\n[{"type": "code_change", "summary": "Added foo", "files": {"src/foo.ts": "export const x = 1;\\n"}}]\n-->`;
-      const result = parseModelResponse(raw);
-      expect(result.suggestions).toEqual([
-        { type: "code_change", summary: "Added foo", files: { "src/foo.ts": "export const x = 1;\n" } },
-      ]);
-    });
-
-    it("parses a code_change with no summary", () => {
-      const raw = `See diff.\n\n<!-- SHEET_SUGGESTIONS\n[{"type": "code_change", "files": {"a.ts": "one"}}]\n-->`;
-      expect(parseModelResponse(raw).suggestions).toEqual([{ type: "code_change", summary: undefined, files: { "a.ts": "one" } }]);
-    });
-
-    it("discards the whole block when files is missing", () => {
-      const raw = `Reply.\n\n<!-- SHEET_SUGGESTIONS\n[{"type": "code_change", "summary": "x"}]\n-->`;
-      expect(parseModelResponse(raw).suggestions).toEqual([]);
-    });
-
-    it("discards the whole block when files is empty", () => {
-      const raw = `Reply.\n\n<!-- SHEET_SUGGESTIONS\n[{"type": "code_change", "files": {}}]\n-->`;
-      expect(parseModelResponse(raw).suggestions).toEqual([]);
-    });
-
-    it("discards the whole block when a file's value isn't a string", () => {
-      const raw = `Reply.\n\n<!-- SHEET_SUGGESTIONS\n[{"type": "code_change", "files": {"a.ts": 5}}]\n-->`;
-      expect(parseModelResponse(raw).suggestions).toEqual([]);
-    });
-
-    it("discards the whole block when files is an array, not an object map", () => {
-      const raw = `Reply.\n\n<!-- SHEET_SUGGESTIONS\n[{"type": "code_change", "files": ["a.ts"]}]\n-->`;
-      expect(parseModelResponse(raw).suggestions).toEqual([]);
-    });
-  });
 });

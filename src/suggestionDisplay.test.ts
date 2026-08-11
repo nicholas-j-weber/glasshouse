@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import { formatSuggestionAsSourceBlock } from "./suggestionDisplay";
-import type { SheetSuggestion } from "./types";
 
 describe("formatSuggestionAsSourceBlock", () => {
   it("renders new_memory and edit_memory as a Memory block", () => {

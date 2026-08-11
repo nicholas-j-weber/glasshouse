@@ -1,5 +1,5 @@
 import Dexie, { type Table } from "dexie";
-import type { CodeVersion, PersistedMessage, RunLog, SheetMeta, StepRecord, UsageRecord, Version } from "./types";
+import type { PersistedMessage, RunLog, SheetMeta, StepRecord, UsageRecord, Version } from "./types";
 
 // Sheet data, including version history, persisted in IndexedDB
 // (single local user, no accounts). Multiple independent sheets
@@ -20,8 +20,6 @@ export class ContextSheetDB extends Dexie {
   usage!: Table<UsageRecord, string>;
   runs!: Table<RunLog, string>;
   runSteps!: Table<StepRecord, string>;
-  codeVersions!: Table<CodeVersion, string>;
-  codeHead!: Table<HeadRecord, string>;
 
   constructor(name = "context-sheets") {
     super(name);
@@ -70,6 +68,27 @@ export class ContextSheetDB extends Dexie {
       runSteps: "[runId+stepId], runId, role",
       codeVersions: "id, sheetId, parentId, chatMessageId",
       codeHead: "id",
+    });
+    // Removes the code-diff lane's tables — the "coding pass" feature
+    // (proposed file changes as a separate versioned diff) was cut
+    // entirely: a browser demo with no real filesystem/git to apply an
+    // accepted diff to had no destination for it. Unlike version 3's usage
+    // table (kept even after its own write path was later removed, since
+    // existing installs might hold real rows worth cascading on sheet
+    // delete), nothing here is worth preserving — no type or code anywhere
+    // in the app still reads codeVersions/codeHead, so this drops them
+    // outright via stores({...: null}) rather than leaving them as
+    // orphaned tables no longer declared on the class above.
+    this.version(5).stores({
+      sheets: "id, createdAt",
+      versions: "id, sheetId, parentId",
+      head: "id",
+      messages: "id, sheetId, createdAt",
+      usage: "id, sheetId, createdAt",
+      runs: "runId, sheetId, chatMessageId",
+      runSteps: "[runId+stepId], runId, role",
+      codeVersions: null,
+      codeHead: null,
     });
   }
 }
